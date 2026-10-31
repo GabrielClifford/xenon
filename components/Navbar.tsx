@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowRight, Menu, X } from 'lucide-react';
+import { ArrowRight, Menu, X, Zap } from 'lucide-react';
 
 const links = [
   { label: 'Home', href: '/' },
@@ -20,7 +20,7 @@ export default function Navbar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="font-display flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-lg font-bold text-white">
-            F
+            X
           </span>
           <span className="leading-tight">
             <span className="font-display block text-xl font-bold text-white">Xenon</span>

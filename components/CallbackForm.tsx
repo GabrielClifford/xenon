@@ -28,7 +28,7 @@ export default function CallbackForm({ name, businessId }: { name: string; busin
       return;
     }
 
-    const last = Number(localStorage.getItem('fixnear_enq') || 0);
+    const last = Number(localStorage.getItem('Xenon_enq') || 0);
     if (Date.now() - last < 60_000) {
       setError('Please wait a minute before sending another request.');
       return;
@@ -50,7 +50,7 @@ export default function CallbackForm({ name, businessId }: { name: string; busin
       setError('Sorry, we could not send your request. Please try again.');
       return;
     }
-    localStorage.setItem('fixnear_enq', String(Date.now()));
+    localStorage.setItem('Xenon_enq', String(Date.now()));
     setSent(true);
   }
 

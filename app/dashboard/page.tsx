@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { BarChart3, Globe, Home, LogOut, Settings, Users, Wrench } from 'lucide-react';
+import { BarChart3, Globe, Home, LogOut, Settings, Users, Zap } from 'lucide-react';
 import BusinessForm from '@/components/BusinessForm';
 import ChannelsPanel from '@/components/ChannelsPanel';
 import CustomersPanel from '@/components/CustomersPanel';
@@ -94,10 +94,10 @@ export default function DashboardPage() {
       <header className="sticky top-0 z-40 flex items-center justify-between bg-slate-950 px-4 py-3 text-white sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
-            <Wrench className="h-4 w-4" />
+            <Zap className="h-4 w-4" />
           </span>
           <span className="font-display text-lg font-bold">
-            Fix<span className="text-blue-400">Near</span>
+            Xe<span className="text-blue-400">Non</span>
           </span>
         </Link>
         <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export default function DashboardPage() {
           </Link>
           <div className="hidden text-right leading-tight sm:block">
             <p className="text-sm font-medium">{name}</p>
-            <p className="text-xs text-slate-400">{isArtisan ? 'Artisan' : 'Customer'}</p>
+            <p className="text-xs text-slate-400">{isArtisan ? 'Business owner' : 'Customer'}</p>
           </div>
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold">
             {initials}
