@@ -26,6 +26,21 @@ export const trades = [
   'Mechanic',
 ];
 
+export const businessCategories = [
+  'Restaurant & Food',
+  'Beauty & Salon',
+  'Fashion & Tailoring',
+  'Retail & Shop',
+  'Electronics & Phone Repair',
+  'Home & Building Services',
+  'Auto & Mechanics',
+  'Health & Wellness',
+  'Education & Training',
+  'Events & Entertainment',
+  'Professional Services',
+  'Other',
+];
+
 export const areas = [
   'Choba',
   'GRA',

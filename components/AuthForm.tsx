@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { trades } from '@/data/providers';
+import { businessCategories } from '@/data/providers';
 
 const field =
   'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-600';
@@ -102,7 +102,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         {isSignup && (
           <select required name="trade" defaultValue="" className={field}>
             <option value="" disabled>What type of business do you run?</option>
-            {trades.map((t) => <option key={t}>{t}</option>)}
+            {businessCategories.map((t) => <option key={t}>{t}</option>)}
           </select>
         )}
         <input
