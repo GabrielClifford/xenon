@@ -9,10 +9,13 @@ import { trades } from '@/data/providers';
 const field =
   'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-600';
 
+// Every new account is a business owner. The stored value stays 'artisan'
+// so existing accounts and the dashboard (isArtisan) keep working.
+const role = 'artisan';
+
 export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const isSignup = mode === 'signup';
   const router = useRouter();
-  const [role, setRole] = useState<'customer' | 'artisan'>('customer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [checkEmail, setCheckEmail] = useState(false);
@@ -37,7 +40,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
             full_name: String(form.get('name') ?? '').trim(),
             phone: String(form.get('phone') ?? '').trim(),
             role,
-            trade: role === 'artisan' ? String(form.get('trade') ?? '') : '',
+            trade: String(form.get('trade') ?? ''),
           },
         },
       });
@@ -89,33 +92,16 @@ export default function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         {isSignup ? 'Create your account' : 'Welcome back'}
       </h1>
       <p className="mt-1 text-sm text-slate-500">
-        {isSignup ? 'Join Xenon to find or offer trusted services.' : 'Log in to your Xenon account.'}
+        {isSignup ? 'Create your Xenon account and launch your business website in minutes.' : 'Log in to your Xenon account.'}
       </p>
-
-      {isSignup && (
-        <div className="mt-6 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1 text-sm font-medium">
-          {(['customer', 'artisan'] as const).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRole(r)}
-              className={`rounded-lg py-2.5 transition ${
-                role === r ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'
-              }`}
-            >
-              {r === 'customer' ? 'I need a service' : 'I offer a service'}
-            </button>
-          ))}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-3">
         {isSignup && <input required name="name" placeholder="Full name" className={field} />}
         <input required type="email" name="email" placeholder="Email address" className={field} />
         {isSignup && <input required name="phone" placeholder="Phone number" className={field} />}
-        {isSignup && role === 'artisan' && (
+        {isSignup && (
           <select required name="trade" defaultValue="" className={field}>
-            <option value="" disabled>What service do you offer?</option>
+            <option value="" disabled>What type of business do you run?</option>
             {trades.map((t) => <option key={t}>{t}</option>)}
           </select>
         )}
