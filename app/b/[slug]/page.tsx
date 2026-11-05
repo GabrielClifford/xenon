@@ -21,6 +21,13 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
     .maybeSingle();
   if (!b) notFound();
 
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, name, description, price, category, photo_url, stock')
+    .eq('business_id', b.id)
+    .eq('available', true)
+    .order('created_at', { ascending: true });
+
   const p: Provider = {
     id: b.slug,
     name: b.name,
@@ -47,7 +54,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
 
   return (
     <>
-      <ArtisanSite p={p} s={s} sample={false} />
+      <ArtisanSite p={p} s={s} sample={false} products={products ?? []} />
       <VisitTracker businessId={b.id} />
     </>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ClassicTheme from '@/components/themes/ClassicTheme';
 import BoldTheme from '@/components/themes/BoldTheme';
 import SparkTheme from '@/components/themes/SparkTheme';
+import SiteProducts, { type SiteProduct } from '@/components/SiteProducts';
 import { Provider } from '@/data/providers';
 import { SiteSettings, ThemeName, themes } from '@/data/sites';
 
@@ -12,10 +13,12 @@ export default function ArtisanSite({
   p,
   s,
   sample = true,
+  products = [],
 }: {
   p: Provider;
   s: SiteSettings;
   sample?: boolean;
+  products?: SiteProduct[];
 }) {
   const [theme, setTheme] = useState<ThemeName>(s.theme);
   const Active = theme === 'bold' ? BoldTheme : theme === 'spark' ? SparkTheme : ClassicTheme;
@@ -23,6 +26,8 @@ export default function ArtisanSite({
   return (
     <>
       <Active p={p} s={s} />
+
+      <SiteProducts products={products} />
 
       <footer className={`bg-slate-900 px-5 py-6 text-center text-xs text-slate-400 ${sample ? 'pb-24' : ''}`}>
         <p>

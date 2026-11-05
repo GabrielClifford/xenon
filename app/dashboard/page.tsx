@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { BarChart3, Globe, Home, LogOut, Settings, Users, Zap } from 'lucide-react';
+import { BarChart3, Globe, Home, LogOut, Package, Settings, Users, Zap } from 'lucide-react';
 import BusinessForm from '@/components/BusinessForm';
 import ChannelsPanel from '@/components/ChannelsPanel';
 import CustomersPanel from '@/components/CustomersPanel';
+import ProductsPanel from '@/components/ProductsPanel';
 import DashboardOverview, { type Tab } from '@/components/DashboardOverview';
 import { channels, type ChannelId } from '@/lib/channels';
 import { createClient } from '@/lib/supabase/client';
@@ -18,6 +19,7 @@ type Item = { id: Tab | 'analytics'; label: string; icon: React.ElementType; soo
 const mainItems: Item[] = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'website', label: 'My website', icon: Globe, artisanOnly: true },
+  { id: 'products', label: 'Products', icon: Package, artisanOnly: true },
   { id: 'customers', label: 'Customers', icon: Users, artisanOnly: true },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, soon: true, artisanOnly: true },
 ];
@@ -166,6 +168,12 @@ export default function DashboardPage() {
             {tab === 'website' && isArtisan && (
               <div className="mx-auto max-w-3xl">
                 <BusinessForm user={user} />
+              </div>
+            )}
+
+            {tab === 'products' && isArtisan && (
+              <div className="mx-auto max-w-3xl">
+                <ProductsPanel user={user} />
               </div>
             )}
 
