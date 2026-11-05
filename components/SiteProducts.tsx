@@ -29,6 +29,9 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ number: number; total: number; method: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [discount, setDiscount] = useState<{ code: string; amount: number } | null>(null);
+  const [codeMsg, setCodeMsg] = useState('');
 
   const lines = useMemo(
     () => products.filter((p) => cart[p.id] > 0).map((p) => ({ p, qty: cart[p.id] })),
@@ -36,17 +39,34 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   );
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
+    const payable = Math.max(0, total - (discount?.amount ?? 0));
 
   if (products.length === 0) return null;
 
   const canOrder = !!shop;
   const maxFor = (p: SiteProduct) => (p.stock === null ? 99 : p.stock);
 
-  function setQty(p: SiteProduct, qty: number) {
+    function setQty(p: SiteProduct, qty: number) {
     const q = Math.max(0, Math.min(qty, maxFor(p)));
     setCart((c) => ({ ...c, [p.id]: q }));
+    setDiscount(null);
+    setCodeMsg('');
   }
-
+  async function applyCode() {
+    if (!shop || !code.trim()) return;
+    setCodeMsg('');
+    const { data, error: err } = await createClient().rpc('check_discount', {
+      p_business_id: shop.businessId,
+      p_code: code,
+      p_subtotal: total,
+    });
+    if (err) {
+      setDiscount(null);
+      return setCodeMsg(err.message);
+    }
+    setDiscount({ code: code.trim().toUpperCase(), amount: data.amount });
+    setCodeMsg('Discount applied.');
+  }
   async function placeOrder() {
     if (!shop) return;
     if (!form.name.trim() || !form.phone.trim()) return setError('Please enter your name and phone number.');
@@ -60,11 +80,15 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
       p_note: form.note,
       p_payment: payment,
       p_items: lines.map((l) => ({ product_id: l.p.id, quantity: l.qty })),
+      p_code: discount?.code ?? null,
     });
     setBusy(false);
     if (err) return setError(err.message);
     setResult({ number: data.order_number, total: data.total, method: payment });
     setCart({});
+        setDiscount(null);
+    setCode('');
+    setCodeMsg('');
     setStep('done');
   }
 
@@ -240,9 +264,36 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
             {step !== 'done' && lines.length > 0 && (
               <div className="border-t border-slate-200 p-4">
+                                <div className="mb-3 flex gap-2">
+                  <input
+                    className={field}
+                    placeholder="Discount code"
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value);
+                      setDiscount(null);
+                      setCodeMsg('');
+                    }}
+                  />
+                  <button
+                    onClick={applyCode}
+                    className="rounded-xl border border-slate-300 px-4 text-sm font-medium hover:bg-slate-50"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {codeMsg && (
+                  <p className={`mb-3 text-xs ${discount ? 'text-green-700' : 'text-red-600'}`}>{codeMsg}</p>
+                )}
+                {discount && (
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-slate-500">Discount ({discount.code})</span>
+                    <span className="text-green-700">−{naira(discount.amount)}</span>
+                  </div>
+                )}
                 <div className="mb-3 flex justify-between text-sm">
                   <span className="text-slate-500">Total</span>
-                  <span className="font-bold">{naira(total)}</span>
+                  <span className="font-bold">{naira(payable)}</span>
                 </div>
                 {step === 'cart' ? (
                   <button

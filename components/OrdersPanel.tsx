@@ -15,6 +15,8 @@ type Order = {
   payment_method: 'cod' | 'transfer';
   status: 'new' | 'preparing' | 'delivered' | 'cancelled';
   total: number;
+       discount_code: string | null;
+     discount_amount: number;
   created_at: string;
   order_items: Item[];
 };
@@ -159,6 +161,12 @@ export default function OrdersPanel({ user }: { user: User }) {
                   </div>
                 ))}
               </div>
+              
+                 {o.discount_amount > 0 && (
+     <p className="mt-2 text-sm text-green-700">
+       Discount ({o.discount_code}): −{naira(o.discount_amount)}
+     </p>
+   )}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-slate-600">

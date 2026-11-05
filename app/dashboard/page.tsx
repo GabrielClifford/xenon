@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { BarChart3, Globe, Home, LogOut, Package, Settings, Users, Zap, ShoppingBag } from 'lucide-react';
+import { BarChart3, Globe, Home, LogOut, Package, Settings, Users, Zap, ShoppingBag, Tag } from 'lucide-react';
 import BusinessForm from '@/components/BusinessForm';
 import ChannelsPanel from '@/components/ChannelsPanel';
 import CustomersPanel from '@/components/CustomersPanel';
@@ -13,6 +13,7 @@ import DashboardOverview, { type Tab } from '@/components/DashboardOverview';
 import { channels, type ChannelId } from '@/lib/channels';
 import { createClient } from '@/lib/supabase/client';
 import OrdersPanel from '@/components/OrdersPanel';
+import DiscountsPanel from '@/components/DiscountsPanel';
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
 type Item = { id: Tab | 'analytics'; label: string; icon: React.ElementType; soon?: boolean; artisanOnly?: boolean };
@@ -23,6 +24,7 @@ const mainItems: Item[] = [
   { id: 'website', label: 'My website', icon: Globe, artisanOnly: true },
   { id: 'products', label: 'Products', icon: Package, artisanOnly: true },
   { id: 'customers', label: 'Customers', icon: Users, artisanOnly: true },
+     { id: 'discounts', label: 'Discounts', icon: Tag, artisanOnly: true },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, soon: true, artisanOnly: true },
 ];
 
@@ -205,7 +207,12 @@ export default function DashboardPage() {
        <OrdersPanel user={user} />
      </div>
    )}
-
+   
+   {tab === 'discounts' && isArtisan && (
+     <div className="mx-auto max-w-3xl">
+       <DiscountsPanel user={user} />
+     </div>
+   )}
             {tab === 'customers' && isArtisan && (
               <div className="mx-auto max-w-3xl">
                 <CustomersPanel user={user} />
