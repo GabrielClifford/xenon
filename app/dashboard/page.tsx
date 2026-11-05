@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { BarChart3, Globe, Home, LogOut, Package, Settings, Users, Zap } from 'lucide-react';
+import { BarChart3, Globe, Home, LogOut, Package, Settings, Users, Zap, ShoppingBag } from 'lucide-react';
 import BusinessForm from '@/components/BusinessForm';
 import ChannelsPanel from '@/components/ChannelsPanel';
 import CustomersPanel from '@/components/CustomersPanel';
@@ -12,12 +12,14 @@ import ProductsPanel from '@/components/ProductsPanel';
 import DashboardOverview, { type Tab } from '@/components/DashboardOverview';
 import { channels, type ChannelId } from '@/lib/channels';
 import { createClient } from '@/lib/supabase/client';
+import OrdersPanel from '@/components/OrdersPanel';
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
 type Item = { id: Tab | 'analytics'; label: string; icon: React.ElementType; soon?: boolean; artisanOnly?: boolean };
 
 const mainItems: Item[] = [
   { id: 'home', label: 'Home', icon: Home },
+     { id: 'orders', label: 'Orders', icon: ShoppingBag, artisanOnly: true },
   { id: 'website', label: 'My website', icon: Globe, artisanOnly: true },
   { id: 'products', label: 'Products', icon: Package, artisanOnly: true },
   { id: 'customers', label: 'Customers', icon: Users, artisanOnly: true },
@@ -34,6 +36,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<Tab>('home');
   const [channel, setChannel] = useState<ChannelId>('website');
+     const [newOrders, setNewOrders] = useState(0);
 
   useEffect(() => {
     createClient()
@@ -43,6 +46,21 @@ export default function DashboardPage() {
         else setUser(data.user);
       });
   }, [router]);
+
+     useEffect(() => {
+     if (!user) return;
+     const supabase = createClient();
+     (async () => {
+       const { data: b } = await supabase.from('businesses').select('id').eq('owner_id', user.id).maybeSingle();
+       if (!b) return;
+       const { count } = await supabase
+         .from('orders')
+         .select('id', { count: 'exact', head: true })
+         .eq('business_id', b.id)
+         .eq('status', 'new');
+       setNewOrders(count ?? 0);
+     })();
+   }, [user, tab]);
 
   async function logout() {
     await createClient().auth.signOut();
@@ -84,9 +102,14 @@ export default function DashboardPage() {
         );
       }
       return (
-        <button key={id} onClick={() => setTab(id as Tab)} className={`${rowClass(vertical)} ${tone(tab === id)}`}>
-          <Icon className="h-5 w-5" /> {label}
-        </button>
+         <button key={id} onClick={() => setTab(id as Tab)} className={`${rowClass(vertical)} ${tone(tab === id)}`}>
+       <Icon className="h-5 w-5" /> {label}
+       {id === 'orders' && newOrders > 0 && (
+         <span className="ml-auto rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+           {newOrders}
+         </span>
+       )}
+     </button>
       );
     });
   }
@@ -176,6 +199,12 @@ export default function DashboardPage() {
                 <ProductsPanel user={user} />
               </div>
             )}
+
+               {tab === 'orders' && isArtisan && (
+     <div className="mx-auto max-w-3xl">
+       <OrdersPanel user={user} />
+     </div>
+   )}
 
             {tab === 'customers' && isArtisan && (
               <div className="mx-auto max-w-3xl">

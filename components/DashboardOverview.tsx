@@ -9,7 +9,7 @@ import VisitsOverview from '@/components/VisitsOverview';
 import ChannelBreakdown from '@/components/ChannelBreakdown';
 import TestimonialForm from '@/components/TestimonialForm';
 
-export type Tab = 'home' | 'website' | 'products' | 'customers' | 'channels' | 'settings';
+export type Tab = 'home' | 'website' | 'products' | 'orders' | 'customers' | 'channels' | 'settings';
 
 type Business = {
   id: string;

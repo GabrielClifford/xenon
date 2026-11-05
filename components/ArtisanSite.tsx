@@ -5,7 +5,7 @@ import Link from 'next/link';
 import ClassicTheme from '@/components/themes/ClassicTheme';
 import BoldTheme from '@/components/themes/BoldTheme';
 import SparkTheme from '@/components/themes/SparkTheme';
-import SiteProducts, { type SiteProduct } from '@/components/SiteProducts';
+import SiteProducts, { type SiteProduct, type Shop } from '@/components/SiteProducts';
 import { Provider } from '@/data/providers';
 import { SiteSettings, ThemeName, themes } from '@/data/sites';
 
@@ -14,11 +14,13 @@ export default function ArtisanSite({
   s,
   sample = true,
   products = [],
+  shop,
 }: {
   p: Provider;
   s: SiteSettings;
   sample?: boolean;
   products?: SiteProduct[];
+  shop?: Shop;
 }) {
   const [theme, setTheme] = useState<ThemeName>(s.theme);
   const Active = theme === 'bold' ? BoldTheme : theme === 'spark' ? SparkTheme : ClassicTheme;

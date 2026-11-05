@@ -54,7 +54,19 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
 
   return (
     <>
-      <ArtisanSite p={p} s={s} sample={false} products={products ?? []} />
+      <ArtisanSite
+  p={p}
+  s={s}
+  sample={false}
+  products={products ?? []}
+  shop={{
+    businessId: b.id,
+    bank:
+      b.bank_name && b.account_number
+        ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }
+        : null,
+  }}
+/>
       <VisitTracker businessId={b.id} />
     </>
   );
