@@ -124,23 +124,24 @@ export default function DashboardOverview({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const tips = (
-    <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-5 text-white shadow-sm">
-      <h2 className="font-display text-lg font-semibold">Get more customers</h2>
-      <ul className="mt-3 space-y-2 text-sm text-blue-50">
-        <li>• Add clear photos of your best work</li>
-        <li>• Share your channel links on WhatsApp and Instagram</li>
-        <li>• Reply quickly to every enquiry</li>
-      </ul>
+   const tips = (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-4 text-white shadow-sm">
+      <div className="min-w-0 flex-1">
+        <h2 className="font-display text-base font-semibold">Get more customers</h2>
+        <p className="mt-1 text-xs leading-relaxed text-blue-100">
+          Add clear photos of your best work, share your channel links on WhatsApp and Instagram, and reply quickly to
+          every enquiry.
+        </p>
+      </div>
       <button
         onClick={() => onNavigate('channels')}
-        className="mt-4 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:bg-blue-50"
+        className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:bg-blue-50"
       >
         Get my links
       </button>
     </div>
   );
-
+     
   const yourWebsite = (
     <div className={`${card} overflow-hidden`}>
       <div className="flex flex-col sm:flex-row">
@@ -276,7 +277,7 @@ export default function DashboardOverview({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[1fr_22rem] xl:items-start">
+            <div className="grid gap-6 xl:grid-cols-[1fr_26rem] xl:items-center">
         <div>
           <h1 className="font-display text-3xl font-bold text-slate-900">
             {greeting}, {first}
@@ -300,18 +301,14 @@ export default function DashboardOverview({
         )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <div className="space-y-6">
-          {nextSteps}
-          {b && <TopProducts businessId={b.id} onViewAll={() => onNavigate('products')} />}
-          {customersCard}
-        </div>
-        <div className="space-y-6">
-          {b && <SalesBreakdown businessId={b.id} onViewAll={() => onNavigate('orders')} />}
-          {b && <ChannelBreakdown businessId={b.id} onViewAll={() => onNavigate('channels')} />}
-          {b && <TestimonialForm businessId={b.id} />}
-          <div className="xl:hidden">{tips}</div>
-        </div>
+           <div className="gap-6 xl:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
+        {nextSteps}
+        {b && <TopProducts businessId={b.id} onViewAll={() => onNavigate('products')} />}
+        {customersCard}
+        {b && <SalesBreakdown businessId={b.id} onViewAll={() => onNavigate('orders')} />}
+        {b && <ChannelBreakdown businessId={b.id} onViewAll={() => onNavigate('channels')} />}
+        {b && <TestimonialForm businessId={b.id} />}
+        <div className="xl:hidden">{tips}</div>
       </div>
 
       <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-blue-50 p-5">
