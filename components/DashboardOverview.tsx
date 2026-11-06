@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
-import { Check, ChevronRight, Globe, Rocket, Sparkles, Users } from 'lucide-react';
+import { Check, ChevronRight, Globe, Link2, Package, Rocket, ShoppingBag, Sparkles, Tag, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import VisitsOverview from '@/components/VisitsOverview';
 import ChannelBreakdown from '@/components/ChannelBreakdown';
@@ -274,6 +274,38 @@ export default function DashboardOverview({
       </button>
     </div>
   );
+  const actions: { label: string; text: string; icon: React.ElementType; run: () => void }[] = [
+    { label: 'Add a product', text: 'Put something new on your website.', icon: Package, run: () => onNavigate('products') },
+    { label: 'Create a discount code', text: 'Offer customers money off.', icon: Tag, run: () => onNavigate('discounts') },
+    { label: 'View orders', text: 'See and update customer orders.', icon: ShoppingBag, run: () => onNavigate('orders') },
+    ...(b?.published
+      ? [{ label: copied ? 'Link copied!' : 'Copy website link', text: 'Share it on WhatsApp and Instagram.', icon: Link2, run: copyLink }]
+      : []),
+  ];
+
+  const quickActions = (
+    <div className={`${card} flex flex-1 flex-col p-5`}>
+      <h2 className="font-display text-lg font-semibold text-slate-900">Quick actions</h2>
+      <div className="mt-3 flex flex-1 flex-col divide-y divide-slate-100">
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            onClick={a.run}
+            className="flex flex-1 items-center gap-4 py-3 text-left transition hover:bg-slate-50"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <a.icon className="h-5 w-5" />
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm font-medium text-slate-900">{a.label}</span>
+              <span className="block text-xs text-slate-500">{a.text}</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-slate-400" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -301,16 +333,21 @@ export default function DashboardOverview({
         )}
       </div>
 
-           <div className="gap-6 xl:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
-        {nextSteps}
-        {b && <TopProducts businessId={b.id} onViewAll={() => onNavigate('products')} />}
-        {customersCard}
-        {b && <SalesBreakdown businessId={b.id} onViewAll={() => onNavigate('orders')} />}
-        {b && <ChannelBreakdown businessId={b.id} onViewAll={() => onNavigate('channels')} />}
-        {b && <TestimonialForm businessId={b.id} />}
-        <div className="xl:hidden">{tips}</div>
+                <div className="grid gap-6 xl:grid-cols-2">
+        <div className="flex flex-col gap-6">
+          {nextSteps}
+          {b && <TopProducts businessId={b.id} onViewAll={() => onNavigate('products')} />}
+          {customersCard}
+          {b && <SalesBreakdown businessId={b.id} onViewAll={() => onNavigate('orders')} />}
+          {b && quickActions}
+        </div>
+        <div className="flex flex-col gap-6">
+          {b && <ChannelBreakdown businessId={b.id} onViewAll={() => onNavigate('channels')} />}
+          {b && <TestimonialForm businessId={b.id} />}
+          <div className="xl:hidden">{tips}</div>
+        </div>
       </div>
-
+      
       <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-blue-50 p-5">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
           <Rocket className="h-6 w-6" />
