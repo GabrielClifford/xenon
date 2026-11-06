@@ -125,7 +125,7 @@ export default function DashboardOverview({
   }
 
    const tips = (
-    <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-4 text-white shadow-sm">
+        <div className="flex flex-col gap-3 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-4 text-white shadow-sm sm:flex-row sm:items-center sm:gap-4">
       <div className="min-w-0 flex-1">
         <h2 className="font-display text-base font-semibold">Get more customers</h2>
         <p className="mt-1 text-xs leading-relaxed text-blue-100">
@@ -189,7 +189,7 @@ export default function DashboardOverview({
               ) : (
                 <button
                   onClick={() => onNavigate('website')}
-                  className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-700"
+                         className="self-start rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:bg-blue-50 sm:self-auto"
                 >
                   Finish and publish
                 </button>
@@ -347,20 +347,22 @@ export default function DashboardOverview({
           <div className="xl:hidden">{tips}</div>
         </div>
       </div>
-      
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl bg-blue-50 p-5">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-          <Rocket className="h-6 w-6" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-lg font-bold text-slate-900">Ready to scale even more?</p>
-          <p className="text-sm text-slate-600">
-            Upgrade to Xenon Pro for more templates, advanced analytics and higher limits.
-          </p>
+
+           <div className="flex flex-col gap-4 rounded-2xl bg-blue-50 p-5 sm:flex-row sm:items-center">
+        <div className="flex items-start gap-4 sm:flex-1">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+            <Rocket className="h-6 w-6" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-lg font-bold text-slate-900">Ready to scale even more?</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Upgrade to Xenon Pro for more templates, advanced analytics and higher limits.
+            </p>
+          </div>
         </div>
         <Link
           href="/#pricing"
-          className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          className="rounded-xl bg-blue-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-700 sm:py-2.5"
         >
           Upgrade to Pro
         </Link>
