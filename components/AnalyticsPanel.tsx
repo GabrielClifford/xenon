@@ -187,7 +187,7 @@ export default function AnalyticsPanel({
   const [range, setRange] = useState<RangeKey>('7d');
   const [metric, setMetric] = useState<MetricKey>('visits');
   const [state, setState] = useState<State>({ kind: 'loading' });
-  const [busy, setBusy] = useState(false);
+
   const loaded = useRef(false);
   const n = ranges.find((r) => r.key === range)!.days;
 
@@ -196,7 +196,7 @@ export default function AnalyticsPanel({
     let cancelled = false;
     const supabase = createClient();
     (async () => {
-      setBusy(true);
+      
       const { data: biz } = await supabase
         .from('businesses')
         .select('id,published')
@@ -205,7 +205,7 @@ export default function AnalyticsPanel({
       if (cancelled) return;
       if (!biz) {
         setState({ kind: 'none' });
-        setBusy(false);
+        
         loaded.current = true;
         return;
       }
@@ -232,7 +232,7 @@ export default function AnalyticsPanel({
       if (cancelled) return;
       if (vis.error) {
         setState({ kind: 'error' });
-        setBusy(false);
+        
         return;
       }
 
@@ -281,7 +281,7 @@ export default function AnalyticsPanel({
         kind: 'ready',
         data: { n, businessId: biz.id, published: biz.published, points, statusCounts, top },
       });
-      setBusy(false);
+      
       loaded.current = true;
     })();
     return () => {
@@ -332,7 +332,7 @@ export default function AnalyticsPanel({
   const span = `${fmtDay(cur[0].day)} – ${fmtDay(cur[cur.length - 1].day)}`;
 
   return (
-    <div className={`space-y-6 transition-opacity ${busy ? 'opacity-60' : ''}`}>
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900">Analytics</h1>
