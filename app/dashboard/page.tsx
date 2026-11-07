@@ -52,7 +52,7 @@ export default function DashboardPage() {
   const [query, setQuery] = useState('');
   const [warm, setWarm] = useState(false);
   const [homeKey, setHomeKey] = useState(0);
-  const homeLoaded = useRef(Date.now());
+    const homeLoaded = useRef(0);
 
   useEffect(() => {
     const supabase = createClient();
@@ -66,7 +66,8 @@ export default function DashboardPage() {
   }, [router]);
 
   // after Home appears, quietly load the other pages in the background
-  useEffect(() => {
+    useEffect(() => {
+    homeLoaded.current = Date.now();
     const t = setTimeout(() => setWarm(true), 1200);
     return () => clearTimeout(t);
   }, []);
