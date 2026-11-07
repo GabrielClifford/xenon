@@ -377,6 +377,8 @@ export default function VisitsOverview({
     );
   }
 
+  if (state.points.length !== n * 2) return <StatsSkeleton />;
+  
   const { points, published, top } = state;
   const cur = points.slice(n);
   const prev = points.slice(0, n);
