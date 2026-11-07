@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Banknote, Eye, Lightbulb, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Tab } from '@/components/DashboardOverview';
+import { StatsSkeleton } from '@/components/Skeleton';
 
 type RangeKey = '7d' | '30d' | '90d' | '1y';
 const ranges: { key: RangeKey; days: number }[] = [
@@ -359,9 +360,7 @@ export default function VisitsOverview({
     };
   }, [userId, n]);
 
-  if (state.kind === 'loading') {
-    return <div className={`${card} p-6 text-sm text-slate-400`}>Loading your dashboard...</div>;
-  }
+   if (state.kind === 'loading') return <StatsSkeleton />;
   if (state.kind === 'none') {
     return (
       <div className={`${card} p-6`}>

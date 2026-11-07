@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { ImagePlus, Pencil, Plus, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { PageSkeleton } from '@/components/Skeleton';
 
 // Must match the storage bucket your BusinessForm uploads photos to
 const BUCKET = 'business-photos';
@@ -114,7 +115,7 @@ export default function ProductsPanel({ user }: { user: User }) {
     await load(businessId);
   }
 
-  if (loading) return <p className="text-sm text-slate-400">Loading products...</p>;
+   if (loading) return <PageSkeleton />;
 
   if (!businessId) {
     return (

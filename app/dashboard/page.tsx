@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
@@ -50,24 +50,36 @@ export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [warm, setWarm] = useState(false);
+  const [homeKey, setHomeKey] = useState(0);
+  const homeLoaded = useRef(Date.now());
 
   useEffect(() => {
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (!data.user) router.replace('/login');
-        else setUser(data.user);
-      });
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setUser(data.session.user);
+    });
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) router.replace('/login');
+      else setUser((u) => (u?.id === data.user.id ? u : data.user));
+    });
   }, [router]);
 
+  // after Home appears, quietly load the other pages in the background
   useEffect(() => {
-    if (!user) return;
+    const t = setTimeout(() => setWarm(true), 1200);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const uid = user?.id;
+    if (!uid) return;
     const supabase = createClient();
     (async () => {
       const { data: b } = await supabase
         .from('businesses')
         .select('id,name,slug,published')
-        .eq('owner_id', user.id)
+        .eq('owner_id', uid)
         .maybeSingle();
       if (!b) {
         setBiz(null);
@@ -81,7 +93,7 @@ export default function DashboardPage() {
       setNewOrders(o.count ?? 0);
       setNewEnq(e.count ?? 0);
     })();
-  }, [user, tab]);
+  }, [user?.id, tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function logout() {
     await createClient().auth.signOut();
@@ -90,6 +102,11 @@ export default function DashboardPage() {
   }
 
   function go(t: Tab) {
+    // refresh Home if it has been more than 2 minutes since it last loaded
+    if (t === 'home' && Date.now() - homeLoaded.current > 120000) {
+      setHomeKey((k) => k + 1);
+      homeLoaded.current = Date.now();
+    }
     setTab(t);
     setMoreOpen(false);
     setMenuOpen(false);
@@ -102,13 +119,7 @@ export default function DashboardPage() {
     setMoreOpen(false);
   }
 
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-400">
-        Loading your account...
-      </div>
-    );
-  }
+  if (!user) return <div className="min-h-screen bg-slate-50" />;
 
   const meta = (user.user_metadata ?? {}) as Meta;
   const isArtisan = meta.role === 'artisan';
@@ -116,6 +127,8 @@ export default function DashboardPage() {
   const initials = name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
   const items = mainItems.filter((i) => isArtisan || !i.artisanOnly);
   const alerts = newOrders + newEnq;
+  const show = (id: Tab) => (tab === id ? '' : 'hidden');
+  const mount = (id: Tab) => tab === id || warm;
 
   const pages = [...items.filter((i) => !i.soon), { id: 'settings' as NavId, label: 'Settings', icon: Settings }];
   const matches = query.trim()
@@ -314,40 +327,37 @@ export default function DashboardPage() {
 
         <main className="min-w-0 p-4 sm:p-8">
           <div className="mx-auto max-w-6xl">
-            {tab === 'home' && <DashboardOverview user={user} isArtisan={isArtisan} onNavigate={setTab} />}
+            <div className={show('home')}>
+              <DashboardOverview key={homeKey} user={user} isArtisan={isArtisan} onNavigate={setTab} />
+            </div>
 
-            {tab === 'orders' && isArtisan && (
-              <div className="mx-auto max-w-3xl">
-                <OrdersPanel user={user} />
+            {isArtisan && mount('orders') && (
+              <div className={`mx-auto max-w-3xl ${show('orders')}`}>
+                <OrdersPanel user={user} active={tab === 'orders'} />
               </div>
             )}
-
-            {tab === 'website' && isArtisan && (
-              <div className="mx-auto max-w-3xl">
+            {isArtisan && mount('website') && (
+              <div className={`mx-auto max-w-3xl ${show('website')}`}>
                 <BusinessForm user={user} />
               </div>
             )}
-
-            {tab === 'products' && isArtisan && (
-              <div className="mx-auto max-w-3xl">
+            {isArtisan && mount('products') && (
+              <div className={`mx-auto max-w-3xl ${show('products')}`}>
                 <ProductsPanel user={user} />
               </div>
             )}
-
-            {tab === 'customers' && isArtisan && (
-              <div className="mx-auto max-w-3xl">
+            {isArtisan && mount('customers') && (
+              <div className={`mx-auto max-w-3xl ${show('customers')}`}>
                 <CustomersPanel user={user} />
               </div>
             )}
-
-            {tab === 'discounts' && isArtisan && (
-              <div className="mx-auto max-w-3xl">
+            {isArtisan && mount('discounts') && (
+              <div className={`mx-auto max-w-3xl ${show('discounts')}`}>
                 <DiscountsPanel user={user} />
               </div>
             )}
-
-            {tab === 'channels' && isArtisan && (
-              <div className="mx-auto max-w-3xl">
+            {isArtisan && mount('channels') && (
+              <div className={`mx-auto max-w-3xl ${show('channels')}`}>
                 <ChannelsPanel user={user} channel={channel} onSelect={setChannel} />
               </div>
             )}

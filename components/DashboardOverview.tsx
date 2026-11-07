@@ -9,6 +9,7 @@ import VisitsOverview from '@/components/VisitsOverview';
 import ChannelBreakdown from '@/components/ChannelBreakdown';
 import TestimonialForm from '@/components/TestimonialForm';
 import { RecentActivity, SalesBreakdown, TopProducts } from '@/components/SalesPanels';
+import { HomeSkeleton } from '@/components/Skeleton';
 
 export type Tab = 'home' | 'website' | 'products' | 'orders' | 'customers' | 'discounts' | 'channels' | 'settings';
 
@@ -95,7 +96,7 @@ export default function DashboardOverview({
     );
   }
 
-  if (b === undefined) return <p className="text-sm text-slate-400">Loading your dashboard...</p>;
+    if (b === undefined) return <HomeSkeleton />;
 
   const photos = b ? (b.photo_url ? 1 : 0) + b.gallery.length : 0;
   const steps: { title: string; text: string; done: boolean; tab: Tab }[] = [

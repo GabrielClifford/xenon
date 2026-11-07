@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { Skeleton } from '@/components/Skeleton';
 
 const card = 'rounded-2xl border border-slate-200 bg-white shadow-sm';
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
@@ -58,7 +59,7 @@ export function TopProducts({ businessId, onViewAll }: { businessId: string; onV
         </button>
       </div>
       {rows === null ? (
-        <p className="mt-3 text-sm text-slate-400">Loading...</p>
+        <Skeleton className="mt-3 h-16 w-full" />
       ) : rows.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">Your best sellers will show here once you get orders.</p>
       ) : (
@@ -114,7 +115,7 @@ export function SalesBreakdown({ businessId, onViewAll }: { businessId: string; 
         </button>
       </div>
       {rows === null ? (
-        <p className="mt-3 text-sm text-slate-400">Loading...</p>
+        <Skeleton className="mt-3 h-16 w-full" />
       ) : rows.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">No sales yet.</p>
       ) : (

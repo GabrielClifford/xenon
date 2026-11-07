@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { PageSkeleton } from '@/components/Skeleton';
 
 type Item = { id: string; name: string; price: number; quantity: number };
 type Order = {
@@ -31,7 +32,7 @@ const badge: Record<string, string> = {
 };
 const field = 'w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500';
 
-export default function OrdersPanel({ user }: { user: User }) {
+export default function OrdersPanel({ user, active = true }: { user: User; active?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -69,7 +70,11 @@ export default function OrdersPanel({ user }: { user: User }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
-
+  
+  useEffect(() => {
+    if (active && businessId) load(businessId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
   async function setStatus(o: Order, status: Order['status']) {
     await supabase.from('orders').update({ status }).eq('id', o.id);
     setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status } : x)));
@@ -88,7 +93,7 @@ export default function OrdersPanel({ user }: { user: User }) {
     setBankMsg(error ? error.message : 'Saved. Bank transfer is now offered at checkout.');
   }
 
-  if (loading) return <p className="text-sm text-slate-400">Loading orders...</p>;
+    if (loading) return <PageSkeleton />;
   if (!businessId) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">

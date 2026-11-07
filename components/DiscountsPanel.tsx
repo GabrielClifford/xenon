@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Plus, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { PageSkeleton } from '@/components/Skeleton';
 
 type Discount = {
   id: string;
@@ -86,7 +87,7 @@ export default function DiscountsPanel({ user }: { user: User }) {
     await load(businessId);
   }
 
-  if (loading) return <p className="text-sm text-slate-400">Loading discounts...</p>;
+    if (loading) return <PageSkeleton />;
   if (!businessId) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
