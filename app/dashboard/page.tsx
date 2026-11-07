@@ -53,6 +53,7 @@ export default function DashboardPage() {
   const [warm, setWarm] = useState(false);
   const [homeKey, setHomeKey] = useState(0);
     const homeLoaded = useRef(0);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -112,6 +113,7 @@ export default function DashboardPage() {
     setMoreOpen(false);
     setMenuOpen(false);
     setQuery('');
+    setSearchOpen(false);
   }
 
   function openChannel(id: ChannelId) {
@@ -136,6 +138,31 @@ export default function DashboardPage() {
     ? pages.filter((p) => p.label.toLowerCase().includes(query.trim().toLowerCase()))
     : [];
 
+  const searchBox = (autoFocus: boolean) => (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        autoFocus={autoFocus}
+        placeholder="Search pages, e.g. Orders, Products..."
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500"
+      />
+      {matches.length > 0 && (
+        <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+          {matches.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => go(m.id as Tab)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-slate-50"
+            >
+              <m.icon className="h-4 w-4 text-slate-500" /> {m.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
   function navItem({ id, label, icon: Icon, soon }: Item) {
     if (soon) {
       return (
@@ -257,75 +284,78 @@ export default function DashboardPage() {
 
       <div className="min-w-0 flex-1 pb-20 md:pb-0">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="md:hidden">{logo}</div>
+                <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+          <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
+            <div className="md:hidden">{logo}</div>
+            <div className="hidden max-w-xl flex-1 md:block">{searchBox(false)}</div>
 
-          <div className="relative hidden max-w-xl flex-1 md:block">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search pages, e.g. Orders, Products..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500"
-            />
-            {matches.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                {matches.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => go(m.id as Tab)}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-slate-50"
-                  >
-                    <m.icon className="h-4 w-4 text-slate-500" /> {m.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            {isArtisan && (
+            <div className="ml-auto flex items-center gap-2">
               <button
-                onClick={() => go(newOrders > 0 ? 'orders' : 'customers')}
-                className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100"
-                aria-label="Notifications"
+                onClick={() => setSearchOpen(true)}
+                className="rounded-full p-2 text-slate-600 hover:bg-slate-100 md:hidden"
+                aria-label="Search"
               >
-                <Bell className="h-5 w-5" />
-                {alerts > 0 && (
-                  <span className="absolute right-0.5 top-0 rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white">
-                    {alerts}
-                  </span>
-                )}
+                <Search className="h-5 w-5" />
               </button>
-            )}
-            <div className="relative">
-              <button onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-1.5 rounded-full p-1 hover:bg-slate-100">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-                  {initials}
-                </span>
-                <ChevronDown className="h-4 w-4 text-slate-500" />
-              </button>
-              {menuOpen && (
-                <>
-                  <button className="fixed inset-0 z-40 cursor-default" onClick={() => setMenuOpen(false)} aria-label="Close menu" />
-                  <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-                    <div className="border-b border-slate-100 px-3 pb-2 pt-1">
-                      <p className="truncate text-sm font-semibold">{name}</p>
-                      <p className="text-xs text-slate-500">{isArtisan ? 'Business owner' : 'Customer'}</p>
-                    </div>
-                    <button onClick={() => go('settings')} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50">
-                      <Settings className="h-4 w-4" /> Settings
-                    </button>
-                    <button onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50">
-                      <LogOut className="h-4 w-4" /> Log out
-                    </button>
-                  </div>
-                </>
+              {isArtisan && (
+                <button
+                  onClick={() => go(newOrders > 0 ? 'orders' : 'customers')}
+                  className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100"
+                  aria-label="Notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  {alerts > 0 && (
+                    <span className="absolute right-0.5 top-0 rounded-full bg-red-500 px-1.5 text-[10px] font-semibold text-white">
+                      {alerts}
+                    </span>
+                  )}
+                </button>
               )}
+              <div className="relative">
+                <button onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-1.5 rounded-full p-1 hover:bg-slate-100">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                    {initials}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-slate-500" />
+                </button>
+                {menuOpen && (
+                  <>
+                    <button className="fixed inset-0 z-40 cursor-default" onClick={() => setMenuOpen(false)} aria-label="Close menu" />
+                    <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                      <div className="border-b border-slate-100 px-3 pb-2 pt-1">
+                        <p className="truncate text-sm font-semibold">{name}</p>
+                        <p className="text-xs text-slate-500">{isArtisan ? 'Business owner' : 'Customer'}</p>
+                      </div>
+                      <button onClick={() => go('settings')} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50">
+                        <Settings className="h-4 w-4" /> Settings
+                      </button>
+                      <button onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-50">
+                        <LogOut className="h-4 w-4" /> Log out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </header>
 
+          {searchOpen && (
+            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-white px-4 py-3 md:hidden">
+              <div className="flex-1">{searchBox(true)}</div>
+              <button
+                onClick={() => {
+                  setSearchOpen(false);
+                  setQuery('');
+                }}
+                className="rounded-full p-2 text-slate-600 hover:bg-slate-100"
+                aria-label="Close search"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+        </header>
+        
         <main className="min-w-0 p-4 sm:p-8">
           <div className="mx-auto max-w-6xl">
             <div className={show('home')}>
