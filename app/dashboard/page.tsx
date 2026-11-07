@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/client';
 import TemplatesPanel from '@/components/TemplatesPanel';
 import AnalyticsPanel from '@/components/AnalyticsPanel';
 import MarketingPanel from '@/components/MarketingPanel';
+import SupportPanel from '@/components/SupportPanel';
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
 type NavId = Tab | 'analytics' | 'marketing' | 'templates' | 'support';
@@ -36,7 +37,7 @@ const mainItems: Item[] = [
   { id: 'analytics', label: 'Analytics', icon: BarChart3, artisanOnly: true },
     { id: 'marketing', label: 'Marketing', icon: Megaphone, artisanOnly: true },
   { id: 'templates', label: 'Templates', icon: LayoutGrid, artisanOnly: true },
-  { id: 'support', label: 'Support', icon: Headphones, soon: true, artisanOnly: true },
+    { id: 'support', label: 'Support', icon: Headphones, artisanOnly: true },
 ];
 
 const row = 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition';
@@ -403,10 +404,16 @@ export default function DashboardPage() {
                 <AnalyticsPanel user={user} active={tab === 'analytics'} onNavigate={setTab} />
               </div>
             )}
-            
+
             {isArtisan && mount('marketing') && (
               <div className={`mx-auto max-w-4xl ${show('marketing')}`}>
                 <MarketingPanel user={user} onNavigate={setTab} />
+              </div>
+            )}
+            
+            {isArtisan && mount('support') && (
+              <div className={`mx-auto max-w-3xl ${show('support')}`}>
+                <SupportPanel user={user} />
               </div>
             )}
 
