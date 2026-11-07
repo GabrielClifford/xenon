@@ -19,6 +19,7 @@ import { channels, type ChannelId } from '@/lib/channels';
 import { createClient } from '@/lib/supabase/client';
 import TemplatesPanel from '@/components/TemplatesPanel';
 import AnalyticsPanel from '@/components/AnalyticsPanel';
+import MarketingPanel from '@/components/MarketingPanel';
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
 type NavId = Tab | 'analytics' | 'marketing' | 'templates' | 'support';
@@ -33,7 +34,7 @@ const mainItems: Item[] = [
   { id: 'customers', label: 'Customers', icon: Users, artisanOnly: true },
   { id: 'discounts', label: 'Discounts', icon: Tag, artisanOnly: true },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, artisanOnly: true },
-  { id: 'marketing', label: 'Marketing', icon: Megaphone, soon: true, artisanOnly: true },
+    { id: 'marketing', label: 'Marketing', icon: Megaphone, artisanOnly: true },
   { id: 'templates', label: 'Templates', icon: LayoutGrid, artisanOnly: true },
   { id: 'support', label: 'Support', icon: Headphones, soon: true, artisanOnly: true },
 ];
@@ -400,6 +401,12 @@ export default function DashboardPage() {
             {isArtisan && mount('analytics') && (
               <div className={show('analytics')}>
                 <AnalyticsPanel user={user} active={tab === 'analytics'} onNavigate={setTab} />
+              </div>
+            )}
+            
+            {isArtisan && mount('marketing') && (
+              <div className={`mx-auto max-w-4xl ${show('marketing')}`}>
+                <MarketingPanel user={user} onNavigate={setTab} />
               </div>
             )}
 
