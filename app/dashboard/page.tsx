@@ -32,9 +32,9 @@ const mainItems: Item[] = [
   { id: 'products', label: 'Products', icon: Package, artisanOnly: true },
   { id: 'customers', label: 'Customers', icon: Users, artisanOnly: true },
   { id: 'discounts', label: 'Discounts', icon: Tag, artisanOnly: true },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, soon: true, artisanOnly: true },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, artisanOnly: true },
-    { id: 'templates', label: 'Templates', icon: LayoutGrid, artisanOnly: true },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, artisanOnly: true },
+  { id: 'marketing', label: 'Marketing', icon: Megaphone, soon: true, artisanOnly: true },
+  { id: 'templates', label: 'Templates', icon: LayoutGrid, artisanOnly: true },
   { id: 'support', label: 'Support', icon: Headphones, soon: true, artisanOnly: true },
 ];
 
@@ -396,7 +396,7 @@ export default function DashboardPage() {
                 <TemplatesPanel user={user} onChanged={() => setFormKey((k) => k + 1)} />
               </div>
             )}
-            
+
             {isArtisan && mount('analytics') && (
               <div className={show('analytics')}>
                 <AnalyticsPanel user={user} active={tab === 'analytics'} onNavigate={setTab} />
