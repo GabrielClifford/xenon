@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import ArtisanSite from '@/components/ArtisanSite';
 import { providers } from '@/data/providers';
 import { siteSettings, defaultSettings } from '@/data/sites';
+import { Skeleton } from '@/components/Skeleton';
 
 type ArtisanSitePageProps = {
   params: Promise<{ id: string }>;
@@ -32,8 +33,11 @@ export default function ArtisanSitePage({
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          Loading artisan website...
+                <div className="mx-auto max-w-5xl space-y-6 px-5 py-10">
+          <Skeleton className="h-64 w-full rounded-2xl" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
         </div>
       }
     >

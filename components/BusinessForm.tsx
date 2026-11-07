@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { trades, areas } from '@/data/providers';
+import { PageSkeleton } from '@/components/Skeleton';
 
 type Business = {
   id: string;
@@ -192,7 +193,7 @@ export default function BusinessForm({ user }: { user: User }) {
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-400">Loading your business...</p>;
+  if (loading) return <PageSkeleton />;
 
   const pickButton =
     'cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50';

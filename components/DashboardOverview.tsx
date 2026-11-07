@@ -261,7 +261,7 @@ export default function DashboardOverview({
         <h2 className="font-display text-base font-semibold text-slate-900">Customers</h2>
         <p className="text-sm text-slate-500">
           {freshEnq === null
-            ? 'Loading...'
+                        ? '\u00a0'
             : freshEnq > 0
               ? `You have ${freshEnq} new enquir${freshEnq === 1 ? 'y' : 'ies'}.`
               : 'No new enquiries right now.'}

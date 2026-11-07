@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import ProviderCard from '@/components/ProviderCard';
 import { trades, areas } from '@/data/providers';
 import { getDirectory } from '@/lib/directory';
+import { Skeleton } from '@/components/Skeleton';
 
 type Params = { q?: string; trade?: string; area?: string; sort?: string };
 
@@ -103,7 +104,13 @@ export default function ProvidersPage({ searchParams }: { searchParams: Promise<
         <p className="mb-8 mt-2 text-sm text-slate-500">Browse sample listings by service and area.</p>
 
         <Suspense
-          fallback={<div className="py-24 text-center text-sm text-slate-400">Loading professionals...</div>}
+                    fallback={
+            <div className="grid gap-4 py-8 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-48 w-full rounded-2xl" />
+              ))}
+            </div>
+          }
         >
           <Results searchParams={searchParams} />
         </Suspense>

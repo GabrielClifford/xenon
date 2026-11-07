@@ -16,6 +16,7 @@ import Footer from '@/components/Footer';
 import ProviderCard from '@/components/ProviderCard';
 import CallbackForm from '@/components/CallbackForm';
 import { providers, formatPrice } from '@/data/providers';
+import { Skeleton } from '@/components/Skeleton';
 
 export function generateStaticParams() {
   return providers.map((p) => ({ id: p.id }));
@@ -35,7 +36,16 @@ type ProviderPageProps = {
 
 export default function ProviderPage({ params }: ProviderPageProps) {
   return (
-    <Suspense fallback={<div className="p-10 text-center">Loading provider...</div>}>
+        <Suspense
+      fallback={
+        <div className="mx-auto max-w-4xl space-y-4 p-6">
+          <Skeleton className="h-48 w-full rounded-2xl" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+        </div>
+      }
+    >
       <ProviderDetails params={params} />
     </Suspense>
   );

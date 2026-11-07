@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { channels, loadSources, sourceLabels, type ChannelId, type SourceCount } from '@/lib/channels';
+import { PageSkeleton } from '@/components/Skeleton';
 
 type Biz = { id: string; slug: string; published: boolean };
 
@@ -42,7 +43,7 @@ export default function ChannelsPanel({
     })();
   }, [user.id]);
 
-  if (biz === undefined) return <p className="text-sm text-slate-400">Loading...</p>;
+  if (biz === undefined) return <PageSkeleton />;
   if (!biz) {
     return (
       <div className={`${card} p-6`}>

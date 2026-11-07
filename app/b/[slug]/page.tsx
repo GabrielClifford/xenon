@@ -5,7 +5,7 @@ import ArtisanSite from '@/components/ArtisanSite';
 import VisitTracker from '@/components/VisitTracker';
 import type { Provider } from '@/data/providers';
 import type { SiteSettings, ThemeName } from '@/data/sites';
-
+import { Skeleton } from '@/components/Skeleton';
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -74,7 +74,16 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
 
 export default function BusinessPage({ params }: { params: Promise<{ slug: string }> }) {
   return (
-    <Suspense fallback={<div className="py-40 text-center text-sm text-slate-400">Loading website...</div>}>
+        <Suspense
+      fallback={
+        <div className="mx-auto max-w-5xl space-y-6 px-5 py-10">
+          <Skeleton className="h-64 w-full rounded-2xl" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+        </div>
+      }
+    >
       <Site params={params} />
     </Suspense>
   );

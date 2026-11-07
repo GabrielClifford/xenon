@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { MessageCircle, Phone, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { PageSkeleton } from '@/components/Skeleton';
 
 type Status = 'new' | 'contacted' | 'done';
 type Enquiry = {
@@ -76,7 +77,7 @@ export default function CustomersPanel({ user }: { user: User }) {
     return !q || `${r.name} ${r.phone} ${r.message ?? ''}`.toLowerCase().includes(q);
   });
 
-  if (rows === null) return <p className="text-sm text-slate-400">Loading your customers...</p>;
+  if (rows === null) return <PageSkeleton />;
 
   return (
     <div className="space-y-6">

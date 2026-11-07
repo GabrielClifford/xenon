@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { loadSources, sourceLabels, type SourceCount } from '@/lib/channels';
-
+import { Skeleton } from '@/components/Skeleton';
 export default function ChannelBreakdown({
   businessId,
   onViewAll,
@@ -32,7 +32,7 @@ export default function ChannelBreakdown({
       <p className="mt-1 text-xs text-slate-400">Last 7 days</p>
 
       {rows === null ? (
-        <p className="mt-4 text-sm text-slate-400">Loading...</p>
+        <Skeleton className="mt-4 h-24 w-full" />
       ) : (
         <div className="mt-4 space-y-3">
           {rows.map((r) => {
