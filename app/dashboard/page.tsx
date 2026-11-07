@@ -17,6 +17,7 @@ import ProductsPanel from '@/components/ProductsPanel';
 import DashboardOverview, { type Tab } from '@/components/DashboardOverview';
 import { channels, type ChannelId } from '@/lib/channels';
 import { createClient } from '@/lib/supabase/client';
+import TemplatesPanel from '@/components/TemplatesPanel';
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
 type NavId = Tab | 'analytics' | 'marketing' | 'templates' | 'support';
@@ -32,7 +33,7 @@ const mainItems: Item[] = [
   { id: 'discounts', label: 'Discounts', icon: Tag, artisanOnly: true },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, soon: true, artisanOnly: true },
   { id: 'marketing', label: 'Marketing', icon: Megaphone, soon: true, artisanOnly: true },
-  { id: 'templates', label: 'Templates', icon: LayoutGrid, soon: true, artisanOnly: true },
+    { id: 'templates', label: 'Templates', icon: LayoutGrid, artisanOnly: true },
   { id: 'support', label: 'Support', icon: Headphones, soon: true, artisanOnly: true },
 ];
 
@@ -54,6 +55,7 @@ export default function DashboardPage() {
   const [homeKey, setHomeKey] = useState(0);
     const homeLoaded = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
@@ -369,7 +371,7 @@ export default function DashboardPage() {
             )}
             {isArtisan && mount('website') && (
               <div className={`mx-auto max-w-3xl ${show('website')}`}>
-                <BusinessForm user={user} />
+                                <BusinessForm key={formKey} user={user} />
               </div>
             )}
             {isArtisan && mount('products') && (
@@ -387,6 +389,13 @@ export default function DashboardPage() {
                 <DiscountsPanel user={user} />
               </div>
             )}
+            
+                        {isArtisan && mount('templates') && (
+              <div className={`mx-auto max-w-5xl ${show('templates')}`}>
+                <TemplatesPanel user={user} onChanged={() => setFormKey((k) => k + 1)} />
+              </div>
+            )}
+
             {isArtisan && mount('channels') && (
               <div className={`mx-auto max-w-3xl ${show('channels')}`}>
                 <ChannelsPanel user={user} channel={channel} onSelect={setChannel} />

@@ -11,7 +11,7 @@ import TestimonialForm from '@/components/TestimonialForm';
 import { RecentActivity, SalesBreakdown, TopProducts } from '@/components/SalesPanels';
 import { HomeSkeleton } from '@/components/Skeleton';
 
-export type Tab = 'home' | 'website' | 'products' | 'orders' | 'customers' | 'discounts' | 'channels' | 'settings';
+export type Tab = 'home' | 'website' | 'products' | 'orders' | 'customers' | 'discounts' | 'templates' | 'channels' | 'settings';
 
 type Business = {
   id: string;
