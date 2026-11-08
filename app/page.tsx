@@ -45,7 +45,7 @@ export default function HomePage() {
                 href="/signup"
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-500"
               >
-                Get Started Free <ArrowRight className="h-4 w-4" />
+                Get Started <ArrowRight className="h-4 w-4" />
               </Link>
               <a
                 href="#templates"
@@ -102,17 +102,23 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pricing: your existing component, restyled next */}
-      <section id="pricing" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-14">
-        <div className="rounded-3xl bg-white p-4 text-slate-900 sm:p-8">
+            {/* Pricing */}
+      <section id="pricing" className="relative scroll-mt-24 py-14">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(37,99,235,0.28),transparent_65%)]" />
+        <div className="relative mx-auto max-w-7xl px-5">
           <PricingPlans />
         </div>
       </section>
 
-      {/* Reviews: your existing scrolling reviews, restyled next */}
-      <section id="reviews" className="scroll-mt-24 py-14">
-        <div className="mx-auto max-w-7xl px-5">
-          <div className="rounded-3xl bg-white p-4 text-slate-900 sm:p-8">
+          {/* Reviews */}
+      <section id="reviews" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-14">
+        <div className="grid items-center gap-8 lg:grid-cols-[300px_1fr]">
+          <div>
+            <span className={pill}>Real People. Real Results.</span>
+            <h2 className="font-display mt-4 text-3xl font-bold sm:text-4xl">What Our Users Say</h2>
+            <p className="mt-3 text-sm text-slate-300">Hear from business owners who built their websites with Xenon.</p>
+          </div>
+          <div className="min-w-0">
             <ReviewsMarquee />
           </div>
         </div>
@@ -144,7 +150,7 @@ export default function HomePage() {
             href="/signup"
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-blue-500"
           >
-            Get Started Free <ArrowRight className="h-4 w-4" />
+            Get Started <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>

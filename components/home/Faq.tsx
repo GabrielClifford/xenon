@@ -21,9 +21,9 @@ const faqs: { q: string; a: string }[] = [
     q: 'How do my customers pay?',
     a: 'Customers can choose pay on delivery or bank transfer, and the money goes straight to you. Card payments are coming soon.',
   },
-  {
-    q: 'Is there a free plan?',
-    a: 'See the plans in the Pricing section above to check what each one includes, and upgrade whenever your store grows.',
+   {
+    q: 'How much does Xenon cost?',
+    a: 'Xenon has three plans: Starter at ₦10,000 a month, Professional at ₦15,000 a month and Business at ₦25,000 a month. See the Pricing section above for what each one includes.',
   },
 ];
 

@@ -47,7 +47,7 @@ export default function Navbar() {
             href="/signup"
             className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500"
           >
-            Get Started Free <ArrowRight className="h-4 w-4" />
+            Get Started <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 

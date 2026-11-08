@@ -1,4 +1,3 @@
-
 type Review = {
   name: string;
   business: string;
@@ -54,34 +53,24 @@ const reviews: Review[] = [
 
 function ReviewCard({ review }: { review: Review }) {
   return (
-    <article className="w-[285px] sm:w-[330px] shrink-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <article className="w-[285px] shrink-0 rounded-2xl border border-white/10 bg-[#0a1230] p-5 shadow-[0_0_30px_-12px_rgba(59,130,246,0.5)] sm:w-[330px]">
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-500/20 font-bold text-blue-300">
           {review.initials}
         </div>
 
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-bold text-slate-900">
-            {review.name}
-          </h3>
-          <p className="truncate text-xs text-slate-500">
-            {review.business}
-          </p>
+          <h3 className="truncate text-sm font-bold text-white">{review.name}</h3>
+          <p className="truncate text-xs text-slate-400">{review.business}</p>
         </div>
       </div>
 
-      <div className="mt-4 text-sm tracking-wider text-amber-400">
-        ★★★★★
-      </div>
+      <div className="mt-4 text-sm tracking-wider text-amber-400">★★★★★</div>
 
-      <p className="mt-3 min-h-[100px] text-sm leading-6 text-slate-600">
-        "{review.review}"
-      </p>
+      <p className="mt-3 min-h-[100px] text-sm leading-6 text-slate-300">&ldquo;{review.review}&rdquo;</p>
 
-      <div className="mt-4 border-t border-slate-100 pt-3">
-        <span className="text-xs font-medium text-slate-500">
-          {review.location}
-        </span>
+      <div className="mt-4 border-t border-white/10 pt-3">
+        <span className="text-xs font-medium text-slate-400">{review.location}</span>
       </div>
     </article>
   );
@@ -89,19 +78,12 @@ function ReviewCard({ review }: { review: Review }) {
 
 export default function ReviewsMarquee() {
   return (
-    <div className="w-full min-w-0 overflow-hidden">
+    <div className="w-full min-w-0 overflow-hidden [-webkit-mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)] [mask-image:linear-gradient(to_right,transparent,black_6%,black_94%,transparent)]">
       <div className="reviews-track flex w-max gap-0">
         {[0, 1].map((group) => (
-          <div
-            key={group}
-            className="flex shrink-0 gap-4 pr-4"
-            aria-hidden={group === 1}
-          >
+          <div key={group} className="flex shrink-0 gap-4 pr-4" aria-hidden={group === 1}>
             {reviews.map((review, index) => (
-              <ReviewCard
-                key={`${group}-${index}`}
-                review={review}
-              />
+              <ReviewCard key={`${group}-${index}`} review={review} />
             ))}
           </div>
         ))}
