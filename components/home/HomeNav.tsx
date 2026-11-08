@@ -87,13 +87,13 @@ export default function HomeNav() {
           </Link>
           <Link
             href="/signup"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+            className="hidden rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 sm:block"
           >
             Get Started
           </Link>
           <button
             onClick={() => setOpen((o) => !o)}
-            className="rounded-lg p-2 text-white hover:bg-white/10 lg:hidden"
+            className="rounded-xl border border-blue-400/40 p-2.5 text-white hover:bg-white/10 lg:hidden"
             aria-label="Menu"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -117,6 +117,12 @@ export default function HomeNav() {
             ))}
           <Link href="/login" className="block rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/10">
             Sign In
+          </Link>
+          <Link
+            href="/signup"
+            className="mt-2 block rounded-lg bg-blue-600 px-3 py-2.5 text-center text-sm font-semibold text-white sm:hidden"
+          >
+            Get Started
           </Link>
         </div>
       )}
