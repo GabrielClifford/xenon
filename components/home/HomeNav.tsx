@@ -6,6 +6,7 @@ import { ChevronDown, Menu, X } from 'lucide-react';
 
 type Menu = { label: string; href?: string; items?: { label: string; href: string }[] };
 
+// Laptop menu (unchanged)
 const menus: Menu[] = [
   {
     label: 'Templates',
@@ -33,6 +34,13 @@ const menus: Menu[] = [
   },
 ];
 
+// Phone menu: change the order or the words here
+const mobileLinks = [
+  { label: 'FAQs', href: '#faq' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'Customer Reviews', href: '#reviews' },
+];
+
 export function Logo({ className = 'h-9 w-9' }: { className?: string }) {
   return (
     <svg viewBox="0 0 40 40" className={className} aria-hidden>
@@ -49,6 +57,11 @@ export function Logo({ className = 'h-9 w-9' }: { className?: string }) {
 
 export default function HomeNav() {
   const [open, setOpen] = useState(false);
+
+  function goHome() {
+    setOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/5 bg-[#030816]/85 backdrop-blur">
@@ -83,7 +96,7 @@ export default function HomeNav() {
 
         <div className="ml-auto flex items-center gap-3">
           <Link href="/login" className="hidden px-2 text-sm font-medium text-slate-200 hover:text-white sm:block">
-            Sign In
+            Login
           </Link>
           <Link
             href="/signup"
@@ -103,21 +116,38 @@ export default function HomeNav() {
 
       {open && (
         <div className="border-t border-white/10 bg-[#030816] px-5 py-4 lg:hidden">
-          {menus
-            .flatMap((m) => m.items ?? [{ label: m.label, href: m.href ?? '#' }])
-            .map((i) => (
-              <a
-                key={i.label + i.href}
-                href={i.href}
-                onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/10"
-              >
-                {i.label}
-              </a>
-            ))}
-          <Link href="/login" className="block rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/10">
-            Sign In
-          </Link>
+          <button
+            onClick={goHome}
+            className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-white/10"
+          >
+            Home
+          </button>
+          {mobileLinks.map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              onClick={() => setOpen(false)}
+              className="block rounded-lg px-3 py-2.5 text-sm text-slate-200 hover:bg-white/10"
+            >
+              {l.label}
+            </a>
+          ))}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="rounded-xl border border-blue-400/40 py-3 text-center text-sm font-semibold text-white hover:bg-white/10"
+            >
+              Login
+            </Link>
+            <Link
+              href="/signup"
+              onClick={() => setOpen(false)}
+              className="rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white hover:bg-blue-500"
+            >
+              Get Started
+            </Link>
+          </div>
         </div>
       )}
     </header>
