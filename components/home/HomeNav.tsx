@@ -102,7 +102,7 @@ export default function HomeNav() {
             href="/signup"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
           >
-            Sign up
+            Get Started
           </Link>
           <button
             onClick={() => setOpen((o) => !o)}
@@ -145,7 +145,7 @@ export default function HomeNav() {
               onClick={() => setOpen(false)}
               className="rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold text-white hover:bg-blue-500"
             >
-              Get Started
+              Sign Up
             </Link>
           </div>
         </div>
