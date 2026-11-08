@@ -28,7 +28,7 @@ const plans: Plan[] = [
 ];
 
 export default function PricingPlans() {
-  const [selected, setSelected] = useState<string>('professional');
+  const [selected, setSelected] = useState<string | null>(null);
 
   return (
     <div>
