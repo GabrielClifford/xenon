@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { defaultOptions, type CheckoutOptions, type FieldMode } from '@/lib/checkout';
 
 export type SiteProduct = {
   id: string;
@@ -21,17 +22,33 @@ export type CheckoutSettings = {
   accepting: boolean;
   minOrder: number;
   thankYou: string | null;
+  options: CheckoutOptions;
 };
 export type Shop = { businessId: string; bank: Bank | null; checkout: CheckoutSettings };
 
+type Tracked = { status: string; total: number; created_at: string; items: { name: string; quantity: number }[] };
+
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
 const field = 'w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500';
+const statusText: Record<string, string> = {
+  new: 'Order received',
+  preparing: 'Being prepared',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+};
+const ph = (text: string, mode: FieldMode) => (mode === 'required' ? `${text} *` : `${text} (optional)`);
+const tipChoices = ['none', '5', '10', '15', 'custom'] as const;
+const emptyForm = {
+  first: '', last: '', name: '', phone: '', altPhone: '', email: '', company: '', address: '', address2: '', note: '',
+};
 
 export default function SiteProducts({ products, shop }: { products: SiteProduct[]; shop?: Shop }) {
+  const opt = shop?.checkout.options ?? defaultOptions;
+
   const [cart, setCart] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<'cart' | 'details' | 'done'>('cart');
-  const [form, setForm] = useState({ name: '', phone: '', address: '', note: '' });
+  const [step, setStep] = useState<'cart' | 'details' | 'done' | 'track'>('cart');
+  const [form, setForm] = useState(emptyForm);
   const [payment, setPayment] = useState<'cod' | 'transfer'>('cod');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -39,6 +56,18 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const [code, setCode] = useState('');
   const [discount, setDiscount] = useState<{ code: string; amount: number } | null>(null);
   const [codeMsg, setCodeMsg] = useState('');
+  const [optIn, setOptIn] = useState({
+    email: opt.optEmail === 'checked',
+    sms: opt.optSms === 'checked',
+    whatsapp: opt.optWhatsapp === 'checked',
+  });
+  const [tipChoice, setTipChoice] = useState<(typeof tipChoices)[number]>('none');
+  const [customTip, setCustomTip] = useState('');
+  const [ageOk, setAgeOk] = useState(false);
+  const [track, setTrack] = useState({ number: '', phone: '' });
+  const [tracked, setTracked] = useState<Tracked | null>(null);
+  const [trackMsg, setTrackMsg] = useState('');
+  const [trackBusy, setTrackBusy] = useState(false);
 
   const lines = useMemo(
     () => products.filter((p) => cart[p.id] > 0).map((p) => ({ p, qty: cart[p.id] })),
@@ -47,13 +76,21 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
   const payable = Math.max(0, total - (discount?.amount ?? 0));
+  const tipAmount = !opt.tipping
+    ? 0
+    : tipChoice === 'none'
+      ? 0
+      : tipChoice === 'custom'
+        ? Math.min(total, Math.max(0, Math.round(Number(customTip) || 0)))
+        : Math.round((total * Number(tipChoice)) / 100);
+  const grand = payable + tipAmount;
 
   if (products.length === 0) return null;
 
   const canOrder = !!shop && shop.checkout.accepting;
   const minOrder = shop?.checkout.minOrder ?? 0;
   const belowMin = total < minOrder;
-  const maxFor = (p: SiteProduct) => (p.stock === null ? 99 : p.stock);
+  const maxFor = (p: SiteProduct) => Math.min(opt.maxQty, p.stock === null ? opt.maxQty : p.stock);
 
   function setQty(p: SiteProduct, qty: number) {
     const q = Math.max(0, Math.min(qty, maxFor(p)));
@@ -80,19 +117,40 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
   async function placeOrder() {
     if (!shop) return;
-    if (!form.name.trim() || !form.phone.trim()) return setError('Please enter your name and phone number.');
+    const split = opt.nameMode === 'first_last';
+    const fullName = split ? `${form.first.trim()} ${form.last.trim()}`.trim() : form.name.trim();
+    if (split ? !form.first.trim() || !form.last.trim() : !fullName)
+      return setError(split ? 'Please enter your first and last name.' : 'Please enter your name.');
+    if (!form.phone.trim()) return setError('Please enter your phone number.');
+    if (opt.altPhone === 'required' && !form.altPhone.trim()) return setError('Please enter your second phone number.');
+    if (opt.email === 'required' && !form.email.trim()) return setError('Please enter your email address.');
+    if (opt.email !== 'off' && form.email.trim() && !form.email.includes('@'))
+      return setError('Please enter a valid email address.');
+    if (opt.company === 'required' && !form.company.trim()) return setError('Please enter your company name.');
     if (shop.checkout.requireAddress && !form.address.trim()) return setError('Please enter your delivery address.');
+    if (opt.address2 === 'required' && !form.address2.trim()) return setError('Please enter your apartment or unit.');
+    if (opt.ageCheck && !ageOk) return setError('Please confirm that you are 18 or older.');
+
     setBusy(true);
     setError('');
     const { data, error: err } = await createClient().rpc('place_order', {
       p_business_id: shop.businessId,
-      p_name: form.name,
+      p_name: fullName,
       p_phone: form.phone,
       p_address: form.address,
       p_note: form.note,
       p_payment: payment,
       p_items: lines.map((l) => ({ product_id: l.p.id, quantity: l.qty })),
       p_code: discount?.code ?? null,
+      p_email: opt.email === 'off' ? null : form.email,
+      p_company: opt.company === 'off' ? null : form.company,
+      p_address2: opt.address2 === 'off' ? null : form.address2,
+      p_alt_phone: opt.altPhone === 'off' ? null : form.altPhone,
+      p_tip: tipAmount,
+      p_opt_email: opt.optEmail !== 'off' && opt.email !== 'off' && optIn.email,
+      p_opt_sms: opt.optSms !== 'off' && optIn.sms,
+      p_opt_whatsapp: opt.optWhatsapp !== 'off' && optIn.whatsapp,
+      p_age_ok: opt.ageCheck ? ageOk : false,
     });
     setBusy(false);
     if (err) return setError(err.message);
@@ -101,12 +159,31 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     setDiscount(null);
     setCode('');
     setCodeMsg('');
+    setTipChoice('none');
+    setCustomTip('');
     setStep('done');
+  }
+
+  async function trackOrder() {
+    if (!shop) return;
+    setTrackMsg('');
+    setTracked(null);
+    const num = parseInt(track.number.replace(/\D/g, ''), 10);
+    if (!num || !track.phone.trim()) return setTrackMsg('Enter your order number and phone number.');
+    setTrackBusy(true);
+    const { data, error: err } = await createClient().rpc('track_order', {
+      p_business_id: shop.businessId,
+      p_order_number: num,
+      p_phone: track.phone,
+    });
+    setTrackBusy(false);
+    if (err) return setTrackMsg(err.message);
+    setTracked(data as Tracked);
   }
 
   function closeAll() {
     setOpen(false);
-    if (step === 'done') setStep('cart');
+    if (step === 'done' || step === 'track') setStep('cart');
   }
 
   const groups = new Map<string, SiteProduct[]>();
@@ -115,11 +192,27 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     groups.set(key, [...(groups.get(key) ?? []), pr]);
   }
 
+  const marketingShown =
+    (opt.optEmail !== 'off' && opt.email !== 'off') || opt.optSms !== 'off' || opt.optWhatsapp !== 'off';
+
   return (
     <>
       <section id="products" className="bg-white px-5 py-14">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-2xl font-bold text-slate-900">Products</h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-2xl font-bold text-slate-900">Products</h2>
+            {shop && opt.trackOrders && (
+              <button
+                onClick={() => {
+                  setStep('track');
+                  setOpen(true);
+                }}
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                Track my order
+              </button>
+            )}
+          </div>
           {shop && !shop.checkout.accepting && (
             <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
               We are not taking orders right now. Please check back soon.
@@ -199,7 +292,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
           >
             <div className="flex items-center justify-between border-b border-slate-200 p-4">
               <h3 className="text-lg font-bold text-slate-900">
-                {step === 'cart' ? 'Your cart' : step === 'details' ? 'Checkout' : 'Order placed'}
+                {step === 'cart' ? 'Your cart' : step === 'details' ? 'Checkout' : step === 'done' ? 'Order placed' : 'Track your order'}
               </h3>
               <button onClick={closeAll} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Close">
                 <X className="h-5 w-5" />
@@ -241,8 +334,24 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
               {step === 'details' && (
                 <div className="space-y-4">
-                  <input className={field} placeholder="Your name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  {opt.nameMode === 'first_last' ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <input className={field} placeholder="First name *" value={form.first} onChange={(e) => setForm({ ...form, first: e.target.value })} />
+                      <input className={field} placeholder="Last name *" value={form.last} onChange={(e) => setForm({ ...form, last: e.target.value })} />
+                    </div>
+                  ) : (
+                    <input className={field} placeholder="Your name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  )}
+                  {opt.company !== 'off' && (
+                    <input className={field} placeholder={ph('Company name', opt.company)} value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+                  )}
                   <input className={field} placeholder="Phone number *" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  {opt.altPhone !== 'off' && (
+                    <input className={field} placeholder={ph('Second phone number', opt.altPhone)} inputMode="tel" value={form.altPhone} onChange={(e) => setForm({ ...form, altPhone: e.target.value })} />
+                  )}
+                  {opt.email !== 'off' && (
+                    <input className={field} type="email" placeholder={ph('Email address', opt.email)} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                  )}
                   <textarea
                     className={field}
                     rows={2}
@@ -250,9 +359,69 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
                   />
+                  {opt.address2 !== 'off' && (
+                    <input className={field} placeholder={ph('Apartment, unit, etc.', opt.address2)} value={form.address2} onChange={(e) => setForm({ ...form, address2: e.target.value })} />
+                  )}
                   {shop?.checkout.showNote && (
                     <textarea className={field} rows={2} placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
                   )}
+
+                  {marketingShown && (
+                    <div className="space-y-2">
+                      {opt.optEmail !== 'off' && opt.email !== 'off' && (
+                        <label className="flex items-start gap-2 text-sm text-slate-700">
+                          <input type="checkbox" className="mt-0.5" checked={optIn.email} onChange={(e) => setOptIn({ ...optIn, email: e.target.checked })} />
+                          {opt.optEmailLabel || 'Email me with news and offers'}
+                        </label>
+                      )}
+                      {opt.optSms !== 'off' && (
+                        <label className="flex items-start gap-2 text-sm text-slate-700">
+                          <input type="checkbox" className="mt-0.5" checked={optIn.sms} onChange={(e) => setOptIn({ ...optIn, sms: e.target.checked })} />
+                          Text me with news and offers
+                        </label>
+                      )}
+                      {opt.optWhatsapp !== 'off' && (
+                        <label className="flex items-start gap-2 text-sm text-slate-700">
+                          <input type="checkbox" className="mt-0.5" checked={optIn.whatsapp} onChange={(e) => setOptIn({ ...optIn, whatsapp: e.target.checked })} />
+                          Message me on WhatsApp with news and offers
+                        </label>
+                      )}
+                    </div>
+                  )}
+
+                  {opt.tipping && (
+                    <div>
+                      <p className="mb-2 text-sm font-medium">
+                        Add a tip <span className="font-normal text-slate-500">(optional)</span>
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {tipChoices.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setTipChoice(c)}
+                            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold ${
+                              tipChoice === c ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            {c === 'none' ? 'No tip' : c === 'custom' ? 'Custom' : `${c}%`}
+                          </button>
+                        ))}
+                      </div>
+                      {tipChoice === 'custom' && (
+                        <input type="number" min="0" className={`${field} mt-2`} placeholder="Tip amount (₦)" value={customTip} onChange={(e) => setCustomTip(e.target.value)} />
+                      )}
+                      {tipAmount > 0 && <p className="mt-2 text-xs text-slate-500">Tip: {naira(tipAmount)}</p>}
+                    </div>
+                  )}
+
+                  {opt.ageCheck && (
+                    <label className="flex items-start gap-2 text-sm text-slate-700">
+                      <input type="checkbox" className="mt-0.5" checked={ageOk} onChange={(e) => setAgeOk(e.target.checked)} />
+                      I confirm that I am 18 years or older *
+                    </label>
+                  )}
+
                   <div>
                     <p className="mb-2 text-sm font-medium">How will you pay?</p>
                     <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 p-3 text-sm">
@@ -284,11 +453,46 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                   ) : (
                     <p>You will pay when your order is delivered. The business will contact you shortly.</p>
                   )}
+                  {opt.trackOrders && (
+                    <p className="text-xs text-slate-500">
+                      Keep your order number. You can use it with your phone number to track this order.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {step === 'track' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-slate-600">Enter your order number and the phone number you used when ordering.</p>
+                  <input className={field} inputMode="numeric" placeholder="Order number, e.g. 1001" value={track.number} onChange={(e) => setTrack({ ...track, number: e.target.value })} />
+                  <input className={field} inputMode="tel" placeholder="Phone number" value={track.phone} onChange={(e) => setTrack({ ...track, phone: e.target.value })} />
+                  {trackMsg && <p className="text-sm text-red-600">{trackMsg}</p>}
+                  <button
+                    onClick={trackOrder}
+                    disabled={trackBusy}
+                    className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {trackBusy ? 'Checking...' : 'Track order'}
+                  </button>
+                  {tracked && (
+                    <div className="rounded-xl bg-slate-50 p-4 text-sm">
+                      <p className="text-base font-semibold text-slate-900">{statusText[tracked.status] ?? tracked.status}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Placed {new Date(tracked.created_at).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                      <ul className="mt-3 space-y-1 text-slate-700">
+                        {tracked.items.map((i, idx) => (
+                          <li key={idx}>{i.quantity} × {i.name}</li>
+                        ))}
+                      </ul>
+                      <p className="mt-3 font-semibold text-slate-900">Total: {naira(tracked.total)}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {step !== 'done' && lines.length > 0 && (
+            {step !== 'done' && step !== 'track' && lines.length > 0 && (
               <div className="border-t border-slate-200 p-4">
                 <div className="mb-3 flex gap-2">
                   <input
@@ -301,25 +505,26 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                       setCodeMsg('');
                     }}
                   />
-                  <button
-                    onClick={applyCode}
-                    className="rounded-xl border border-slate-300 px-4 text-sm font-medium hover:bg-slate-50"
-                  >
+                  <button onClick={applyCode} className="rounded-xl border border-slate-300 px-4 text-sm font-medium hover:bg-slate-50">
                     Apply
                   </button>
                 </div>
-                {codeMsg && (
-                  <p className={`mb-3 text-xs ${discount ? 'text-green-700' : 'text-red-600'}`}>{codeMsg}</p>
-                )}
+                {codeMsg && <p className={`mb-3 text-xs ${discount ? 'text-green-700' : 'text-red-600'}`}>{codeMsg}</p>}
                 {discount && (
                   <div className="mb-1 flex justify-between text-sm">
                     <span className="text-slate-500">Discount ({discount.code})</span>
                     <span className="text-green-700">−{naira(discount.amount)}</span>
                   </div>
                 )}
+                {tipAmount > 0 && (
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-slate-500">Tip</span>
+                    <span>{naira(tipAmount)}</span>
+                  </div>
+                )}
                 <div className="mb-3 flex justify-between text-sm">
                   <span className="text-slate-500">Total</span>
-                  <span className="font-bold">{naira(payable)}</span>
+                  <span className="font-bold">{naira(grand)}</span>
                 </div>
                 {belowMin && (
                   <p className="mb-3 text-xs text-amber-700">
@@ -350,7 +555,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                       disabled={busy || belowMin}
                       className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {busy ? 'Placing order...' : 'Place order'}
+                      {busy ? 'Placing order...' : opt.buttonText || 'Place order'}
                     </button>
                   </div>
                 )}

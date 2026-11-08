@@ -6,6 +6,7 @@ import VisitTracker from '@/components/VisitTracker';
 import type { Provider } from '@/data/providers';
 import type { SiteSettings, ThemeName } from '@/data/sites';
 import { Skeleton } from '@/components/Skeleton';
+import { readOptions } from '@/lib/checkout';
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -72,6 +73,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
             accepting: b.checkout_accepting ?? true,
             minOrder: Number(b.checkout_min_order ?? 0),
             thankYou: b.checkout_thank_you ?? null,
+            options: readOptions(b.checkout_options),
           },
         }}
       />

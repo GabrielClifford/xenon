@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Tab } from '@/components/DashboardOverview';
+import { defaultOptions, readOptions, type CheckoutOptions, type FieldMode, type OptIn } from '@/lib/checkout';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -445,116 +446,347 @@ function Toggle({
   );
 }
 
+const sel = 'rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500';
+
+function Sec({ title, text, children }: { title: string; text?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-display text-base font-semibold text-slate-900">{title}</h3>
+      {text && <p className="mt-0.5 text-sm text-slate-500">{text}</p>}
+      <div className={`${card} mt-3`}>{children}</div>
+    </div>
+  );
+}
+
+function Line({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <span className="text-sm text-slate-800">{title}</span>
+      {children}
+    </div>
+  );
+}
+
+const modeOptions: { v: FieldMode; t: string }[] = [
+  { v: 'off', t: "Don't include" },
+  { v: 'optional', t: 'Optional' },
+  { v: 'required', t: 'Required' },
+];
+const optInOptions: { v: OptIn; t: string }[] = [
+  { v: 'off', t: "Don't show" },
+  { v: 'show', t: 'Show' },
+  { v: 'checked', t: 'Show, preselected' },
+];
+
 function CheckoutPage({ user }: { user: User }) {
   const [bizId, setBizId] = useState<string | null | undefined>(undefined);
-  const [s, setS] = useState({ accepting: true, requireAddress: false, showNote: true, minOrder: '', thankYou: '' });
+  const [base, setBase] = useState({ accepting: true, requireAddress: false, showNote: true, minOrder: '', thankYou: '' });
+  const [opt, setOpt] = useState<CheckoutOptions>(defaultOptions);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+
+  function set<K extends keyof CheckoutOptions>(k: K, v: CheckoutOptions[K]) {
+    setOpt((o) => ({ ...o, [k]: v }));
+  }
 
   useEffect(() => {
     createClient()
       .from('businesses')
-      .select('id,checkout_accepting,checkout_require_address,checkout_show_note,checkout_min_order,checkout_thank_you')
+      .select(
+        'id,checkout_accepting,checkout_require_address,checkout_show_note,checkout_min_order,checkout_thank_you,checkout_options,checkout_updated_at'
+      )
       .eq('owner_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
         setBizId(data?.id ?? null);
         if (data) {
-          setS({
+          setBase({
             accepting: data.checkout_accepting ?? true,
             requireAddress: data.checkout_require_address ?? false,
             showNote: data.checkout_show_note ?? true,
             minOrder: Number(data.checkout_min_order) > 0 ? String(data.checkout_min_order) : '',
             thankYou: data.checkout_thank_you ?? '',
           });
+          setOpt(readOptions(data.checkout_options));
+          setSavedAt(data.checkout_updated_at ?? null);
         }
       });
   }, [user.id]);
 
   async function save() {
     if (!bizId) return;
-    const min = Number(s.minOrder) || 0;
+    const min = Number(base.minOrder) || 0;
     if (min < 0) return setMsg('Could not save: the minimum order cannot be negative.');
     setSaving(true);
     setMsg('');
+    const now = new Date().toISOString();
     const { error } = await createClient()
       .from('businesses')
       .update({
-        checkout_accepting: s.accepting,
-        checkout_require_address: s.requireAddress,
-        checkout_show_note: s.showNote,
+        checkout_accepting: base.accepting,
+        checkout_require_address: base.requireAddress,
+        checkout_show_note: base.showNote,
         checkout_min_order: min,
-        checkout_thank_you: s.thankYou.trim() || null,
+        checkout_thank_you: base.thankYou.trim() || null,
+        checkout_options: {
+          ...opt,
+          maxQty: Math.min(99, Math.max(1, Math.round(opt.maxQty) || 20)),
+          buttonText: opt.buttonText.trim() || 'Place order',
+          optEmailLabel: opt.optEmailLabel.trim() || defaultOptions.optEmailLabel,
+        },
+        checkout_updated_at: now,
       })
       .eq('id', bizId);
     setSaving(false);
-    setMsg(error ? 'Could not save: ' + error.message : 'Saved. Your website now uses these checkout settings.');
+    if (error) return setMsg('Could not save: ' + error.message);
+    setSavedAt(now);
+    setMsg('Saved. Your website now uses these checkout settings.');
   }
 
-  return (
-    <div className="space-y-5">
-      <Heading title="Checkout" text="Control what customers see and fill in when they order." />
-      {bizId === null ? (
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Checkout" />
         <div className={card}>
           <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
         </div>
-      ) : (
-        <>
-          <div className={`${card} divide-y divide-slate-100 !py-2`}>
-            <Toggle
-              checked={s.accepting}
-              onChange={(v) => setS({ ...s, accepting: v })}
-              title="Accepting orders"
-              text="Turn this off when you are closed. Customers can still see your products, but cannot order."
-            />
-            <Toggle
-              checked={s.requireAddress}
-              onChange={(v) => setS({ ...s, requireAddress: v })}
-              title="Require a delivery address"
-              text="Customers must enter an address before they can place an order."
-            />
-            <Toggle
-              checked={s.showNote}
-              onChange={(v) => setS({ ...s, showNote: v })}
-              title="Show a note box"
-              text="Lets customers add a message, such as a delivery instruction."
-            />
-          </div>
+      </div>
+    );
+  }
 
-          <div className={card}>
-            <div className="space-y-4">
-              <div>
-                <label className={label}>Minimum order (₦)</label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="No minimum"
-                  className={field}
-                  value={s.minOrder}
-                  onChange={(e) => setS({ ...s, minOrder: e.target.value })}
-                />
-                <p className="mt-1 text-xs text-slate-500">Customers cannot check out until their cart reaches this amount.</p>
-              </div>
-              <div>
-                <label className={label}>Thank-you message</label>
-                <textarea
-                  rows={3}
-                  maxLength={300}
-                  placeholder="e.g. We will call you within 30 minutes to confirm your order."
-                  className={field}
-                  value={s.thankYou}
-                  onChange={(e) => setS({ ...s, thankYou: e.target.value })}
-                />
-                <p className="mt-1 text-xs text-slate-500">Shown to the customer right after they place an order.</p>
-              </div>
-            </div>
-            <button onClick={save} disabled={saving || bizId === undefined} className={`${primary} mt-5`}>
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-            <Note text={msg} />
+  return (
+    <div className="space-y-7">
+      <Heading title="Checkout" text="Control what customers see and fill in when they order." />
+
+      <div className={`${card} flex flex-wrap items-center gap-3`}>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
+            My Store configuration
+            <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Active</span>
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {savedAt
+              ? `Last saved: ${new Date(savedAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}`
+              : 'Not saved yet. These are the default settings.'}
+          </p>
+        </div>
+        <button onClick={save} disabled={saving} className={primary}>
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+      </div>
+      <Note text={msg} />
+
+      <Sec title="Customer contact method" text="How customers can be reached about their order. A phone number is always required.">
+        {(
+          [
+            ['off', 'Phone number only', 'Customers enter a phone number. This is how you reach them.'],
+            ['optional', 'Phone number and email', 'Email is optional.'],
+            ['required', 'Phone number and email', 'Both are required.'],
+          ] as const
+        ).map(([v, t, d]) => (
+          <label key={v} className="flex cursor-pointer items-start gap-3 py-2">
+            <input type="radio" name="contact" className="mt-1" checked={opt.email === v} onChange={() => set('email', v)} />
+            <span>
+              <span className="block text-sm font-medium text-slate-900">{t}</span>
+              <span className="block text-xs text-slate-500">{d}</span>
+            </span>
+          </label>
+        ))}
+        <div className="mt-2 border-t border-slate-100 pt-1">
+          <Toggle
+            checked={opt.trackOrders}
+            onChange={(v) => set('trackOrders', v)}
+            title="Show a link for customers to track their order"
+            text="Customers enter their order number and phone number to see if it is received, being prepared or delivered."
+          />
+          <label className="flex items-start gap-3 py-3 opacity-60">
+            <input type="checkbox" className="mt-1 h-4 w-4" disabled />
+            <span>
+              <span className="block text-sm font-medium text-slate-900">Require customers to sign in before checkout</span>
+              <span className="block text-xs text-slate-500">Available once Customer accounts are ready.</span>
+            </span>
+          </label>
+        </div>
+      </Sec>
+
+      <Sec title="Customer information">
+        <div className="divide-y divide-slate-100">
+          <Line title="Full name">
+            <select className={sel} value={opt.nameMode} onChange={(e) => set('nameMode', e.target.value as CheckoutOptions['nameMode'])}>
+              <option value="single">One name field</option>
+              <option value="first_last">Require first and last name</option>
+            </select>
+          </Line>
+          <Line title="Company name">
+            <select className={sel} value={opt.company} onChange={(e) => set('company', e.target.value as FieldMode)}>
+              {modeOptions.map((o) => (
+                <option key={o.v} value={o.v}>{o.t}</option>
+              ))}
+            </select>
+          </Line>
+          <Line title="Address line 2 (apartment, unit, etc.)">
+            <select className={sel} value={opt.address2} onChange={(e) => set('address2', e.target.value as FieldMode)}>
+              {modeOptions.map((o) => (
+                <option key={o.v} value={o.v}>{o.t}</option>
+              ))}
+            </select>
+          </Line>
+          <Line title="Second phone number">
+            <select className={sel} value={opt.altPhone} onChange={(e) => set('altPhone', e.target.value as FieldMode)}>
+              {modeOptions.map((o) => (
+                <option key={o.v} value={o.v}>{o.t}</option>
+              ))}
+            </select>
+          </Line>
+          <Toggle
+            checked={base.showNote}
+            onChange={(v) => setBase({ ...base, showNote: v })}
+            title="Show a note box"
+            text="Lets customers add a message, such as a delivery instruction."
+          />
+        </div>
+      </Sec>
+
+      <Sec title="Marketing opt-in" text="Show a checkbox for customers to agree to receive news and offers. Their choice is saved on each order.">
+        <div className="space-y-5">
+          <div>
+            <p className="mb-1.5 text-sm font-semibold text-slate-900">Email</p>
+            <select className={`${sel} w-full`} value={opt.optEmail} onChange={(e) => set('optEmail', e.target.value as OptIn)}>
+              {optInOptions.map((o) => (
+                <option key={o.v} value={o.v}>{o.t}</option>
+              ))}
+            </select>
+            {opt.optEmail !== 'off' && (
+              <input className={`${field} mt-2`} value={opt.optEmailLabel} onChange={(e) => set('optEmailLabel', e.target.value)} placeholder="Checkbox text" />
+            )}
+            {opt.optEmail !== 'off' && opt.email === 'off' && (
+              <p className="mt-1 text-xs text-amber-700">Turn on the email field under Customer contact method, or this checkbox will not show.</p>
+            )}
           </div>
-        </>
-      )}
+          <div>
+            <p className="mb-1.5 text-sm font-semibold text-slate-900">SMS</p>
+            <select className={`${sel} w-full`} value={opt.optSms} onChange={(e) => set('optSms', e.target.value as OptIn)}>
+              {optInOptions.map((o) => (
+                <option key={o.v} value={o.v}>{o.t}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <p className="mb-1.5 text-sm font-semibold text-slate-900">WhatsApp</p>
+            <select className={`${sel} w-full`} value={opt.optWhatsapp} onChange={(e) => set('optWhatsapp', e.target.value as OptIn)}>
+              {optInOptions.map((o) => (
+                <option key={o.v} value={o.v}>{o.t}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </Sec>
+
+      <Sec title="Tipping" text="Customers can choose 5%, 10%, 15% or enter a custom amount.">
+        <Toggle
+          checked={opt.tipping}
+          onChange={(v) => set('tipping', v)}
+          title="Show tipping options at checkout"
+          text="Tips are added to the order total."
+        />
+      </Sec>
+
+      <Sec title="Abandoned checkout emails" text="Send an email to customers who did not finish checking out.">
+        <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          Coming soon with Marketing. Xenon cannot send emails yet.
+        </p>
+      </Sec>
+
+      <Sec title="Checkout language">
+        <Line title="English">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">More languages coming soon</span>
+        </Line>
+        <div className="space-y-4 border-t border-slate-100 pt-4">
+          <p className="text-sm font-semibold text-slate-900">Edit checkout content</p>
+          <div>
+            <label className={label}>Order button text</label>
+            <input className={field} maxLength={30} value={opt.buttonText} onChange={(e) => set('buttonText', e.target.value)} placeholder="Place order" />
+          </div>
+          <div>
+            <label className={label}>Thank-you message</label>
+            <textarea
+              rows={3}
+              maxLength={300}
+              className={field}
+              placeholder="e.g. We will call you within 30 minutes to confirm your order."
+              value={base.thankYou}
+              onChange={(e) => setBase({ ...base, thankYou: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-slate-500">Shown to the customer right after they place an order.</p>
+          </div>
+        </div>
+      </Sec>
+
+      <Sec title="Advanced preferences">
+        <div className="divide-y divide-slate-100">
+          <Toggle
+            checked={base.requireAddress}
+            onChange={(v) => setBase({ ...base, requireAddress: v })}
+            title="Address collection: require a delivery address"
+            text="Customers must enter an address before they can place an order."
+          />
+          <div className="py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-slate-900">Add-to-cart limit</p>
+              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-800">Recommended</span>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              The most of one item a customer can order at once. It stops huge orders and keeps your stock levels private.
+            </p>
+            <input
+              type="number"
+              min="1"
+              max="99"
+              className={`${field} mt-2 max-w-[140px]`}
+              value={opt.maxQty}
+              onChange={(e) => set('maxQty', Number(e.target.value))}
+            />
+          </div>
+        </div>
+      </Sec>
+
+      <Sec title="Checkout rules" text="Rules for how your cart and checkout respond to customers.">
+        <div className="divide-y divide-slate-100">
+          <Toggle
+            checked={base.accepting}
+            onChange={(v) => setBase({ ...base, accepting: v })}
+            title="Accepting orders"
+            text="Turn this off when you are closed. Customers can still see your products, but cannot order."
+          />
+          <div className="py-3">
+            <label className="text-sm font-medium text-slate-900">Minimum order (₦)</label>
+            <input
+              type="number"
+              min="0"
+              placeholder="No minimum"
+              className={`${field} mt-2`}
+              value={base.minOrder}
+              onChange={(e) => setBase({ ...base, minOrder: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-slate-500">Customers cannot check out until their cart reaches this amount.</p>
+          </div>
+          <Toggle
+            checked={opt.ageCheck}
+            onChange={(v) => set('ageCheck', v)}
+            title="Ask customers to confirm they are 18 or older"
+            text="Adds a required checkbox at checkout. It is a confirmation, not a proof of age."
+          />
+        </div>
+      </Sec>
+
+      <div>
+        <button onClick={save} disabled={saving} className={primary}>
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+        <Note text={msg} />
+      </div>
     </div>
   );
 }

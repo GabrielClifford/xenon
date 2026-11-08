@@ -16,6 +16,14 @@ type Order = {
   payment_method: 'cod' | 'transfer';
   status: 'new' | 'preparing' | 'delivered' | 'cancelled';
   total: number;
+    email: string | null;
+  company: string | null;
+  address2: string | null;
+  alt_phone: string | null;
+  tip: number;
+  opt_email: boolean;
+  opt_sms: boolean;
+  opt_whatsapp: boolean;
        discount_code: string | null;
      discount_amount: number;
   created_at: string;
@@ -154,7 +162,10 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
               <div className="mt-3 text-sm">
                 <p className="font-medium">{o.customer_name}</p>
                 <a href={`tel:${o.phone}`} className="text-blue-600">{o.phone}</a>
-                {o.address && <p className="text-slate-600">{o.address}</p>}
+                                {o.alt_phone && <p className="text-slate-600">Second phone: {o.alt_phone}</p>}
+                {o.email && <p className="text-slate-600">{o.email}</p>}
+                {o.company && <p className="text-slate-600">{o.company}</p>}
+                {o.address && <p className="text-slate-600">{o.address}{o.address2 ? `, ${o.address2}` : ''}</p>}
                 {o.note && <p className="mt-1 text-slate-500">Note: {o.note}</p>}
               </div>
 
@@ -172,6 +183,14 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
        Discount ({o.discount_code}): −{naira(o.discount_amount)}
      </p>
    )}
+   
+                 {o.tip > 0 && <p className="mt-1 text-sm text-slate-600">Tip: {naira(o.tip)}</p>}
+              {(o.opt_email || o.opt_sms || o.opt_whatsapp) && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Agreed to receive news and offers by:{' '}
+                  {[o.opt_email && 'Email', o.opt_sms && 'SMS', o.opt_whatsapp && 'WhatsApp'].filter(Boolean).join(', ')}
+                </p>
+              )}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-slate-600">
