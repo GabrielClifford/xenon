@@ -6,6 +6,7 @@ import TemplatesCarousel from '@/components/home/TemplatesCarousel';
 import Faq from '@/components/home/Faq';
 import PricingPlans from '@/components/PricingPlans';
 import ReviewsMarquee from '@/components/ReviewsMarquee';
+import SocialLinks from '@/components/home/SocialLinks';
 
 export const metadata = {
   title: 'Xenon | Build Your Online Store',
@@ -165,6 +166,7 @@ export default function HomePage() {
             </Link>
             <p className="mt-1 text-xs text-slate-400">Build. Sell. Grow.</p>
             <p className="mt-4 max-w-xs text-sm text-slate-300">The ecommerce website builder for modern entrepreneurs.</p>
+                        <SocialLinks />
           </div>
           <div>
             <p className="text-sm font-semibold">Product</p>
