@@ -8,3 +8,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 .font-display { font-family: var(--font-poppins), system-ui, sans-serif; }
+/* Dark page background on the homepage only, so no white shows around or behind the phone's bars */
+html:has(.xenon-home) {
+  background-color: #030816;
+}

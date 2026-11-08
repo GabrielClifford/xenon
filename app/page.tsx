@@ -14,6 +14,12 @@ export const metadata = {
     'Create a beautiful online store in minutes. No coding needed. Add products, take orders and grow your business with Xenon.',
 };
 
+export const viewport = {
+  themeColor: '#030816',
+  colorScheme: 'dark' as const,
+  viewportFit: 'cover' as const,
+};
+
 const perks = [
   { icon: Rocket, title: 'Lightning Fast', text: 'Performance' },
   { icon: ShieldCheck, title: 'Secure & Reliable', text: 'Orders and data' },
@@ -26,7 +32,7 @@ const pill = 'inline-flex items-center rounded-full border border-blue-500/40 bg
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#030816] text-white">
+        <main className="xenon-home min-h-screen overflow-x-hidden bg-[#030816] text-white">
       <HomeNav />
 
       {/* Hero */}
@@ -185,7 +191,12 @@ export default function HomePage() {
             </ul>
           </div>
         </div>
-        <div className="border-t border-white/10 px-5 py-5 text-center text-xs text-slate-400">© 2026 Xenon. All rights reserved.</div>
+                <div
+          className="border-t border-white/10 px-5 pt-5 text-center text-xs text-slate-400"
+          style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}
+        >
+          © 2026 Xenon. All rights reserved.
+        </div>
       </footer>
     </main>
   );
