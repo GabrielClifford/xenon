@@ -47,35 +47,35 @@ export default function TemplatesCarousel() {
   }
 
   return (
-    <div className="relative min-w-0">
+    <div className="relative">
       <button
         onClick={() => scrollBy(-1)}
-        className="absolute -left-3 top-[42%] z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#0a1230] text-white hover:bg-blue-600 sm:h-10 sm:w-10"
+        className="absolute -left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#0a1230] text-white hover:bg-blue-600 sm:flex"
         aria-label="Previous"
       >
-        <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+        <ChevronLeft className="h-5 w-5" />
       </button>
       <button
         onClick={() => scrollBy(1)}
-        className="absolute -right-3 top-[42%] z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#0a1230] text-white hover:bg-blue-600 sm:h-10 sm:w-10"
+        className="absolute -right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-[#0a1230] text-white hover:bg-blue-600 sm:flex"
         aria-label="Next"
       >
-        <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+        <ChevronRight className="h-5 w-5" />
       </button>
 
       <div
         ref={ref}
         onScroll={onScroll}
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 [scrollbar-width:none] sm:gap-5 sm:pb-4 [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {cards.map((c) => (
           <div
             key={c.name}
-            className="min-w-full snap-start rounded-2xl border border-blue-400/30 bg-[#0a1230] p-2 shadow-[0_0_40px_-12px_rgba(59,130,246,0.6)] sm:min-w-[46%] sm:p-3 lg:min-w-[calc((100%-2.5rem)/3)]"
+            className="min-w-[78%] snap-start rounded-2xl border border-blue-400/30 bg-[#0a1230] p-3 shadow-[0_0_40px_-12px_rgba(59,130,246,0.6)] sm:min-w-[46%] lg:min-w-[calc((100%-2.5rem)/3)]"
           >
-            <div className="flex items-center justify-between px-1 pb-1.5 text-[9px] text-slate-300 sm:pb-2 sm:text-[10px]">
+            <div className="flex items-center justify-between px-1 pb-2 text-[10px] text-slate-300">
               <span className="font-semibold">{c.name}</span>
-              <span className="flex gap-1.5">
+              <span className="flex gap-2">
                 <Search className="h-3 w-3" />
                 <ShoppingCart className="h-3 w-3" />
               </span>
@@ -86,17 +86,17 @@ export default function TemplatesCarousel() {
                 alt={`${c.name} template preview`}
                 fill
                 sizes="(min-width: 1024px) 300px, 80vw"
-                className={c.fit === 'contain' ? 'object-contain p-3 sm:p-4' : 'object-cover'}
+                className={c.fit === 'contain' ? 'object-contain p-4' : 'object-cover'}
               />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-white sm:p-3">
-                <p className="font-display text-sm font-bold leading-none sm:text-lg">{c.name}</p>
-                <p className="mt-0.5 text-[9px] text-slate-200 sm:mt-1 sm:text-[11px]">{c.niche}</p>
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
+                <p className="font-display text-lg font-bold leading-none">{c.name}</p>
+                <p className="mt-1 text-[11px] text-slate-200">{c.niche}</p>
               </div>
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:mt-3 sm:gap-2">
+            <div className="mt-3 grid grid-cols-3 gap-2">
               {c.thumbs.map((t, i) => (
                 <div key={t + i} className="relative aspect-square overflow-hidden rounded-lg bg-white">
-                  <Image src={t} alt="" fill sizes="100px" className="object-contain p-1 sm:p-1.5" />
+                  <Image src={t} alt="" fill sizes="100px" className="object-contain p-1.5" />
                 </div>
               ))}
             </div>
@@ -104,9 +104,9 @@ export default function TemplatesCarousel() {
         ))}
       </div>
 
-      <div className="mt-2 flex justify-center gap-2 sm:mt-3">
+      <div className="mt-3 flex justify-center gap-2">
         {cards.map((c, i) => (
-          <span key={c.name} className={`h-1.5 rounded-full transition-all sm:h-2 ${i === active ? 'w-5 bg-blue-500' : 'w-1.5 bg-white/25 sm:w-2'}`} />
+          <span key={c.name} className={`h-2 rounded-full transition-all ${i === active ? 'w-5 bg-blue-500' : 'w-2 bg-white/25'}`} />
         ))}
       </div>
     </div>
