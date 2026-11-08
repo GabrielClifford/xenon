@@ -15,7 +15,14 @@ export type SiteProduct = {
 };
 
 export type Bank = { bank_name: string; account_number: string; account_name: string };
-export type Shop = { businessId: string; bank: Bank | null };
+export type CheckoutSettings = {
+  requireAddress: boolean;
+  showNote: boolean;
+  accepting: boolean;
+  minOrder: number;
+  thankYou: string | null;
+};
+export type Shop = { businessId: string; bank: Bank | null; checkout: CheckoutSettings };
 
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
 const field = 'w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500';
@@ -28,7 +35,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const [payment, setPayment] = useState<'cod' | 'transfer'>('cod');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{ number: number; total: number; method: string } | null>(null);
+  const [result, setResult] = useState<{ number: number; total: number; method: string; thankYou: string | null } | null>(null);
   const [code, setCode] = useState('');
   const [discount, setDiscount] = useState<{ code: string; amount: number } | null>(null);
   const [codeMsg, setCodeMsg] = useState('');
@@ -39,19 +46,22 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   );
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
-    const payable = Math.max(0, total - (discount?.amount ?? 0));
+  const payable = Math.max(0, total - (discount?.amount ?? 0));
 
   if (products.length === 0) return null;
 
-  const canOrder = !!shop;
+  const canOrder = !!shop && shop.checkout.accepting;
+  const minOrder = shop?.checkout.minOrder ?? 0;
+  const belowMin = total < minOrder;
   const maxFor = (p: SiteProduct) => (p.stock === null ? 99 : p.stock);
 
-    function setQty(p: SiteProduct, qty: number) {
+  function setQty(p: SiteProduct, qty: number) {
     const q = Math.max(0, Math.min(qty, maxFor(p)));
     setCart((c) => ({ ...c, [p.id]: q }));
     setDiscount(null);
     setCodeMsg('');
   }
+
   async function applyCode() {
     if (!shop || !code.trim()) return;
     setCodeMsg('');
@@ -67,9 +77,11 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     setDiscount({ code: code.trim().toUpperCase(), amount: data.amount });
     setCodeMsg('Discount applied.');
   }
+
   async function placeOrder() {
     if (!shop) return;
     if (!form.name.trim() || !form.phone.trim()) return setError('Please enter your name and phone number.');
+    if (shop.checkout.requireAddress && !form.address.trim()) return setError('Please enter your delivery address.');
     setBusy(true);
     setError('');
     const { data, error: err } = await createClient().rpc('place_order', {
@@ -84,9 +96,9 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     });
     setBusy(false);
     if (err) return setError(err.message);
-    setResult({ number: data.order_number, total: data.total, method: payment });
+    setResult({ number: data.order_number, total: data.total, method: payment, thankYou: data.thank_you ?? null });
     setCart({});
-        setDiscount(null);
+    setDiscount(null);
     setCode('');
     setCodeMsg('');
     setStep('done');
@@ -108,6 +120,11 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
       <section id="products" className="bg-white px-5 py-14">
         <div className="mx-auto max-w-6xl">
           <h2 className="text-2xl font-bold text-slate-900">Products</h2>
+          {shop && !shop.checkout.accepting && (
+            <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              We are not taking orders right now. Please check back soon.
+            </p>
+          )}
           {[...groups.entries()].map(([category, items]) => (
             <div key={category} className="mt-8">
               {groups.size > 1 && <h3 className="mb-4 text-lg font-semibold text-slate-700">{category}</h3>}
@@ -162,7 +179,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
         </div>
       </section>
 
-      {canOrder && (count > 0 || open) && !open && (
+      {canOrder && count > 0 && !open && (
         <button
           onClick={() => {
             setStep('cart');
@@ -226,8 +243,16 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                 <div className="space-y-4">
                   <input className={field} placeholder="Your name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                   <input className={field} placeholder="Phone number *" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                  <textarea className={field} rows={2} placeholder="Delivery address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-                  <textarea className={field} rows={2} placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+                  <textarea
+                    className={field}
+                    rows={2}
+                    placeholder={shop?.checkout.requireAddress ? 'Delivery address *' : 'Delivery address (optional)'}
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  />
+                  {shop?.checkout.showNote && (
+                    <textarea className={field} rows={2} placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+                  )}
                   <div>
                     <p className="mb-2 text-sm font-medium">How will you pay?</p>
                     <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 p-3 text-sm">
@@ -246,6 +271,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
               {step === 'done' && result && (
                 <div className="space-y-4 text-sm text-slate-700">
                   <p className="text-base font-semibold text-slate-900">Thank you! Your order #{result.number} has been received.</p>
+                  {result.thankYou && <p className="whitespace-pre-line">{result.thankYou}</p>}
                   <p>Total: <b>{naira(result.total)}</b></p>
                   {result.method === 'transfer' && shop?.bank ? (
                     <div className="rounded-xl bg-slate-50 p-4">
@@ -264,7 +290,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
             {step !== 'done' && lines.length > 0 && (
               <div className="border-t border-slate-200 p-4">
-                                <div className="mb-3 flex gap-2">
+                <div className="mb-3 flex gap-2">
                   <input
                     className={field}
                     placeholder="Discount code"
@@ -295,10 +321,16 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                   <span className="text-slate-500">Total</span>
                   <span className="font-bold">{naira(payable)}</span>
                 </div>
+                {belowMin && (
+                  <p className="mb-3 text-xs text-amber-700">
+                    The minimum order is {naira(minOrder)}. Add {naira(minOrder - total)} more to check out.
+                  </p>
+                )}
                 {step === 'cart' ? (
                   <button
                     onClick={() => setStep('details')}
-                    className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+                    disabled={belowMin}
+                    className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     Checkout
                   </button>
@@ -315,7 +347,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     </button>
                     <button
                       onClick={placeOrder}
-                      disabled={busy}
+                      disabled={busy || belowMin}
                       className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                     >
                       {busy ? 'Placing order...' : 'Place order'}

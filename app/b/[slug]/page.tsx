@@ -54,19 +54,28 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
 
   return (
     <>
-      <ArtisanSite
-  p={p}
-  s={s}
-  sample={false}
-  products={products ?? []}
-  shop={{
-    businessId: b.id,
-    bank:
-      b.bank_name && b.account_number
-        ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }
-        : null,
-  }}
-/>
+    
+       <ArtisanSite
+        p={p}
+        s={s}
+        sample={false}
+        products={products ?? []}
+        shop={{
+          businessId: b.id,
+          bank:
+            b.bank_name && b.account_number
+              ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }
+              : null,
+          checkout: {
+            requireAddress: b.checkout_require_address ?? false,
+            showNote: b.checkout_show_note ?? true,
+            accepting: b.checkout_accepting ?? true,
+            minOrder: Number(b.checkout_min_order ?? 0),
+            thankYou: b.checkout_thank_you ?? null,
+          },
+        }}
+      />
+
       <VisitTracker businessId={b.id} />
     </>
   );

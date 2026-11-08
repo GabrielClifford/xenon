@@ -26,7 +26,7 @@ const items: Item[] = [
   { id: 'roles', label: 'Roles', icon: KeyRound, sub: true, soon: 'Choose what each team member can see and do.' },
   { id: 'security', label: 'Security', icon: ShieldCheck, sub: true },
   { id: 'payments', label: 'Payments', icon: Wallet },
-  { id: 'checkout', label: 'Checkout', icon: ShoppingCart, soon: 'Control what customers fill in at checkout, such as required fields and the thank-you message.' },
+  { id: 'checkout', label: 'Checkout', icon: ShoppingCart },
   { id: 'accounts', label: 'Customer accounts', icon: UserIcon, soon: 'Let your customers create accounts to see their past orders.' },
   { id: 'shipping', label: 'Shipping and delivery', icon: Truck, soon: 'Set delivery fees, pickup, and the areas you deliver to.' },
   { id: 'taxes', label: 'Taxes and duties', icon: Percent, soon: 'Add tax to your prices at checkout.' },
@@ -423,7 +423,141 @@ function DomainsPage({ user }: { user: User }) {
     </div>
   );
 }
+function Toggle({
+  checked,
+  onChange,
+  title,
+  text,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  title: string;
+  text: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 py-3">
+      <input type="checkbox" className="mt-1 h-4 w-4" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        <span className="block text-sm font-medium text-slate-900">{title}</span>
+        <span className="block text-xs text-slate-500">{text}</span>
+      </span>
+    </label>
+  );
+}
 
+function CheckoutPage({ user }: { user: User }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [s, setS] = useState({ accepting: true, requireAddress: false, showNote: true, minOrder: '', thankYou: '' });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    createClient()
+      .from('businesses')
+      .select('id,checkout_accepting,checkout_require_address,checkout_show_note,checkout_min_order,checkout_thank_you')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setBizId(data?.id ?? null);
+        if (data) {
+          setS({
+            accepting: data.checkout_accepting ?? true,
+            requireAddress: data.checkout_require_address ?? false,
+            showNote: data.checkout_show_note ?? true,
+            minOrder: Number(data.checkout_min_order) > 0 ? String(data.checkout_min_order) : '',
+            thankYou: data.checkout_thank_you ?? '',
+          });
+        }
+      });
+  }, [user.id]);
+
+  async function save() {
+    if (!bizId) return;
+    const min = Number(s.minOrder) || 0;
+    if (min < 0) return setMsg('Could not save: the minimum order cannot be negative.');
+    setSaving(true);
+    setMsg('');
+    const { error } = await createClient()
+      .from('businesses')
+      .update({
+        checkout_accepting: s.accepting,
+        checkout_require_address: s.requireAddress,
+        checkout_show_note: s.showNote,
+        checkout_min_order: min,
+        checkout_thank_you: s.thankYou.trim() || null,
+      })
+      .eq('id', bizId);
+    setSaving(false);
+    setMsg(error ? 'Could not save: ' + error.message : 'Saved. Your website now uses these checkout settings.');
+  }
+
+  return (
+    <div className="space-y-5">
+      <Heading title="Checkout" text="Control what customers see and fill in when they order." />
+      {bizId === null ? (
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      ) : (
+        <>
+          <div className={`${card} divide-y divide-slate-100 !py-2`}>
+            <Toggle
+              checked={s.accepting}
+              onChange={(v) => setS({ ...s, accepting: v })}
+              title="Accepting orders"
+              text="Turn this off when you are closed. Customers can still see your products, but cannot order."
+            />
+            <Toggle
+              checked={s.requireAddress}
+              onChange={(v) => setS({ ...s, requireAddress: v })}
+              title="Require a delivery address"
+              text="Customers must enter an address before they can place an order."
+            />
+            <Toggle
+              checked={s.showNote}
+              onChange={(v) => setS({ ...s, showNote: v })}
+              title="Show a note box"
+              text="Lets customers add a message, such as a delivery instruction."
+            />
+          </div>
+
+          <div className={card}>
+            <div className="space-y-4">
+              <div>
+                <label className={label}>Minimum order (₦)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="No minimum"
+                  className={field}
+                  value={s.minOrder}
+                  onChange={(e) => setS({ ...s, minOrder: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-slate-500">Customers cannot check out until their cart reaches this amount.</p>
+              </div>
+              <div>
+                <label className={label}>Thank-you message</label>
+                <textarea
+                  rows={3}
+                  maxLength={300}
+                  placeholder="e.g. We will call you within 30 minutes to confirm your order."
+                  className={field}
+                  value={s.thankYou}
+                  onChange={(e) => setS({ ...s, thankYou: e.target.value })}
+                />
+                <p className="mt-1 text-xs text-slate-500">Shown to the customer right after they place an order.</p>
+              </div>
+            </div>
+            <button onClick={save} disabled={saving || bizId === undefined} className={`${primary} mt-5`}>
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <Note text={msg} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -460,6 +594,8 @@ export default function SettingsPanel({
         return <ChannelsPage onNavigate={onNavigate} />;
       case 'domains':
         return <DomainsPage user={user} />;
+              case 'checkout':
+        return <CheckoutPage user={user} />;
       default:
         return null;
     }
