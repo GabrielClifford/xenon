@@ -21,6 +21,7 @@ import TemplatesPanel from '@/components/TemplatesPanel';
 import AnalyticsPanel from '@/components/AnalyticsPanel';
 import MarketingPanel from '@/components/MarketingPanel';
 import SupportPanel from '@/components/SupportPanel';
+import SettingsPanel from '@/components/SettingsPanel';
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
 type NavId = Tab | 'analytics' | 'marketing' | 'templates' | 'support';
@@ -422,36 +423,13 @@ export default function DashboardPage() {
                 <ChannelsPanel user={user} channel={channel} onSelect={setChannel} />
               </div>
             )}
-
-            {tab === 'settings' && (
-              <div className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h1 className="font-display text-2xl font-bold text-slate-900">Settings</h1>
-                <dl className="mt-6 space-y-4 text-sm">
-                  <div className="flex justify-between gap-4 border-b border-slate-100 pb-3">
-                    <dt className="text-slate-500">Name</dt>
-                    <dd className="font-medium">{meta.full_name || '-'}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4 border-b border-slate-100 pb-3">
-                    <dt className="text-slate-500">Email</dt>
-                    <dd className="break-all font-medium">{user.email}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4 border-b border-slate-100 pb-3">
-                    <dt className="text-slate-500">Phone</dt>
-                    <dd className="font-medium">{meta.phone || '-'}</dd>
-                  </div>
-                  <div className="flex justify-between gap-4 border-b border-slate-100 pb-3">
-                    <dt className="text-slate-500">Account type</dt>
-                    <dd className="font-medium">{isArtisan ? `Business owner${meta.trade ? ` · ${meta.trade}` : ''}` : 'Customer'}</dd>
-                  </div>
-                </dl>
-                <button
-                  onClick={logout}
-                  className="mt-6 rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  Log out
-                </button>
+            
+            {mount('settings') && (
+              <div className={show('settings')}>
+                <SettingsPanel user={user} onNavigate={setTab} onLogout={logout} onUserChange={setUser} />
               </div>
             )}
+
           </div>
         </main>
       </div>
