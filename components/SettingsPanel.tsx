@@ -10,6 +10,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import type { Tab } from '@/components/DashboardOverview';
 import { defaultOptions, readOptions, type CheckoutOptions, type FieldMode, type OptIn } from '@/lib/checkout';
+import { defaultAccounts, readAccounts, type AccountsOptions } from '@/lib/accounts';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -28,7 +29,7 @@ const items: Item[] = [
   { id: 'security', label: 'Security', icon: ShieldCheck, sub: true },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'checkout', label: 'Checkout', icon: ShoppingCart },
-  { id: 'accounts', label: 'Customer accounts', icon: UserIcon, soon: 'Let your customers create accounts to see their past orders.' },
+  { id: 'accounts', label: 'Customer accounts', icon: UserIcon },
   { id: 'shipping', label: 'Shipping and delivery', icon: Truck, soon: 'Set delivery fees, pickup, and the areas you deliver to.' },
   { id: 'taxes', label: 'Taxes and duties', icon: Percent, soon: 'Add tax to your prices at checkout.' },
   { id: 'locations', label: 'Locations', icon: MapPin, soon: 'Manage your business addresses and where customers can find you.' },
@@ -605,7 +606,7 @@ function CheckoutPage({ user }: { user: User }) {
             <input type="checkbox" className="mt-1 h-4 w-4" disabled />
             <span>
               <span className="block text-sm font-medium text-slate-900">Require customers to sign in before checkout</span>
-              <span className="block text-xs text-slate-500">Available once Customer accounts are ready.</span>
+              <span className="block text-xs text-slate-500">Turn this on in Settings, Customer accounts.</span>
             </span>
           </label>
         </div>
@@ -790,6 +791,194 @@ function CheckoutPage({ user }: { user: User }) {
     </div>
   );
 }
+type Cust = { id: string; full_name: string | null; email: string | null; phone: string | null; credit: number };
+
+function CustomerAccountsPage({ user }: { user: User }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [slug, setSlug] = useState('');
+  const [a, setA] = useState<AccountsOptions>(defaultAccounts);
+  const [custs, setCusts] = useState<Cust[]>([]);
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [copied, setCopied] = useState(false);
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+
+  function set<K extends keyof AccountsOptions>(k: K, v: AccountsOptions[K]) {
+    setA((x) => ({ ...x, [k]: v }));
+  }
+
+  async function loadCusts(id: string) {
+    const { data } = await createClient()
+      .from('store_customers')
+      .select('id,full_name,email,phone,credit')
+      .eq('business_id', id)
+      .order('created_at', { ascending: false });
+    setCusts((data as Cust[]) ?? []);
+  }
+
+  useEffect(() => {
+    createClient()
+      .from('businesses')
+      .select('id,slug,accounts_options')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setBizId(data?.id ?? null);
+        if (data) {
+          setSlug(data.slug);
+          setA(readAccounts(data.accounts_options));
+          loadCusts(data.id);
+        }
+      });
+  }, [user.id]);
+
+  async function save() {
+    if (!bizId) return;
+    setSaving(true);
+    setMsg('');
+    const { error } = await createClient()
+      .from('businesses')
+      .update({ accounts_options: { ...a, returnDays: Math.min(90, Math.max(1, Math.round(a.returnDays) || 14)) } })
+      .eq('id', bizId);
+    setSaving(false);
+    setMsg(error ? 'Could not save: ' + error.message : 'Saved. Your store now uses these account settings.');
+  }
+
+  async function grant(c: Cust) {
+    const amt = Number(amounts[c.id]);
+    if (!amt) return setMsg('Could not add credit: enter an amount first.');
+    const { data, error } = await createClient().rpc('grant_store_credit', { p_customer_id: c.id, p_amount: amt });
+    if (error) return setMsg('Could not add credit: ' + error.message);
+    setCusts((list) => list.map((x) => (x.id === c.id ? { ...x, credit: Number(data) } : x)));
+    setAmounts((m) => ({ ...m, [c.id]: '' }));
+    setMsg(`Done. ${c.full_name || c.email} now has ₦${Number(data).toLocaleString('en-NG')} store credit.`);
+  }
+
+  const link = slug ? `${origin}/b/${slug}/account` : '';
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Customer accounts" />
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-7">
+      <Heading title="Customer accounts" text="Let your customers sign in to see their orders and order again." />
+
+      <Sec title="Customer accounts" text="Turn this on to let customers create accounts on your store.">
+        <div className="divide-y divide-slate-100">
+          <Toggle checked={a.enabled} onChange={(v) => set('enabled', v)} title="Turn on customer accounts" text="Customers get a page where they sign in, see their orders and order again." />
+          <Toggle checked={a.allowSignup} onChange={(v) => set('allowSignup', v)} title="Allow new customers to create accounts" text="Turn this off to close sign-ups. People who already have an account can still sign in." />
+          <Toggle checked={a.requireSignIn} onChange={(v) => set('requireSignIn', v)} title="Require customers to sign in before checkout" text="Only signed-in customers can place orders." />
+        </div>
+      </Sec>
+
+      <Sec title="Sign-in links">
+        <Toggle checked={a.showSignIn} onChange={(v) => set('showSignIn', v)} title="Show sign-in links" text="Show a Sign in link above your products and at checkout." />
+      </Sec>
+
+      <Sec title="Order actions" text="What signed-in customers can do with their past orders.">
+        <div className="divide-y divide-slate-100">
+          <Toggle checked={a.allowBuyAgain} onChange={(v) => set('allowBuyAgain', v)} title="Buy again" text="Adds the items from an old order back to the cart." />
+          <Toggle checked={a.allowCancel} onChange={(v) => set('allowCancel', v)} title="Cancellation requests" text="Customers can ask to cancel an order before you start preparing it. You decide what to do." />
+          <Toggle checked={a.allowReturn} onChange={(v) => set('allowReturn', v)} title="Return requests" text="Customers can ask to return an order after it is delivered." />
+          {a.allowReturn && (
+            <div className="py-3">
+              <label className="text-sm font-medium text-slate-900">Return window (days after ordering)</label>
+              <input type="number" min="1" max="90" className={`${field} mt-2 max-w-[140px]`} value={a.returnDays} onChange={(e) => set('returnDays', Number(e.target.value))} />
+            </div>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-slate-500">Requests show on the order in your Orders page, where you can dismiss them.</p>
+      </Sec>
+
+      <Sec title="Authentication" text="How customers sign in.">
+        <label className="flex items-start gap-3 py-2">
+          <input type="radio" checked readOnly className="mt-1" />
+          <span>
+            <span className="block text-sm font-medium text-slate-900">Email and password</span>
+            <span className="block text-xs text-slate-500">Customers sign in with their email address and a password.</span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 py-2 opacity-60">
+          <input type="radio" disabled className="mt-1" />
+          <span>
+            <span className="block text-sm font-medium text-slate-900">One-time code by email</span>
+            <span className="block text-xs text-slate-500">Coming soon. Xenon cannot send emails yet.</span>
+          </span>
+        </label>
+      </Sec>
+
+      <Sec title="Store credit" text="Give customers credit they can spend at checkout, for example after a return.">
+        <Toggle checked={a.storeCredit} onChange={(v) => set('storeCredit', v)} title="Allow customers to see and spend store credit" text="Customers see their balance and can apply it at checkout." />
+        <div className="mt-2 border-t border-slate-100 pt-3">
+          <p className="text-sm font-semibold text-slate-900">Your customers</p>
+          {custs.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">No customers have created an account yet.</p>
+          ) : (
+            <div className="mt-2 divide-y divide-slate-100">
+              {custs.map((c) => (
+                <div key={c.id} className="flex flex-wrap items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">{c.full_name || 'No name'}</p>
+                    <p className="truncate text-xs text-slate-500">{c.email}</p>
+                  </div>
+                  <p className="text-sm font-semibold">₦{Number(c.credit).toLocaleString('en-NG')}</p>
+                  <input
+                    type="number"
+                    placeholder="± amount"
+                    className={`${field} !w-28 !py-2`}
+                    value={amounts[c.id] ?? ''}
+                    onChange={(e) => setAmounts((m) => ({ ...m, [c.id]: e.target.value }))}
+                  />
+                  <button onClick={() => grant(c)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium hover:bg-slate-50">
+                    Update credit
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-xs text-slate-500">Type a positive amount to add credit, or a negative one to remove it.</p>
+        </div>
+      </Sec>
+
+      <Sec title="URL" text="Use this link anywhere you want customers to reach their account, such as WhatsApp or Instagram.">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} className={`${field} min-w-0 flex-1 bg-slate-50`} />
+          <button onClick={copy} className={`${primary} flex items-center justify-center gap-2`}>
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Copied!' : 'Copy link'}
+          </button>
+        </div>
+      </Sec>
+
+      <div>
+        <button onClick={save} disabled={saving} className={primary}>
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+        <Note text={msg} />
+      </div>
+    </div>
+  );
+}
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -828,6 +1017,8 @@ export default function SettingsPanel({
         return <DomainsPage user={user} />;
               case 'checkout':
         return <CheckoutPage user={user} />;
+              case 'accounts':
+        return <CustomerAccountsPage user={user} />;
       default:
         return null;
     }

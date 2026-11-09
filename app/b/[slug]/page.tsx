@@ -7,6 +7,7 @@ import type { Provider } from '@/data/providers';
 import type { SiteSettings, ThemeName } from '@/data/sites';
 import { Skeleton } from '@/components/Skeleton';
 import { readOptions } from '@/lib/checkout';
+import { readAccounts } from '@/lib/accounts';
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -63,6 +64,8 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
         products={products ?? []}
         shop={{
           businessId: b.id,
+          slug: b.slug,
+          accounts: readAccounts(b.accounts_options),
           bank:
             b.bank_name && b.account_number
               ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }

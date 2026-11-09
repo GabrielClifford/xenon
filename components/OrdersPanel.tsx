@@ -16,6 +16,9 @@ type Order = {
   payment_method: 'cod' | 'transfer';
   status: 'new' | 'preparing' | 'delivered' | 'cancelled';
   total: number;
+    credit_used: number;
+  request_type: 'cancel' | 'return' | null;
+  request_note: string | null;
     email: string | null;
   company: string | null;
   address2: string | null;
@@ -87,7 +90,10 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
     await supabase.from('orders').update({ status }).eq('id', o.id);
     setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, status } : x)));
   }
-
+  async function clearRequest(o: Order) {
+    await supabase.from('orders').update({ request_type: null, request_note: null, request_at: null }).eq('id', o.id);
+    setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, request_type: null, request_note: null } : x)));
+  }
   async function saveBank() {
     if (!businessId) return;
     const { error } = await supabase
@@ -185,6 +191,19 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
    )}
    
                  {o.tip > 0 && <p className="mt-1 text-sm text-slate-600">Tip: {naira(o.tip)}</p>}
+                               {o.credit_used > 0 && <p className="mt-1 text-sm text-slate-600">Store credit used: {naira(o.credit_used)}</p>}
+              {o.request_type && (
+                <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="font-semibold">
+                    Customer asked to {o.request_type === 'cancel' ? 'cancel this order' : 'return this order'}
+                  </p>
+                  {o.request_note && <p className="mt-1">&ldquo;{o.request_note}&rdquo;</p>}
+                  <button onClick={() => clearRequest(o)} className="mt-2 text-xs font-semibold underline">
+                    Dismiss request
+                  </button>
+                </div>
+              )}
+              
               {(o.opt_email || o.opt_sms || o.opt_whatsapp) && (
                 <p className="mt-1 text-xs text-slate-500">
                   Agreed to receive news and offers by:{' '}

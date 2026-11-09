@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { defaultOptions, type CheckoutOptions, type FieldMode } from '@/lib/checkout';
+import { defaultAccounts, type AccountsOptions } from '@/lib/accounts';
 
 export type SiteProduct = {
   id: string;
@@ -24,9 +26,16 @@ export type CheckoutSettings = {
   thankYou: string | null;
   options: CheckoutOptions;
 };
-export type Shop = { businessId: string; bank: Bank | null; checkout: CheckoutSettings };
+export type Shop = {
+  businessId: string;
+  slug: string;
+  bank: Bank | null;
+  checkout: CheckoutSettings;
+  accounts: AccountsOptions;
+};
 
 type Tracked = { status: string; total: number; created_at: string; items: { name: string; quantity: number }[] };
+type Account = { id: string; full_name: string | null; email: string | null; phone: string | null; credit: number };
 
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
 const field = 'w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500';
@@ -44,6 +53,7 @@ const emptyForm = {
 
 export default function SiteProducts({ products, shop }: { products: SiteProduct[]; shop?: Shop }) {
   const opt = shop?.checkout.options ?? defaultOptions;
+  const acc = shop?.accounts ?? defaultAccounts;
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
@@ -68,6 +78,66 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const [tracked, setTracked] = useState<Tracked | null>(null);
   const [trackMsg, setTrackMsg] = useState('');
   const [trackBusy, setTrackBusy] = useState(false);
+  const [account, setAccount] = useState<Account | null | undefined>(undefined);
+  const [useCredit, setUseCredit] = useState(false);
+
+  // restore a saved cart (buy again, or coming back from sign-in) and load the signed-in customer
+  useEffect(() => {
+    if (!shop) return;
+    try {
+      const key = `xenon-again-${shop.businessId}`;
+      const raw = window.localStorage.getItem(key);
+      if (raw) {
+        window.localStorage.removeItem(key);
+        const saved = JSON.parse(raw) as { t: number; items: { id: string; qty: number }[] };
+        if (Date.now() - saved.t < 3600000) {
+          const next: Record<string, number> = {};
+          for (const w of saved.items) {
+            const p = products.find((x) => x.id === w.id);
+            if (!p || (p.stock !== null && p.stock <= 0)) continue;
+            next[p.id] = Math.max(1, Math.min(w.qty, opt.maxQty, p.stock ?? opt.maxQty));
+          }
+          if (Object.keys(next).length > 0) {
+            setCart(next);
+            setStep('cart');
+            setOpen(true);
+          }
+        }
+      }
+    } catch {
+      /* ignore bad saved data */
+    }
+
+    if (!acc.enabled) {
+      setAccount(null);
+      return;
+    }
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      const u = data.user;
+      if (!u || (u.user_metadata as { role?: string } | null)?.role === 'artisan') return setAccount(null);
+      const { data: row } = await supabase
+        .from('store_customers')
+        .select('id,full_name,email,phone,credit')
+        .eq('business_id', shop.businessId)
+        .eq('user_id', u.id)
+        .maybeSingle();
+      const r = (row as Account | null) ?? null;
+      setAccount(r);
+      if (r) {
+        const parts = (r.full_name ?? '').trim().split(/\s+/);
+        setForm((f) => ({
+          ...f,
+          name: f.name || r.full_name || '',
+          first: f.first || parts[0] || '',
+          last: f.last || parts.slice(1).join(' '),
+          phone: f.phone || r.phone || '',
+          email: f.email || r.email || '',
+        }));
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop?.businessId]);
 
   const lines = useMemo(
     () => products.filter((p) => cart[p.id] > 0).map((p) => ({ p, qty: cart[p.id] })),
@@ -83,14 +153,30 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
       : tipChoice === 'custom'
         ? Math.min(total, Math.max(0, Math.round(Number(customTip) || 0)))
         : Math.round((total * Number(tipChoice)) / 100);
-  const grand = payable + tipAmount;
+  const creditAvailable = acc.enabled && acc.storeCredit && !!account && account.credit > 0;
+  const creditApplied = useCredit && creditAvailable && account ? Math.min(account.credit, payable + tipAmount) : 0;
+  const grand = payable + tipAmount - creditApplied;
 
   if (products.length === 0) return null;
 
   const canOrder = !!shop && shop.checkout.accepting;
   const minOrder = shop?.checkout.minOrder ?? 0;
   const belowMin = total < minOrder;
+  const needSignIn = acc.enabled && acc.requireSignIn && account === null;
+  const accountHref = shop ? `/b/${shop.slug}/account` : '#';
   const maxFor = (p: SiteProduct) => Math.min(opt.maxQty, p.stock === null ? opt.maxQty : p.stock);
+
+  function saveCartForReturn() {
+    if (!shop || lines.length === 0) return;
+    try {
+      window.localStorage.setItem(
+        `xenon-again-${shop.businessId}`,
+        JSON.stringify({ t: Date.now(), items: lines.map((l) => ({ id: l.p.id, qty: l.qty })) })
+      );
+    } catch {
+      /* storage blocked */
+    }
+  }
 
   function setQty(p: SiteProduct, qty: number) {
     const q = Math.max(0, Math.min(qty, maxFor(p)));
@@ -117,6 +203,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
   async function placeOrder() {
     if (!shop) return;
+    if (needSignIn) return setError('Please sign in to place an order.');
     const split = opt.nameMode === 'first_last';
     const fullName = split ? `${form.first.trim()} ${form.last.trim()}`.trim() : form.name.trim();
     if (split ? !form.first.trim() || !form.last.trim() : !fullName)
@@ -133,6 +220,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
     setBusy(true);
     setError('');
+    const usedCredit = creditApplied;
     const { data, error: err } = await createClient().rpc('place_order', {
       p_business_id: shop.businessId,
       p_name: fullName,
@@ -151,10 +239,13 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
       p_opt_sms: opt.optSms !== 'off' && optIn.sms,
       p_opt_whatsapp: opt.optWhatsapp !== 'off' && optIn.whatsapp,
       p_age_ok: opt.ageCheck ? ageOk : false,
+      p_use_credit: usedCredit > 0,
     });
     setBusy(false);
     if (err) return setError(err.message);
     setResult({ number: data.order_number, total: data.total, method: payment, thankYou: data.thank_you ?? null });
+    if (usedCredit > 0) setAccount((a) => (a ? { ...a, credit: Math.max(0, a.credit - usedCredit) } : a));
+    setUseCredit(false);
     setCart({});
     setDiscount(null);
     setCode('');
@@ -201,17 +292,24 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-slate-900">Products</h2>
-            {shop && opt.trackOrders && (
-              <button
-                onClick={() => {
-                  setStep('track');
-                  setOpen(true);
-                }}
-                className="text-sm font-medium text-blue-600 hover:underline"
-              >
-                Track my order
-              </button>
-            )}
+            <div className="flex items-center gap-5">
+              {shop && acc.enabled && acc.showSignIn && (
+                <Link href={accountHref} className="text-sm font-medium text-blue-600 hover:underline">
+                  {account ? 'My account' : 'Sign in'}
+                </Link>
+              )}
+              {shop && opt.trackOrders && (
+                <button
+                  onClick={() => {
+                    setStep('track');
+                    setOpen(true);
+                  }}
+                  className="text-sm font-medium text-blue-600 hover:underline"
+                >
+                  Track my order
+                </button>
+              )}
+            </div>
           </div>
           {shop && !shop.checkout.accepting && (
             <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -334,6 +432,20 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
               {step === 'details' && (
                 <div className="space-y-4">
+                  {acc.enabled &&
+                    (account ? (
+                      <p className="rounded-xl bg-blue-50 px-4 py-2.5 text-sm text-blue-900">
+                        Signed in as <b>{account.full_name || account.email}</b>
+                      </p>
+                    ) : acc.showSignIn ? (
+                      <p className="text-sm text-slate-600">
+                        Have an account?{' '}
+                        <Link href={accountHref} onClick={saveCartForReturn} className="font-semibold text-blue-600 underline">
+                          Sign in
+                        </Link>
+                      </p>
+                    ) : null)}
+
                   {opt.nameMode === 'first_last' ? (
                     <div className="grid grid-cols-2 gap-3">
                       <input className={field} placeholder="First name *" value={form.first} onChange={(e) => setForm({ ...form, first: e.target.value })} />
@@ -422,6 +534,13 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     </label>
                   )}
 
+                  {creditAvailable && account && (
+                    <label className="flex items-start gap-2 text-sm text-slate-700">
+                      <input type="checkbox" className="mt-0.5" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
+                      Use my store credit ({naira(account.credit)} available)
+                    </label>
+                  )}
+
                   <div>
                     <p className="mb-2 text-sm font-medium">How will you pay?</p>
                     <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 p-3 text-sm">
@@ -442,7 +561,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                   <p className="text-base font-semibold text-slate-900">Thank you! Your order #{result.number} has been received.</p>
                   {result.thankYou && <p className="whitespace-pre-line">{result.thankYou}</p>}
                   <p>Total: <b>{naira(result.total)}</b></p>
-                  {result.method === 'transfer' && shop?.bank ? (
+                  {result.method === 'transfer' && shop?.bank && result.total > 0 ? (
                     <div className="rounded-xl bg-slate-50 p-4">
                       <p className="font-semibold text-slate-900">Please transfer to:</p>
                       <p className="mt-2">{shop.bank.bank_name}</p>
@@ -450,8 +569,10 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                       <p>{shop.bank.account_name}</p>
                       <p className="mt-2 text-xs text-slate-500">Use order #{result.number} as the reference.</p>
                     </div>
-                  ) : (
+                  ) : result.total > 0 ? (
                     <p>You will pay when your order is delivered. The business will contact you shortly.</p>
+                  ) : (
+                    <p>Your store credit covered this order. The business will contact you shortly.</p>
                   )}
                   {opt.trackOrders && (
                     <p className="text-xs text-slate-500">
@@ -522,6 +643,12 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     <span>{naira(tipAmount)}</span>
                   </div>
                 )}
+                {creditApplied > 0 && (
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-slate-500">Store credit</span>
+                    <span className="text-green-700">−{naira(creditApplied)}</span>
+                  </div>
+                )}
                 <div className="mb-3 flex justify-between text-sm">
                   <span className="text-slate-500">Total</span>
                   <span className="font-bold">{naira(grand)}</span>
@@ -531,10 +658,19 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     The minimum order is {naira(minOrder)}. Add {naira(minOrder - total)} more to check out.
                   </p>
                 )}
+                {needSignIn && (
+                  <p className="mb-3 text-xs text-amber-700">
+                    Please{' '}
+                    <Link href={accountHref} onClick={saveCartForReturn} className="font-semibold underline">
+                      sign in or create an account
+                    </Link>{' '}
+                    to check out.
+                  </p>
+                )}
                 {step === 'cart' ? (
                   <button
                     onClick={() => setStep('details')}
-                    disabled={belowMin}
+                    disabled={belowMin || needSignIn}
                     className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     Checkout
@@ -552,7 +688,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     </button>
                     <button
                       onClick={placeOrder}
-                      disabled={busy || belowMin}
+                      disabled={busy || belowMin || needSignIn}
                       className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                     >
                       {busy ? 'Placing order...' : opt.buttonText || 'Place order'}
