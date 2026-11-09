@@ -47,7 +47,16 @@ const tone = (active: boolean) => (active ? 'bg-blue-600 text-white shadow-sm' :
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [tab, setTab] = useState<Tab>('home');
+  const [tab, setTabState] = useState<Tab>('home');
+  const tabRef = useRef<Tab>('home');
+
+  // every section change is added to the browser history, so the back button can step through them
+  function setTab(t: Tab) {
+    if (t === tabRef.current) return;
+    tabRef.current = t;
+    setTabState(t);
+    window.history.pushState({ tab: t }, '', `#${t}`);
+  }
   const [channel, setChannel] = useState<ChannelId>('website');
   const [biz, setBiz] = useState<Biz | null>(null);
   const [newOrders, setNewOrders] = useState(0);
@@ -71,6 +80,34 @@ export default function DashboardPage() {
       else setUser((u) => (u?.id === data.user.id ? u : data.user));
     });
   }, [router]);
+  
+    // the phone's back button moves between dashboard sections
+  useEffect(() => {
+    const valid: Tab[] = [
+      'home', 'website', 'products', 'orders', 'customers', 'discounts',
+      'templates', 'analytics', 'marketing', 'support', 'channels', 'settings',
+    ];
+    const fromUrl = window.location.hash.replace('#', '') as Tab;
+    const first: Tab = valid.includes(fromUrl) ? fromUrl : 'home';
+    tabRef.current = first;
+    setTabState(first);
+    window.history.replaceState({ tab: first }, '', `#${first}`);
+
+    function onPop(e: PopStateEvent) {
+      const t = (e.state?.tab ?? 'home') as Tab;
+      tabRef.current = t;
+      setTabState(t);
+      setMoreOpen(false);
+      setMenuOpen(false);
+      setSearchOpen(false);
+      if (t === 'home' && Date.now() - homeLoaded.current > 120000) {
+        setHomeKey((k) => k + 1);
+        homeLoaded.current = Date.now();
+      }
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // after Home appears, quietly load the other pages in the background
     useEffect(() => {
