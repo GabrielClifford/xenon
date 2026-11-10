@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import type { Tab } from '@/components/DashboardOverview';
 import { defaultOptions, readOptions, type CheckoutOptions, type FieldMode, type OptIn } from '@/lib/checkout';
 import { defaultAccounts, readAccounts, type AccountsOptions } from '@/lib/accounts';
+import { defaultTax, readTax, type TaxSettings } from '@/lib/tax';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -31,7 +32,7 @@ const items: Item[] = [
   { id: 'checkout', label: 'Checkout', icon: ShoppingCart },
   { id: 'accounts', label: 'Customer accounts', icon: UserIcon },
   { id: 'shipping', label: 'Shipping and delivery', icon: Truck, soon: 'Set delivery fees, pickup, and the areas you deliver to.' },
-  { id: 'taxes', label: 'Taxes and duties', icon: Percent, soon: 'Add tax to your prices at checkout.' },
+  { id: 'taxes', label: 'Taxes and duties', icon: Percent },
   { id: 'locations', label: 'Locations', icon: MapPin, soon: 'Manage your business addresses and where customers can find you.' },
   { id: 'markets', label: 'Markets', icon: Globe, soon: 'Sell to customers in other regions and currencies.' },
   { id: 'apps', label: 'Apps', icon: LayoutGrid, soon: 'Connect extra tools to your website.' },
@@ -979,6 +980,192 @@ function CustomerAccountsPage({ user }: { user: User }) {
     </div>
   );
 }
+function TaxesPage({ user }: { user: User }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [t, setT] = useState<TaxSettings>(defaultTax);
+  const [rateText, setRateText] = useState(String(defaultTax.rate));
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  function set<K extends keyof TaxSettings>(k: K, v: TaxSettings[K]) {
+    setT((x) => ({ ...x, [k]: v }));
+  }
+
+  useEffect(() => {
+    createClient()
+      .from('businesses')
+      .select('id,tax_options')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setBizId(data?.id ?? null);
+        if (data) {
+          const s = readTax(data.tax_options);
+          setT(s);
+          setRateText(String(s.rate));
+        }
+      });
+  }, [user.id]);
+
+  async function save() {
+    if (!bizId) return;
+    const rate = Number(rateText);
+    if (Number.isNaN(rate) || rate < 0 || rate > 100) {
+      return setMsg('Could not save: the tax rate must be between 0 and 100.');
+    }
+    setSaving(true);
+    setMsg('');
+    const { error } = await createClient()
+      .from('businesses')
+      .update({ tax_options: { ...t, rate, label: t.label.trim() || 'VAT', vatNumber: t.vatNumber.trim() } })
+      .eq('id', bizId);
+    setSaving(false);
+    setMsg(error ? 'Could not save: ' + error.message : 'Saved. Your store now uses these tax settings.');
+  }
+
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Taxes and duties" />
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const shownRate = Number(rateText) || 0;
+
+  return (
+    <div className="space-y-7">
+      <Heading title="Taxes and duties" text="Choose whether to charge tax on your orders and how it shows to customers." />
+
+      <Sec title="Tax service">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+            <Percent className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
+              Xenon tax calculator
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  t.enabled ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                {t.enabled ? 'Active' : 'Off'}
+              </span>
+            </p>
+            <p className="text-xs text-slate-500">Works out tax on each order from the rate you set below.</p>
+          </div>
+          <button onClick={() => setOpen(true)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">
+            Manage
+          </button>
+        </div>
+      </Sec>
+
+      <Sec title="Tax regions" text="Where you collect and remit tax from customers. Xenon stores sell and deliver within Nigeria.">
+        <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-3 text-left">
+          <span className="flex h-6 w-9 shrink-0 overflow-hidden rounded border border-slate-200">
+            <span className="w-1/3 bg-green-600" />
+            <span className="w-1/3 bg-white" />
+            <span className="w-1/3 bg-green-600" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-sm font-semibold text-slate-900">Nigeria</span>
+            <span className="block text-xs text-slate-500">
+              {t.enabled ? `${t.label || 'VAT'} ${shownRate}% · Collecting` : 'Not collecting tax. Tap to set up.'}
+            </span>
+          </span>
+          <ChevronRight className={`h-4 w-4 text-slate-400 transition ${open ? 'rotate-90' : ''}`} />
+        </button>
+
+        {open && (
+          <div className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+            <Toggle
+              checked={t.enabled}
+              onChange={(v) => set('enabled', v)}
+              title="Collect tax on orders in Nigeria"
+              text="Turn this on only if your business must charge VAT. Small businesses may be exempt, so check with an accountant or the tax authority."
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className={label}>Tax name</label>
+                <input className={field} maxLength={20} value={t.label} onChange={(e) => set('label', e.target.value)} placeholder="VAT" />
+              </div>
+              <div>
+                <label className={label}>Rate (%)</label>
+                <input className={field} inputMode="decimal" value={rateText} onChange={(e) => setRateText(e.target.value)} placeholder="7.5" />
+              </div>
+            </div>
+            <div>
+              <label className={label}>VAT registration number (optional)</label>
+              <input className={field} maxLength={40} value={t.vatNumber} onChange={(e) => set('vatNumber', e.target.value)} />
+              <p className="mt-1 text-xs text-slate-500">Shown under the total in your customers&apos; cart.</p>
+            </div>
+          </div>
+        )}
+      </Sec>
+
+      <Sec title="Duties and import taxes">
+        <p className="text-sm font-medium text-slate-900">Collect duties and import taxes at checkout</p>
+        <p className="mt-1 text-xs text-slate-500">Prevents surprise fees for international customers at delivery.</p>
+        <p className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          Not needed. Your store sells within Nigeria, so there are no duties or import taxes to collect.
+        </p>
+      </Sec>
+
+      <Sec title="Customs information">
+        <div className="divide-y divide-slate-100">
+          <div className="py-3">
+            <p className="text-sm font-medium text-slate-900">Country of origin</p>
+            <p className="text-xs text-slate-500">Only needed when you ship products to other countries.</p>
+          </div>
+          <div className="py-3">
+            <p className="text-sm font-medium text-slate-900">Harmonized System (HS) codes</p>
+            <p className="text-xs text-slate-500">Only needed when you ship products to other countries.</p>
+          </div>
+        </div>
+      </Sec>
+
+      <Sec title="Additional configuration">
+        <div className="divide-y divide-slate-100">
+          <Toggle
+            checked={t.inclusive}
+            onChange={(v) => set('inclusive', v)}
+            title="Include tax in product prices"
+            text="On: prices already include tax, and customers see how much of it is tax. Off: tax is added on top at checkout."
+          />
+          <Toggle
+            checked={t.taxShipping}
+            onChange={(v) => set('taxShipping', v)}
+            title="Charge tax on shipping"
+            text="Applies to delivery fees once they are available in Shipping and delivery."
+          />
+          <label className="flex items-start gap-3 py-3 opacity-60">
+            <input type="checkbox" className="mt-1 h-4 w-4" disabled />
+            <span>
+              <span className="block text-sm font-medium text-slate-900">Charge VAT on digital goods</span>
+              <span className="block text-xs text-slate-500">
+                Not needed, because Xenon stores sell physical products. To leave some products out of VAT, turn off
+                &quot;Charge tax on this product&quot; when you edit them in Products.
+              </span>
+            </span>
+          </label>
+        </div>
+      </Sec>
+
+      <div>
+        <button onClick={save} disabled={saving} className={primary}>
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+        <Note text={msg} />
+      </div>
+    </div>
+  );
+}
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -1019,6 +1206,8 @@ export default function SettingsPanel({
         return <CheckoutPage user={user} />;
               case 'accounts':
         return <CustomerAccountsPage user={user} />;
+              case 'taxes':
+        return <TaxesPage user={user} />;
       default:
         return null;
     }

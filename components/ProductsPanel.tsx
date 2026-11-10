@@ -18,6 +18,7 @@ type Product = {
   photo_url: string | null;
   stock: number | null;
   available: boolean;
+  taxable: boolean;
 };
 
 type Form = {
@@ -29,9 +30,10 @@ type Form = {
   stock: string;
   photo_url: string;
   available: boolean;
+   taxable: boolean;
 };
 
-const emptyForm: Form = { name: '', description: '', price: '', category: '', stock: '', photo_url: '', available: true };
+const emptyForm: Form = { name: '', description: '', price: '', category: '', stock: '', photo_url: '', available: true, taxable: true };
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
 const input = 'w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500';
 
@@ -99,6 +101,7 @@ export default function ProductsPanel({ user }: { user: User }) {
       photo_url: form.photo_url || null,
       stock: form.stock === '' ? null : Math.max(0, parseInt(form.stock, 10) || 0),
       available: form.available,
+      taxable: form.taxable,
     };
     const { error: dbErr } = form.id
       ? await supabase.from('products').update(row).eq('id', form.id)
@@ -208,6 +211,14 @@ export default function ProductsPanel({ user }: { user: User }) {
             />
             Show this product on my website
           </label>
+                    <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.taxable}
+              onChange={(e) => setForm({ ...form, taxable: e.target.checked })}
+            />
+            Charge tax on this product
+          </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3">
             <button
@@ -277,6 +288,7 @@ export default function ProductsPanel({ user }: { user: User }) {
                     stock: p.stock === null ? '' : String(p.stock),
                     photo_url: p.photo_url ?? '',
                     available: p.available,
+                    taxable: p.taxable ?? true,
                   })
                 }
                 className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"

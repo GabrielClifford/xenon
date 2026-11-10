@@ -8,6 +8,7 @@ import type { SiteSettings, ThemeName } from '@/data/sites';
 import { Skeleton } from '@/components/Skeleton';
 import { readOptions } from '@/lib/checkout';
 import { readAccounts } from '@/lib/accounts';
+import { readTax } from '@/lib/tax';
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -25,7 +26,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, name, description, price, category, photo_url, stock')
+    .select('id, name, description, price, category, photo_url, stock, taxable')
     .eq('business_id', b.id)
     .eq('available', true)
     .order('created_at', { ascending: true });
@@ -66,6 +67,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
           businessId: b.id,
           slug: b.slug,
           accounts: readAccounts(b.accounts_options),
+          tax: readTax(b.tax_options),
           bank:
             b.bank_name && b.account_number
               ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }

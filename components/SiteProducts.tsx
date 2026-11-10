@@ -6,6 +6,7 @@ import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { defaultOptions, type CheckoutOptions, type FieldMode } from '@/lib/checkout';
 import { defaultAccounts, type AccountsOptions } from '@/lib/accounts';
+import { defaultTax, type TaxSettings } from '@/lib/tax';
 
 export type SiteProduct = {
   id: string;
@@ -15,6 +16,7 @@ export type SiteProduct = {
   category: string | null;
   photo_url: string | null;
   stock: number | null;
+  taxable: boolean;
 };
 
 export type Bank = { bank_name: string; account_number: string; account_name: string };
@@ -32,6 +34,7 @@ export type Shop = {
   bank: Bank | null;
   checkout: CheckoutSettings;
   accounts: AccountsOptions;
+  tax: TaxSettings;
 };
 
 type Tracked = { status: string; total: number; created_at: string; items: { name: string; quantity: number }[] };
@@ -54,6 +57,7 @@ const emptyForm = {
 export default function SiteProducts({ products, shop }: { products: SiteProduct[]; shop?: Shop }) {
   const opt = shop?.checkout.options ?? defaultOptions;
   const acc = shop?.accounts ?? defaultAccounts;
+  const taxCfg = shop?.tax ?? defaultTax;
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
@@ -146,6 +150,19 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
   const payable = Math.max(0, total - (discount?.amount ?? 0));
+
+  // tax: worked out on taxable items after the discount (the server repeats this and has the final say)
+  const taxableBase = lines.reduce((n, l) => (l.p.taxable ? n + l.p.price * l.qty : n), 0);
+  const taxableAfter = total > 0 ? taxableBase * (1 - (discount?.amount ?? 0) / total) : 0;
+  const taxAmount = !taxCfg.enabled
+    ? 0
+    : Math.round(
+        (taxCfg.inclusive
+          ? (taxableAfter * taxCfg.rate) / (100 + taxCfg.rate)
+          : (taxableAfter * taxCfg.rate) / 100) * 100
+      ) / 100;
+  const taxAdded = taxCfg.inclusive ? 0 : taxAmount;
+
   const tipAmount = !opt.tipping
     ? 0
     : tipChoice === 'none'
@@ -154,8 +171,9 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
         ? Math.min(total, Math.max(0, Math.round(Number(customTip) || 0)))
         : Math.round((total * Number(tipChoice)) / 100);
   const creditAvailable = acc.enabled && acc.storeCredit && !!account && account.credit > 0;
-  const creditApplied = useCredit && creditAvailable && account ? Math.min(account.credit, payable + tipAmount) : 0;
-  const grand = payable + tipAmount - creditApplied;
+  const creditApplied =
+    useCredit && creditAvailable && account ? Math.min(account.credit, payable + taxAdded + tipAmount) : 0;
+  const grand = payable + taxAdded + tipAmount - creditApplied;
 
   if (products.length === 0) return null;
 
@@ -340,6 +358,9 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                         <p className="font-semibold text-slate-900">{pr.name}</p>
                         {pr.description && <p className="mt-1 line-clamp-2 text-sm text-slate-500">{pr.description}</p>}
                         <p className="mt-2 font-bold text-slate-900">{naira(pr.price)}</p>
+                        {taxCfg.enabled && taxCfg.inclusive && pr.taxable && (
+                          <p className="text-[11px] text-slate-400">incl. {taxCfg.label}</p>
+                        )}
                         {canOrder && !soldOut && (
                           qty === 0 ? (
                             <button
@@ -637,6 +658,15 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     <span className="text-green-700">−{naira(discount.amount)}</span>
                   </div>
                 )}
+                {taxAmount > 0 && (
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-slate-500">
+                      {taxCfg.label}
+                      {taxCfg.inclusive ? ' (included)' : ` (${taxCfg.rate}%)`}
+                    </span>
+                    <span>{naira(taxAmount)}</span>
+                  </div>
+                )}
                 {tipAmount > 0 && (
                   <div className="mb-1 flex justify-between text-sm">
                     <span className="text-slate-500">Tip</span>
@@ -653,6 +683,11 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                   <span className="text-slate-500">Total</span>
                   <span className="font-bold">{naira(grand)}</span>
                 </div>
+                {taxCfg.enabled && taxCfg.vatNumber && (
+                  <p className="mb-3 text-[11px] text-slate-400">
+                    {taxCfg.label} registration no. {taxCfg.vatNumber}
+                  </p>
+                )}
                 {belowMin && (
                   <p className="mb-3 text-xs text-amber-700">
                     The minimum order is {naira(minOrder)}. Add {naira(minOrder - total)} more to check out.

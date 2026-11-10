@@ -16,6 +16,9 @@ type Order = {
   payment_method: 'cod' | 'transfer';
   status: 'new' | 'preparing' | 'delivered' | 'cancelled';
   total: number;
+    tax_amount: number;
+  tax_included: boolean;
+  tax_label: string | null;
     credit_used: number;
   request_type: 'cancel' | 'return' | null;
   request_note: string | null;
@@ -191,6 +194,12 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
    )}
    
                  {o.tip > 0 && <p className="mt-1 text-sm text-slate-600">Tip: {naira(o.tip)}</p>}
+                               {o.tax_amount > 0 && (
+                <p className="mt-1 text-sm text-slate-600">
+                  {o.tax_label || 'VAT'}: {naira(o.tax_amount)}
+                  {o.tax_included ? ' (included in prices)' : ''}
+                </p>
+              )}
                                {o.credit_used > 0 && <p className="mt-1 text-sm text-slate-600">Store credit used: {naira(o.credit_used)}</p>}
               {o.request_type && (
                 <div className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
