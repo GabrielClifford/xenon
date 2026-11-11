@@ -12,6 +12,11 @@ import type { Tab } from '@/components/DashboardOverview';
 import { defaultOptions, readOptions, type CheckoutOptions, type FieldMode, type OptIn } from '@/lib/checkout';
 import { defaultAccounts, readAccounts, type AccountsOptions } from '@/lib/accounts';
 import { defaultTax, readTax, type TaxSettings } from '@/lib/tax';
+import { Mail, RotateCcw, Scale, ScrollText } from 'lucide-react';
+import {
+  contactLine, defaultPolicies, defaultRule, policyStatus, policyText, policyTypes, readPolicies, readRules,
+  ruleSummary, templateFor, type ContactInfo, type PolicyDoc, type PolicyType, type Policies, type Rule, type Rules,
+} from '@/lib/policies';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -43,7 +48,7 @@ const items: Item[] = [
   { id: 'metafields', label: 'Metafields and metaobjects', icon: Database, soon: 'Add custom information fields to your products and orders.' },
   { id: 'languages', label: 'Languages', icon: Languages, soon: 'Offer your website in more than one language.' },
   { id: 'privacy', label: 'Customer privacy', icon: Lock, soon: 'Cookie notice and privacy options for your visitors.' },
-  { id: 'policies', label: 'Policies', icon: FileText, soon: 'Add your refund, shipping and privacy policies to your website.' },
+  { id: 'policies', label: 'Policies', icon: FileText },
 ];
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
@@ -1166,6 +1171,458 @@ function TaxesPage({ user }: { user: User }) {
     </div>
   );
 }
+const policyIcons: Record<PolicyType, React.ElementType> = {
+  refund: RotateCcw,
+  privacy: Lock,
+  terms: ScrollText,
+  shipping: Truck,
+  contact: Mail,
+  legal: Scale,
+};
+
+function BackLink({ onClick, text }: { onClick: () => void; text: string }) {
+  return (
+    <button onClick={onClick} className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900">
+      <ArrowLeft className="h-4 w-4" /> {text}
+    </button>
+  );
+}
+
+function RuleForm({
+  rule,
+  onChange,
+  cats,
+  isDefault,
+  onDelete,
+}: {
+  rule: Rule;
+  onChange: (patch: Partial<Rule>) => void;
+  cats: string[];
+  isDefault?: boolean;
+  onDelete?: () => void;
+}) {
+  const num = (v: string, max: number) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
+  return (
+    <div className="space-y-4">
+      {!isDefault && (
+        <>
+          <div>
+            <label className={label}>Rule name</label>
+            <input className={field} maxLength={40} placeholder="e.g. Cosmetics" value={rule.name} onChange={(e) => onChange({ name: e.target.value })} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-slate-900">Applies to products in these categories</p>
+            {cats.length === 0 ? (
+              <p className="mt-1 text-xs text-slate-500">Give your products categories in Products to use category rules.</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {cats.map((c) => {
+                  const on = rule.categories.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() =>
+                        onChange({ categories: on ? rule.categories.filter((x) => x !== c) : [...rule.categories, c] })
+                      }
+                      className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold ${
+                        on ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      <Toggle
+        checked={rule.finalSale}
+        onChange={(v) => onChange({ finalSale: v })}
+        title="Final sale"
+        text="Customers cannot return these items."
+      />
+      {!rule.finalSale && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={label}>Return window (days after ordering)</label>
+            <input type="number" min="1" max="90" className={field} value={rule.returnDays} onChange={(e) => onChange({ returnDays: Math.max(1, num(e.target.value, 90)) })} />
+          </div>
+          <div>
+            <label className={label}>Restocking fee (% of item price)</label>
+            <input type="number" min="0" max="100" className={field} value={rule.returnFeePct} onChange={(e) => onChange({ returnFeePct: num(e.target.value, 100) })} />
+          </div>
+        </div>
+      )}
+      <div className="sm:max-w-[50%]">
+        <label className={label}>Cancellation fee (% of item price)</label>
+        <input type="number" min="0" max="100" className={field} value={rule.cancelFeePct} onChange={(e) => onChange({ cancelFeePct: num(e.target.value, 100) })} />
+      </div>
+      {onDelete && (
+        <button onClick={onDelete} className="text-sm font-medium text-red-600 hover:underline">
+          Delete this rule
+        </button>
+      )}
+    </div>
+  );
+}
+
+type PView = null | 'rules' | PolicyType;
+
+function PoliciesPage({ user }: { user: User }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [biz, setBiz] = useState({ name: '', slug: '', phone: '' });
+  const [pol, setPol] = useState<Policies>(defaultPolicies);
+  const [rules, setRules] = useState<Rules>(readRules(null));
+  const [draftPol, setDraftPol] = useState<Policies>(defaultPolicies);
+  const [draftRules, setDraftRules] = useState<Rules>(readRules(null));
+  const [cats, setCats] = useState<string[]>([]);
+  const [view, setView] = useState<PView>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+
+  useEffect(() => {
+    const sb = createClient();
+    sb.from('businesses')
+      .select('id,name,slug,phone,policies,policy_rules')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(async ({ data }) => {
+        setBizId(data?.id ?? null);
+        if (!data) return;
+        setBiz({ name: data.name, slug: data.slug, phone: data.phone ?? '' });
+        const p = readPolicies(data.policies);
+        const r = readRules(data.policy_rules);
+        setPol(p);
+        setDraftPol(p);
+        setRules(r);
+        setDraftRules(r);
+        const { data: prods } = await sb.from('products').select('category').eq('business_id', data.id);
+        setCats([...new Set((prods ?? []).map((x) => (x.category ?? '').trim()).filter(Boolean))] as string[]);
+      });
+  }, [user.id]);
+
+  async function persist(patch: Record<string, unknown>) {
+    if (!bizId) return false;
+    setSaving(true);
+    setMsg('');
+    const { error } = await createClient().from('businesses').update(patch).eq('id', bizId);
+    setSaving(false);
+    if (error) {
+      setMsg('Could not save: ' + error.message);
+      return false;
+    }
+    setMsg('Saved.');
+    return true;
+  }
+
+  function openView(v: PView, addRule = false) {
+    setMsg('');
+    setDraftPol(pol);
+    setDraftRules(
+      addRule
+        ? { ...rules, custom: [...rules.custom, { ...defaultRule, id: crypto.randomUUID(), name: '', returnFeePct: 0 }] }
+        : rules
+    );
+    setView(v);
+  }
+
+  const ctxFor = (p: Policies, r: Rules) => ({ name: biz.name, contact: contactLine(p, biz.phone), rules: r });
+
+  async function toggleLinks(v: boolean) {
+    const next = { ...pol, showLinks: v };
+    if (await persist({ policies: next })) {
+      setPol(next);
+      setDraftPol(next);
+    }
+  }
+
+  async function saveRules() {
+    const clean = {
+      default: draftRules.default,
+      custom: draftRules.custom
+        .filter((r) => r.name.trim() || r.categories.length)
+        .map((r) => ({ ...r, name: r.name.trim() || 'Rule' })),
+    };
+    if (await persist({ policy_rules: clean })) {
+      const next = readRules(clean);
+      setRules(next);
+      setDraftRules(next);
+    }
+  }
+
+  async function savePolicy(type: PolicyType) {
+    const d = draftPol;
+    const text = policyText(type, d, ctxFor(d, rules));
+    const published = type === 'contact' ? d.contact.published : d[type].published;
+    if (published) {
+      if (type === 'contact') {
+        const c = d.contact;
+        if (!c.email && !c.phone && !c.whatsapp && !c.address) {
+          return setMsg('Could not save: add at least one way to contact you before publishing.');
+        }
+      } else if (!text.trim()) {
+        return setMsg('Could not save: add some text before publishing.');
+      } else if (/\[[^\]]+\]/.test(text)) {
+        return setMsg('Could not save: replace the parts in [square brackets] before publishing.');
+      }
+    }
+    if (await persist({ policies: d })) setPol(d);
+  }
+
+  function setDoc(type: Exclude<PolicyType, 'contact'>, patch: Partial<PolicyDoc & { auto: boolean }>) {
+    setDraftPol((p) => ({ ...p, [type]: { ...p[type], ...patch } }) as Policies);
+  }
+  function setContact(patch: Partial<ContactInfo>) {
+    setDraftPol((p) => ({ ...p, contact: { ...p.contact, ...patch } }));
+  }
+
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Policies" />
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ----- return and cancellation rules -----
+  if (view === 'rules') {
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Policies" />
+        <Heading
+          title="Return and cancellation rules"
+          text="Set conditions and fees for return and cancellation requests. Customers send requests from their account and you decide what to do."
+        />
+        <Sec title="Default rules" text="Used for every product that does not match another rule.">
+          <RuleForm
+            isDefault
+            rule={draftRules.default}
+            cats={cats}
+            onChange={(patch) => setDraftRules((r) => ({ ...r, default: { ...r.default, ...patch } }))}
+          />
+        </Sec>
+        {draftRules.custom.map((r) => (
+          <Sec key={r.id} title={r.name || 'New rule'}>
+            <RuleForm
+              rule={r}
+              cats={cats}
+              onChange={(patch) =>
+                setDraftRules((x) => ({ ...x, custom: x.custom.map((y) => (y.id === r.id ? { ...y, ...patch } : y)) }))
+              }
+              onDelete={() => setDraftRules((x) => ({ ...x, custom: x.custom.filter((y) => y.id !== r.id) }))}
+            />
+          </Sec>
+        ))}
+        <button
+          onClick={() =>
+            setDraftRules((x) => ({ ...x, custom: [...x.custom, { ...defaultRule, id: crypto.randomUUID(), name: '' }] }))
+          }
+          className="w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200"
+        >
+          + Rule
+        </button>
+        <p className="text-xs text-slate-500">
+          These rules decide the return window and fees. Customers can only send requests if Cancellation requests and Return
+          requests are turned on under Customer accounts.
+        </p>
+        <div>
+          <button onClick={saveRules} disabled={saving} className={primary}>
+            {saving ? 'Saving...' : 'Save rules'}
+          </button>
+          <Note text={msg} />
+        </div>
+      </div>
+    );
+  }
+
+  // ----- one written policy -----
+  if (view) {
+    const type = view;
+    const meta = policyTypes.find((p) => p.type === type)!;
+    const published = type === 'contact' ? draftPol.contact.published : draftPol[type].published;
+    const savedLive = published;
+    const live = `${origin}/b/${biz.slug}/policies/${type}`;
+    const ctx = ctxFor(draftPol, rules);
+
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Policies" />
+        <Heading title={meta.label} />
+
+        {type === 'contact' ? (
+          <div className={card}>
+            <div className="space-y-4">
+              <div>
+                <label className={label}>Email</label>
+                <input className={field} type="email" value={draftPol.contact.email} onChange={(e) => setContact({ email: e.target.value })} />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={label}>Phone number</label>
+                  <input className={field} inputMode="tel" placeholder={biz.phone} value={draftPol.contact.phone} onChange={(e) => setContact({ phone: e.target.value })} />
+                </div>
+                <div>
+                  <label className={label}>WhatsApp number</label>
+                  <input className={field} inputMode="tel" value={draftPol.contact.whatsapp} onChange={(e) => setContact({ whatsapp: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className={label}>Address</label>
+                <textarea rows={2} className={field} value={draftPol.contact.address} onChange={(e) => setContact({ address: e.target.value })} />
+              </div>
+              <div>
+                <label className={label}>Opening hours</label>
+                <input className={field} placeholder="e.g. Monday to Saturday, 9am to 6pm" value={draftPol.contact.hours} onChange={(e) => setContact({ hours: e.target.value })} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className={card}>
+            {type === 'privacy' && (
+              <div className="mb-3 border-b border-slate-100 pb-2">
+                <Toggle
+                  checked={draftPol.privacy.auto}
+                  onChange={(v) => setDoc('privacy', { auto: v })}
+                  title="Use Xenon's automated privacy policy"
+                  text="Written from how Xenon stores collect and use customer information. Turn off to write your own."
+                />
+              </div>
+            )}
+            <textarea
+              rows={14}
+              className={`${field} font-mono text-[13px] leading-6 ${type === 'privacy' && draftPol.privacy.auto ? 'bg-slate-50 text-slate-500' : ''}`}
+              readOnly={type === 'privacy' && draftPol.privacy.auto}
+              placeholder="Write your policy here, or generate a template to start from."
+              value={type === 'privacy' && draftPol.privacy.auto ? templateFor('privacy', ctx) : draftPol[type].text}
+              onChange={(e) => setDoc(type, { text: e.target.value })}
+            />
+            {!(type === 'privacy' && draftPol.privacy.auto) && (
+              <button
+                onClick={() => {
+                  if (draftPol[type].text.trim() && !confirm('Replace your text with a new template?')) return;
+                  setDoc(type, { text: templateFor(type, ctx) });
+                }}
+                className="mt-3 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Generate a template
+              </button>
+            )}
+            <p className="mt-3 text-xs text-slate-500">
+              Templates are a starting point, not legal advice. You are responsible for making sure your policies are accurate
+              and follow the law. Replace anything in [square brackets] before publishing.
+            </p>
+          </div>
+        )}
+
+        <div className={card}>
+          <Toggle
+            checked={published}
+            onChange={(v) => (type === 'contact' ? setContact({ published: v }) : setDoc(type, { published: v }))}
+            title="Publish on my store"
+            text="Shows a link in your store footer and at checkout."
+          />
+          {savedLive && (
+            <a href={live} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-sm font-medium text-blue-600 hover:underline">
+              View the live page
+            </a>
+          )}
+        </div>
+
+        <div>
+          <button onClick={() => savePolicy(type)} disabled={saving} className={primary}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <Note text={msg} />
+        </div>
+      </div>
+    );
+  }
+
+  // ----- the list -----
+  return (
+    <div className="space-y-7">
+      <Heading title="Policies" text="Tell customers how returns, privacy, delivery and contact work. Published policies show on your store." />
+
+      <Sec title="Return and cancellation rules" text="Set conditions and fees for return and cancellation requests.">
+        <button onClick={() => openView('rules')} className="flex w-full items-center gap-3 text-left">
+          <span className="flex-1">
+            <span className="block text-sm font-semibold text-slate-900">Default rules</span>
+            <span className="mt-1 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+              {ruleSummary(rules)}
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 text-slate-400" />
+        </button>
+        {rules.custom.length > 0 && (
+          <div className="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+            {rules.custom.map((r) => (
+              <button key={r.id} onClick={() => openView('rules')} className="flex w-full items-center gap-3 py-3 text-left">
+                <span className="flex-1">
+                  <span className="block text-sm font-medium text-slate-900">{r.name}</span>
+                  <span className="block text-xs text-slate-500">
+                    {r.categories.join(', ') || 'No categories chosen'} · {r.finalSale ? 'Final sale' : `${r.returnDays}-day returns`}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          onClick={() => openView('rules', true)}
+          className="mt-4 w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200"
+        >
+          + Rule
+        </button>
+      </Sec>
+
+      <Sec title="Written policies" text="By default, published policies appear in the footer of your store and in checkout.">
+        <div className="divide-y divide-slate-100">
+          {policyTypes.map((p) => {
+            const Icon = policyIcons[p.type];
+            return (
+              <button key={p.type} onClick={() => openView(p.type)} className="flex w-full items-center gap-3 py-3.5 text-left">
+                <Icon className="h-5 w-5 shrink-0 text-slate-700" />
+                <span className="flex-1">
+                  <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                    {p.label}
+                    {p.required && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-800">Required</span>
+                    )}
+                  </span>
+                  <span className="block text-xs text-slate-500">{policyStatus(p.type, pol)}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-2 border-t border-slate-100 pt-1">
+          <Toggle
+            checked={pol.showLinks}
+            onChange={toggleLinks}
+            title="Show policy links in my store footer and checkout"
+            text="Turn this off to hide the links. The policy pages stay available to anyone with the link."
+          />
+        </div>
+      </Sec>
+      <Note text={msg} />
+
+      <p className="text-xs text-slate-500">
+        Recommended policies are not legal advice. You are responsible for making sure they are accurate and comply with
+        applicable laws.
+      </p>
+    </div>
+  );
+}
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -1208,6 +1665,8 @@ export default function SettingsPanel({
         return <CustomerAccountsPage user={user} />;
               case 'taxes':
         return <TaxesPage user={user} />;
+              case 'policies':
+        return <PoliciesPage user={user} />;
       default:
         return null;
     }

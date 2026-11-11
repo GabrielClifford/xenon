@@ -35,6 +35,7 @@ export type Shop = {
   checkout: CheckoutSettings;
   accounts: AccountsOptions;
   tax: TaxSettings;
+  policies: { label: string; href: string }[];
 };
 
 type Tracked = { status: string; total: number; created_at: string; items: { name: string; quantity: number }[] };
@@ -688,6 +689,19 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     {taxCfg.label} registration no. {taxCfg.vatNumber}
                   </p>
                 )}
+                                {shop && shop.policies.length > 0 && (
+                  <p className="mb-3 text-[11px] text-slate-400">
+                    {shop.policies.map((p, i) => (
+                      <span key={p.href}>
+                        {i > 0 && ' · '}
+                        <a href={p.href} target="_blank" rel="noopener noreferrer" className="underline">
+                          {p.label}
+                        </a>
+                      </span>
+                    ))}
+                  </p>
+                )}
+                
                 {belowMin && (
                   <p className="mb-3 text-xs text-amber-700">
                     The minimum order is {naira(minOrder)}. Add {naira(minOrder - total)} more to check out.

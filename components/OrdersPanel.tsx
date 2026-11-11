@@ -22,6 +22,7 @@ type Order = {
     credit_used: number;
   request_type: 'cancel' | 'return' | null;
   request_note: string | null;
+    request_fee: number;
     email: string | null;
   company: string | null;
   address2: string | null;
@@ -207,6 +208,7 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
                     Customer asked to {o.request_type === 'cancel' ? 'cancel this order' : 'return this order'}
                   </p>
                   {o.request_note && <p className="mt-1">&ldquo;{o.request_note}&rdquo;</p>}
+                  {o.request_fee > 0 && <p className="mt-1">Fee that may apply: {naira(o.request_fee)}</p>}
                   <button onClick={() => clearRequest(o)} className="mt-2 text-xs font-semibold underline">
                     Dismiss request
                   </button>

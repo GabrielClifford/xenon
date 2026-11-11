@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/Skeleton';
 import { readOptions } from '@/lib/checkout';
 import { readAccounts } from '@/lib/accounts';
 import { readTax } from '@/lib/tax';
+import { publishedLinks } from '@/lib/policies';
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -68,6 +69,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
           slug: b.slug,
           accounts: readAccounts(b.accounts_options),
           tax: readTax(b.tax_options),
+          policies: publishedLinks(b.policies, b.slug),
           bank:
             b.bank_name && b.account_number
               ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }

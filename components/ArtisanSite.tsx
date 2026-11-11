@@ -32,6 +32,16 @@ export default function ArtisanSite({
       <SiteProducts products={products} />
 
       <footer className={`bg-slate-900 px-5 py-6 text-center text-xs text-slate-400 ${sample ? 'pb-24' : ''}`}>
+                {shop && shop.policies.length > 0 && (
+          <p className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            {shop.policies.map((p) => (
+              <a key={p.href} href={p.href} className="hover:text-white">
+                {p.label}
+              </a>
+            ))}
+          </p>
+        )}
+        
         <p>
           {sample ? 'Sample website for demonstration. ' : ''}Made with{' '}
           <Link href="/" className="font-semibold text-blue-400">Xenon</Link>

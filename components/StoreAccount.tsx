@@ -162,12 +162,23 @@ export default function StoreAccount({ store }: { store: Store }) {
   async function sendRequest() {
     if (!ask) return;
     setBusy(true);
-    const { error } = await supabase.rpc('request_order_action', { p_order_id: ask.id, p_type: ask.type, p_note: note });
+    const { data, error } = await supabase.rpc('request_order_action', {
+      p_order_id: ask.id,
+      p_type: ask.type,
+      p_note: note,
+    });
     setBusy(false);
     if (error) return setMsg({ t: error.message, ok: false });
     setAsk(null);
     setNote('');
-    setMsg({ t: 'Your request was sent. The store will get back to you.', ok: true });
+    const fee = Number((data as { fee?: number } | null)?.fee ?? 0);
+    setMsg({
+      t:
+        fee > 0
+          ? `Your request was sent. A fee of ${naira(fee)} may apply under the store's policy. The store will get back to you.`
+          : 'Your request was sent. The store will get back to you.',
+      ok: true,
+    });
     if (customer) await loadOrders(customer.id);
   }
 
