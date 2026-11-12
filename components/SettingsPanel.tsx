@@ -1636,6 +1636,31 @@ export default function SettingsPanel({
 }) {
   const [page, setPage] = useState<PageId | null>(null); // null = list only (phone)
   const [query, setQuery] = useState('');
+    // phone: opening a settings page adds a history step, so the back button returns to the list first
+  function openPage(id: PageId) {
+    setPage(id);
+    const state = { tab: 'settings', settingsPage: id };
+    if (window.matchMedia('(min-width: 1024px)').matches) {
+      window.history.replaceState(state, '', '#settings');
+    } else {
+      window.history.pushState(state, '', '#settings');
+    }
+  }
+
+  function backToList() {
+    const st = window.history.state as { settingsPage?: string } | null;
+    if (st?.settingsPage) window.history.back();
+    else setPage(null);
+  }
+
+  useEffect(() => {
+    function onPop(e: PopStateEvent) {
+      const st = e.state as { settingsPage?: PageId } | null;
+      setPage(st?.settingsPage ?? null);
+    }
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const current: PageId = page ?? 'general';
   const meta = (user.user_metadata ?? {}) as Meta;
   const name = meta.full_name || user.email || 'Account';
@@ -1692,7 +1717,7 @@ export default function SettingsPanel({
               return (
                 <button
                   key={i.id}
-                  onClick={() => setPage(i.id)}
+                  onClick={() => openPage(i.id)}
                   className={`flex w-full items-center gap-3 rounded-xl py-3 pr-3 text-left text-[15px] font-medium transition ${
                     i.sub && !q ? 'pl-12' : 'pl-3'
                   } ${active ? 'lg:bg-blue-50 lg:text-blue-700' : 'text-slate-800 hover:bg-slate-100'}`}
@@ -1721,7 +1746,7 @@ export default function SettingsPanel({
 
         <section className={`min-w-0 ${page ? '' : 'hidden lg:block'}`}>
           <button
-            onClick={() => setPage(null)}
+            onClick={backToList}
             className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-600 lg:hidden"
           >
             <ArrowLeft className="h-4 w-4" /> Settings
