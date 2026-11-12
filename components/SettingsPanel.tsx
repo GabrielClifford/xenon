@@ -17,6 +17,8 @@ import {
   contactLine, defaultPolicies, defaultRule, policyStatus, policyText, policyTypes, readPolicies, readRules,
   ruleSummary, templateFor, type ContactInfo, type PolicyDoc, type PolicyType, type Policies, type Rule, type Rules,
 } from '@/lib/policies';
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { defaultMethods, defaultShipping, readShipping, type Profile, type ShippingSettings, type Zone } from '@/lib/shipping';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -36,7 +38,7 @@ const items: Item[] = [
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'checkout', label: 'Checkout', icon: ShoppingCart },
   { id: 'accounts', label: 'Customer accounts', icon: UserIcon },
-  { id: 'shipping', label: 'Shipping and delivery', icon: Truck, soon: 'Set delivery fees, pickup, and the areas you deliver to.' },
+  { id: 'shipping', label: 'Shipping and delivery', icon: Truck },
   { id: 'taxes', label: 'Taxes and duties', icon: Percent },
   { id: 'locations', label: 'Locations', icon: MapPin, soon: 'Manage your business addresses and where customers can find you.' },
   { id: 'markets', label: 'Markets', icon: Globe, soon: 'Sell to customers in other regions and currencies.' },
@@ -1147,7 +1149,7 @@ function TaxesPage({ user }: { user: User }) {
             checked={t.taxShipping}
             onChange={(v) => set('taxShipping', v)}
             title="Charge tax on shipping"
-            text="Applies to delivery fees once they are available in Shipping and delivery."
+            text="Adds tax to your delivery fees."
           />
           <label className="flex items-start gap-3 py-3 opacity-60">
             <input type="checkbox" className="mt-1 h-4 w-4" disabled />
@@ -1623,6 +1625,452 @@ function PoliciesPage({ user }: { user: User }) {
     </div>
   );
 }
+type SView = null | { kind: 'profile'; id: string } | { kind: 'local' } | { kind: 'pickup' };
+
+function ZoneForm({
+  zone,
+  onChange,
+  onDelete,
+}: {
+  zone: Zone;
+  onChange: (patch: Partial<Zone>) => void;
+  onDelete: () => void;
+}) {
+  const int = (v: string) => Math.max(0, Math.round(Number(v) || 0));
+  return (
+    <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className={label}>Zone name</label>
+          <input className={field} placeholder="e.g. Port Harcourt" value={zone.name} onChange={(e) => onChange({ name: e.target.value })} />
+        </div>
+        <div>
+          <label className={label}>Areas covered (optional)</label>
+          <input className={field} placeholder="e.g. GRA, Rumuola, Trans Amadi" value={zone.areas} onChange={(e) => onChange({ areas: e.target.value })} />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className={label}>Delivery fee (₦)</label>
+          <input type="number" min="0" className={field} value={zone.rate} onChange={(e) => onChange({ rate: int(e.target.value) })} />
+        </div>
+        <div>
+          <label className={label}>Free delivery over (₦, 0 = never)</label>
+          <input type="number" min="0" className={field} value={zone.freeOver} onChange={(e) => onChange({ freeOver: int(e.target.value) })} />
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className={label}>Earliest delivery (working days)</label>
+          <input type="number" min="0" className={field} value={zone.minDays} onChange={(e) => onChange({ minDays: int(e.target.value) })} />
+        </div>
+        <div>
+          <label className={label}>Latest delivery (working days)</label>
+          <input type="number" min="0" className={field} value={zone.maxDays} onChange={(e) => onChange({ maxDays: int(e.target.value) })} />
+        </div>
+      </div>
+      <button onClick={onDelete} className="flex items-center gap-1.5 text-sm font-medium text-red-600 hover:underline">
+        <Trash2 className="h-4 w-4" /> Delete zone
+      </button>
+    </div>
+  );
+}
+
+function validateShipping(s: ShippingSettings): string {
+  if (s.enabled && (s.profiles[0]?.zones.length ?? 0) === 0) {
+    return 'add at least one delivery zone to your general profile, or turn delivery off';
+  }
+  for (const [i, p] of s.profiles.entries()) {
+    const names = new Set<string>();
+    for (const z of p.zones) {
+      const n = z.name.trim().toLowerCase();
+      if (!n) return `every zone in "${p.name}" needs a name`;
+      if (names.has(n)) return `"${p.name}" has two zones named "${z.name}"`;
+      names.add(n);
+      if (z.maxDays < z.minDays) return `the latest delivery days cannot be fewer than the earliest in "${z.name}"`;
+    }
+    if (i > 0 && p.categories.length === 0) return `choose at least one product category for "${p.name}"`;
+  }
+  if (s.pickup.enabled && !s.pickup.address.trim()) return 'add your pickup address, or turn pickup off';
+  return '';
+}
+
+function ShippingPage({ user }: { user: User }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [sh, setSh] = useState<ShippingSettings>(defaultShipping);
+  const [saved, setSaved] = useState<ShippingSettings>(defaultShipping);
+  const [cats, setCats] = useState<string[]>([]);
+  const [view, setView] = useState<SView>(null);
+  const [custOpen, setCustOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    const sb = createClient();
+    sb.from('businesses')
+      .select('id,shipping_options')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(async ({ data }) => {
+        setBizId(data?.id ?? null);
+        if (!data) return;
+        const s = readShipping(data.shipping_options);
+        setSh(s);
+        setSaved(s);
+        const { data: prods } = await sb.from('products').select('category').eq('business_id', data.id);
+        setCats([...new Set((prods ?? []).map((x) => (x.category ?? '').trim()).filter(Boolean))] as string[]);
+      });
+  }, [user.id]);
+
+  const dirty = JSON.stringify(sh) !== JSON.stringify(saved);
+
+  async function save() {
+    const err = validateShipping(sh);
+    if (err) return setMsg('Could not save: ' + err + '.');
+    if (!bizId) return;
+    setSaving(true);
+    setMsg('');
+    const { error } = await createClient().from('businesses').update({ shipping_options: sh }).eq('id', bizId);
+    setSaving(false);
+    if (error) return setMsg('Could not save: ' + error.message);
+    setSaved(sh);
+    setMsg('Saved. Your store now uses these delivery settings.');
+  }
+
+  function patchProfile(id: string, patch: Partial<Profile>) {
+    setSh((s) => ({ ...s, profiles: s.profiles.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+  }
+  function patchZone(pid: string, zid: string, patch: Partial<Zone>) {
+    setSh((s) => ({
+      ...s,
+      profiles: s.profiles.map((p) =>
+        p.id === pid ? { ...p, zones: p.zones.map((z) => (z.id === zid ? { ...z, ...patch } : z)) } : p
+      ),
+    }));
+  }
+  function addZone(pid: string) {
+    const z: Zone = { id: crypto.randomUUID(), name: '', areas: '', rate: 0, freeOver: 0, minDays: 0, maxDays: 0 };
+    setSh((s) => ({ ...s, profiles: s.profiles.map((p) => (p.id === pid ? { ...p, zones: [...p.zones, z] } : p)) }));
+  }
+  function deleteZone(pid: string, zid: string) {
+    setSh((s) => ({
+      ...s,
+      profiles: s.profiles.map((p) => (p.id === pid ? { ...p, zones: p.zones.filter((z) => z.id !== zid) } : p)),
+    }));
+  }
+  function addProfile() {
+    const id = crypto.randomUUID();
+    setSh((s) => ({ ...s, profiles: [...s.profiles, { id, name: '', categories: [], zones: [] }] }));
+    setView({ kind: 'profile', id });
+  }
+  function deleteProfile(id: string) {
+    setSh((s) => ({ ...s, profiles: s.profiles.filter((p) => p.id !== id) }));
+    setView(null);
+  }
+  function moveMethod(i: number, dir: -1 | 1) {
+    setSh((s) => {
+      const m = [...s.methods];
+      const j = i + dir;
+      if (j < 0 || j >= m.length) return s;
+      [m[i], m[j]] = [m[j], m[i]];
+      return { ...s, methods: m };
+    });
+  }
+
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Shipping and delivery" />
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const saveRow = (
+    <div>
+      <button onClick={save} disabled={saving} className={primary}>
+        {saving ? 'Saving...' : 'Save changes'}
+      </button>
+      {dirty && !msg && <span className="ml-3 text-xs text-amber-700">You have unsaved changes.</span>}
+      <Note text={msg} />
+    </div>
+  );
+
+  // ----- one shipping profile -----
+  if (view?.kind === 'profile') {
+    const idx = sh.profiles.findIndex((p) => p.id === view.id);
+    const p = sh.profiles[idx];
+    if (!p) {
+      setView(null);
+      return null;
+    }
+    const isGeneral = idx === 0;
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Shipping and delivery" />
+        <Heading
+          title={p.name || 'New profile'}
+          text={isGeneral ? 'Applies to every product that is not covered by a custom profile.' : 'Applies to products in the categories you choose.'}
+        />
+        {!isGeneral && (
+          <Sec title="Profile">
+            <div className="space-y-4">
+              <div>
+                <label className={label}>Profile name</label>
+                <input className={field} maxLength={40} placeholder="e.g. Heavy items" value={p.name} onChange={(e) => patchProfile(p.id, { name: e.target.value })} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-900">Products in these categories use this profile</p>
+                {cats.length === 0 ? (
+                  <p className="mt-1 text-xs text-slate-500">Give your products categories in Products to use custom profiles.</p>
+                ) : (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {cats.map((c) => {
+                      const on = p.categories.includes(c);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => patchProfile(p.id, { categories: on ? p.categories.filter((x) => x !== c) : [...p.categories, c] })}
+                          className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold ${
+                            on ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <button onClick={() => deleteProfile(p.id)} className="text-sm font-medium text-red-600 hover:underline">
+                Delete this profile
+              </button>
+            </div>
+          </Sec>
+        )}
+        <Sec title="Delivery zones" text="Customers choose a zone at checkout. Give each zone a fee and, if you like, a free-delivery amount and delivery time.">
+          <div className="space-y-4">
+            {p.zones.map((z) => (
+              <ZoneForm key={z.id} zone={z} onChange={(patch) => patchZone(p.id, z.id, patch)} onDelete={() => deleteZone(p.id, z.id)} />
+            ))}
+            <button onClick={() => addZone(p.id)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200">
+              <Plus className="h-4 w-4" /> Add zone
+            </button>
+            {!isGeneral && (
+              <p className="text-xs text-slate-500">
+                A zone only works for a mixed cart if every profile in the cart has a zone with the same name.
+              </p>
+            )}
+          </div>
+        </Sec>
+        {saveRow}
+      </div>
+    );
+  }
+
+  // ----- local delivery -----
+  if (view?.kind === 'local') {
+    const l = sh.local;
+    const set = (patch: Partial<typeof l>) => setSh((s) => ({ ...s, local: { ...s.local, ...patch } }));
+    const int = (v: string) => Math.max(0, Math.round(Number(v) || 0));
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Shipping and delivery" />
+        <Heading title="Local delivery" text="Deliver to nearby customers yourself, with your own riders." />
+        <div className={card}>
+          <Toggle checked={l.enabled} onChange={(v) => set({ enabled: v })} title="Offer local delivery" text="Customers can choose it at checkout." />
+          <div className="mt-3 space-y-4 border-t border-slate-100 pt-4">
+            <div>
+              <label className={label}>Areas you deliver to</label>
+              <textarea rows={3} className={field} placeholder="e.g. GRA, Rumuola, Trans Amadi" value={l.areas} onChange={(e) => set({ areas: e.target.value })} />
+              <p className="mt-1 text-xs text-slate-500">Separate areas with commas. Customers pick one at checkout. Leave empty to skip the area choice.</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <label className={label}>Delivery fee (₦)</label>
+                <input type="number" min="0" className={field} value={l.fee} onChange={(e) => set({ fee: int(e.target.value) })} />
+              </div>
+              <div>
+                <label className={label}>Free over (₦, 0 = never)</label>
+                <input type="number" min="0" className={field} value={l.freeOver} onChange={(e) => set({ freeOver: int(e.target.value) })} />
+              </div>
+              <div>
+                <label className={label}>Minimum order (₦)</label>
+                <input type="number" min="0" className={field} value={l.minOrder} onChange={(e) => set({ minOrder: int(e.target.value) })} />
+              </div>
+            </div>
+            <div>
+              <label className={label}>Delivery time (shown when estimated dates are on)</label>
+              <input className={field} placeholder="e.g. Same day, within 3 hours" value={l.eta} onChange={(e) => set({ eta: e.target.value })} />
+            </div>
+          </div>
+        </div>
+        {saveRow}
+      </div>
+    );
+  }
+
+  // ----- pickup -----
+  if (view?.kind === 'pickup') {
+    const k = sh.pickup;
+    const set = (patch: Partial<typeof k>) => setSh((s) => ({ ...s, pickup: { ...s.pickup, ...patch } }));
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Shipping and delivery" />
+        <Heading title="Pickup in store" text="Let customers collect their order from you, free of charge." />
+        <div className={card}>
+          <Toggle checked={k.enabled} onChange={(v) => set({ enabled: v })} title="Offer pickup in store" text="Customers can choose it at checkout." />
+          <div className="mt-3 space-y-4 border-t border-slate-100 pt-4">
+            <div>
+              <label className={label}>Pickup address</label>
+              <textarea rows={2} className={field} value={k.address} onChange={(e) => set({ address: e.target.value })} />
+            </div>
+            <div>
+              <label className={label}>Pickup instructions (optional)</label>
+              <textarea rows={2} className={field} placeholder="e.g. Call when you arrive. We are at the blue gate." value={k.instructions} onChange={(e) => set({ instructions: e.target.value })} />
+            </div>
+            <div>
+              <label className={label}>Usually ready in (shown when estimated dates are on)</label>
+              <input className={field} placeholder="e.g. 2 hours" value={k.ready} onChange={(e) => set({ ready: e.target.value })} />
+            </div>
+          </div>
+        </div>
+        {saveRow}
+      </div>
+    );
+  }
+
+  // ----- the main page -----
+  const pill = (on: boolean) => (
+    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${on ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
+      {on ? 'On' : 'Off'}
+    </span>
+  );
+
+  return (
+    <div className="space-y-7">
+      <Heading title="Shipping and delivery" text="Choose how customers receive their orders and what it costs." />
+
+      <Sec title="Shipping">
+        <Toggle
+          checked={sh.enabled}
+          onChange={(v) => setSh((s) => ({ ...s, enabled: v }))}
+          title="Offer delivery to customers"
+          text="Customers choose a delivery zone at checkout and pay the fee you set."
+        />
+        <div className="mt-2 border-t border-slate-100 pt-3">
+          <p className="text-sm font-semibold text-slate-900">Shipping profiles</p>
+          <p className="text-xs text-slate-500">
+            {sh.profiles.length} profile{sh.profiles.length === 1 ? '' : 's'} · Manage where you ship and the rates for products
+          </p>
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+            <p className="bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-900">Store default</p>
+            {sh.profiles.map((p, i) => (
+              <button
+                key={p.id}
+                onClick={() => setView({ kind: 'profile', id: p.id })}
+                className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left"
+              >
+                <span className="flex-1">
+                  <span className="block text-sm font-semibold text-slate-900">{p.name || 'New profile'}</span>
+                  <span className="block text-xs text-slate-500">
+                    {i === 0 ? 'All products' : p.categories.join(', ') || 'No categories chosen'} · 1 location · {p.zones.length} zone
+                    {p.zones.length === 1 ? '' : 's'}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </button>
+            ))}
+            <button onClick={addProfile} className="flex w-full items-center gap-2 border-t border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+              <Plus className="h-4 w-4" /> Add custom profile
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 border-t border-slate-100 pt-1">
+          <Toggle
+            checked={sh.estimates}
+            onChange={(v) => setSh((s) => ({ ...s, estimates: v }))}
+            title="Estimated delivery dates"
+            text="Show customers how long delivery should take at checkout and on their order."
+          />
+        </div>
+      </Sec>
+
+      <Sec title="Additional delivery methods">
+        <div className="divide-y divide-slate-100">
+          <button onClick={() => setView({ kind: 'local' })} className="flex w-full items-center gap-3 py-3.5 text-left">
+            <Truck className="h-5 w-5 shrink-0 text-slate-700" />
+            <span className="flex-1 text-sm font-semibold text-slate-900">Local delivery</span>
+            {pill(sh.local.enabled)}
+            <ChevronRight className="h-4 w-4 text-slate-400" />
+          </button>
+          <button onClick={() => setView({ kind: 'pickup' })} className="flex w-full items-center gap-3 py-3.5 text-left">
+            <Store className="h-5 w-5 shrink-0 text-slate-700" />
+            <span className="flex-1 text-sm font-semibold text-slate-900">Pickup in store</span>
+            {pill(sh.pickup.enabled)}
+            <ChevronRight className="h-4 w-4 text-slate-400" />
+          </button>
+        </div>
+      </Sec>
+
+      <Sec title="Delivery customizations" text="Customizations control how delivery options appear to customers at checkout. You can hide, reorder and rename delivery options.">
+        {!custOpen ? (
+          <button onClick={() => setCustOpen(true)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200">
+            <Plus className="h-4 w-4" /> Delivery customization
+          </button>
+        ) : (
+          <div className="space-y-3">
+            {sh.methods.map((m, i) => (
+              <div key={m.key} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <div className="flex flex-col">
+                  <button onClick={() => moveMethod(i, -1)} disabled={i === 0} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Move up">
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => moveMethod(i, 1)} disabled={i === sh.methods.length - 1} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Move down">
+                    <ArrowDown className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                    {m.key === 'shipping' ? 'Delivery zones' : m.key === 'local' ? 'Local delivery' : 'Pickup in store'}
+                  </p>
+                  <input
+                    className={`${field} mt-1 !py-2`}
+                    maxLength={40}
+                    value={m.name}
+                    onChange={(e) => setSh((s) => ({ ...s, methods: s.methods.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) }))}
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={m.hidden}
+                    onChange={(e) => setSh((s) => ({ ...s, methods: s.methods.map((x, j) => (j === i ? { ...x, hidden: e.target.checked } : x)) }))}
+                  />
+                  Hide at checkout
+                </label>
+              </div>
+            ))}
+            <button onClick={() => setSh((s) => ({ ...s, methods: defaultMethods }))} className="text-sm font-medium text-slate-600 underline">
+              Reset to default
+            </button>
+          </div>
+        )}
+      </Sec>
+
+      <p className="text-xs text-slate-500">
+        If you turn on every delivery option, customers see them in the order shown above. If you turn on none, checkout skips
+        the delivery step.
+      </p>
+
+      {saveRow}
+    </div>
+  );
+}
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -1692,6 +2140,8 @@ export default function SettingsPanel({
         return <TaxesPage user={user} />;
               case 'policies':
         return <PoliciesPage user={user} />;
+              case 'shipping':
+        return <ShippingPage user={user} />;
       default:
         return null;
     }

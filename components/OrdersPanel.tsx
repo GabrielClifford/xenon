@@ -16,6 +16,10 @@ type Order = {
   payment_method: 'cod' | 'transfer';
   status: 'new' | 'preparing' | 'delivered' | 'cancelled';
   total: number;
+    delivery_method: 'shipping' | 'local' | 'pickup' | null;
+  delivery_zone: string | null;
+  delivery_fee: number;
+  delivery_eta: string | null;
     tax_amount: number;
   tax_included: boolean;
   tax_label: string | null;
@@ -176,6 +180,14 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
                 {o.email && <p className="text-slate-600">{o.email}</p>}
                 {o.company && <p className="text-slate-600">{o.company}</p>}
                 {o.address && <p className="text-slate-600">{o.address}{o.address2 ? `, ${o.address2}` : ''}</p>}
+                                {o.delivery_method && (
+                  <p className="mt-1 text-slate-600">
+                    {o.delivery_method === 'pickup' ? 'Pickup in store' : o.delivery_method === 'local' ? 'Local delivery' : 'Delivery'}
+                    {o.delivery_zone ? ` · ${o.delivery_zone}` : ''}
+                    {o.delivery_fee > 0 ? ` · ${naira(o.delivery_fee)}` : ''}
+                    {o.delivery_eta ? ` · ${o.delivery_eta}` : ''}
+                  </p>
+                )}
                 {o.note && <p className="mt-1 text-slate-500">Note: {o.note}</p>}
               </div>
 

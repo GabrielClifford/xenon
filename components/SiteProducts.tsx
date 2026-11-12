@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { defaultOptions, type CheckoutOptions, type FieldMode } from '@/lib/checkout';
 import { defaultAccounts, type AccountsOptions } from '@/lib/accounts';
 import { defaultTax, type TaxSettings } from '@/lib/tax';
+import { defaultShipping, etaText, splitAreas, type MethodKey, type ShippingSettings } from '@/lib/shipping';
 
 export type SiteProduct = {
   id: string;
@@ -36,10 +37,20 @@ export type Shop = {
   accounts: AccountsOptions;
   tax: TaxSettings;
   policies: { label: string; href: string }[];
+  shipping: ShippingSettings;
 };
 
 type Tracked = { status: string; total: number; created_at: string; items: { name: string; quantity: number }[] };
 type Account = { id: string; full_name: string | null; email: string | null; phone: string | null; credit: number };
+type Result = {
+  number: number;
+  total: number;
+  method: string;
+  thankYou: string | null;
+  delivery: string;
+  pickup: { address: string; instructions: string } | null;
+  eta: string | null;
+};
 
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
 const field = 'w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500';
@@ -59,6 +70,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const opt = shop?.checkout.options ?? defaultOptions;
   const acc = shop?.accounts ?? defaultAccounts;
   const taxCfg = shop?.tax ?? defaultTax;
+  const sh = shop?.shipping ?? defaultShipping;
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
@@ -67,7 +79,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const [payment, setPayment] = useState<'cod' | 'transfer'>('cod');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{ number: number; total: number; method: string; thankYou: string | null } | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
   const [code, setCode] = useState('');
   const [discount, setDiscount] = useState<{ code: string; amount: number } | null>(null);
   const [codeMsg, setCodeMsg] = useState('');
@@ -85,6 +97,8 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const [trackBusy, setTrackBusy] = useState(false);
   const [account, setAccount] = useState<Account | null | undefined>(undefined);
   const [useCredit, setUseCredit] = useState(false);
+  const [deliveryKey, setDeliveryKey] = useState<MethodKey | ''>('');
+  const [zone, setZone] = useState('');
 
   // restore a saved cart (buy again, or coming back from sign-in) and load the signed-in customer
   useEffect(() => {
@@ -152,9 +166,73 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
   const payable = Math.max(0, total - (discount?.amount ?? 0));
 
-  // tax: worked out on taxable items after the discount (the server repeats this and has the final say)
+  // ----- delivery: which options the customer can use, and what they cost -----
+  const profileOf = (p: SiteProduct) => {
+    const cat = (p.category ?? '').trim().toLowerCase();
+    if (!cat) return 0;
+    const i = sh.profiles.findIndex((pr, idx) => idx > 0 && pr.categories.some((c) => c.trim().toLowerCase() === cat));
+    return i > 0 ? i : 0;
+  };
+  const groupSums = new Map<number, number>();
+  for (const l of lines) {
+    const g = profileOf(l.p);
+    groupSums.set(g, (groupSums.get(g) ?? 0) + l.p.price * l.qty);
+  }
+  const groups = Array.from(groupSums.entries());
+
+  const offered = sh.methods.filter(
+    (m) =>
+      !m.hidden &&
+      ((m.key === 'shipping' && sh.enabled) || (m.key === 'local' && sh.local.enabled) || (m.key === 'pickup' && sh.pickup.enabled))
+  );
+  const zoneNames: string[] = (() => {
+    if (groups.length === 0) return [];
+    const has = (g: number, name: string) =>
+      (sh.profiles[g]?.zones ?? []).some((z) => z.name.trim().toLowerCase() === name.trim().toLowerCase());
+    return (sh.profiles[groups[0][0]]?.zones ?? [])
+      .map((z) => z.name)
+      .filter((nm) => groups.every(([g]) => has(g, nm)));
+  })();
+  const localAreas = splitAreas(sh.local.areas);
+  const avail = (k: MethodKey) => (k === 'shipping' ? zoneNames.length > 0 : k === 'local' ? total >= sh.local.minOrder : true);
+  const activeKey: MethodKey | '' =
+    deliveryKey && offered.some((m) => m.key === deliveryKey && avail(m.key))
+      ? deliveryKey
+      : (offered.find((m) => avail(m.key))?.key ?? '');
+  const zoneIsValid =
+    activeKey === 'shipping'
+      ? zoneNames.includes(zone)
+      : activeKey === 'local'
+        ? localAreas.length === 0 || localAreas.some((a) => a.toLowerCase() === zone.trim().toLowerCase())
+        : activeKey === 'pickup';
+
+  let shipFee = 0;
+  let etaStr = '';
+  if (activeKey === 'shipping' && zoneIsValid) {
+    let minD = 0;
+    let maxD = 0;
+    for (const [g, sum] of groups) {
+      const z = (sh.profiles[g]?.zones ?? []).find((x) => x.name.trim().toLowerCase() === zone.trim().toLowerCase());
+      if (!z) continue;
+      shipFee += z.freeOver > 0 && sum >= z.freeOver ? 0 : z.rate;
+      minD = Math.max(minD, z.minDays);
+      maxD = Math.max(maxD, z.maxDays);
+    }
+    if (sh.estimates) etaStr = etaText(minD, maxD);
+  } else if (activeKey === 'local' && zoneIsValid) {
+    shipFee = sh.local.freeOver > 0 && total >= sh.local.freeOver ? 0 : sh.local.fee;
+    if (sh.estimates) etaStr = sh.local.eta.trim();
+  } else if (activeKey === 'pickup') {
+    if (sh.estimates) etaStr = sh.pickup.ready.trim();
+  }
+  const deliveryReady = !!activeKey && zoneIsValid;
+  const shipCharged = deliveryReady && step === 'details' ? shipFee : 0;
+  const methodName = (k: MethodKey | '') => offered.find((m) => m.key === k)?.name ?? '';
+
+  // ----- tax: on taxable items after the discount, plus delivery if that setting is on -----
   const taxableBase = lines.reduce((n, l) => (l.p.taxable ? n + l.p.price * l.qty : n), 0);
-  const taxableAfter = total > 0 ? taxableBase * (1 - (discount?.amount ?? 0) / total) : 0;
+  const taxableAfter =
+    (total > 0 ? taxableBase * (1 - (discount?.amount ?? 0) / total) : 0) + (taxCfg.taxShipping ? shipCharged : 0);
   const taxAmount = !taxCfg.enabled
     ? 0
     : Math.round(
@@ -173,8 +251,10 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
         : Math.round((total * Number(tipChoice)) / 100);
   const creditAvailable = acc.enabled && acc.storeCredit && !!account && account.credit > 0;
   const creditApplied =
-    useCredit && creditAvailable && account ? Math.min(account.credit, payable + taxAdded + tipAmount) : 0;
-  const grand = payable + taxAdded + tipAmount - creditApplied;
+    useCredit && creditAvailable && account
+      ? Math.min(account.credit, payable + shipCharged + taxAdded + tipAmount)
+      : 0;
+  const grand = payable + shipCharged + taxAdded + tipAmount - creditApplied;
 
   if (products.length === 0) return null;
 
@@ -236,10 +316,16 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     if (shop.checkout.requireAddress && !form.address.trim()) return setError('Please enter your delivery address.');
     if (opt.address2 === 'required' && !form.address2.trim()) return setError('Please enter your apartment or unit.');
     if (opt.ageCheck && !ageOk) return setError('Please confirm that you are 18 or older.');
+    if (offered.length > 0) {
+      if (!activeKey) return setError('Delivery is not available for the items in your cart.');
+      if (activeKey === 'shipping' && !zoneIsValid) return setError('Please choose your delivery area.');
+      if (activeKey === 'local' && !zoneIsValid) return setError('Please choose your area.');
+    }
 
     setBusy(true);
     setError('');
     const usedCredit = creditApplied;
+    const sendZone = activeKey === 'shipping' || (activeKey === 'local' && localAreas.length > 0) ? zone : null;
     const { data, error: err } = await createClient().rpc('place_order', {
       p_business_id: shop.businessId,
       p_name: fullName,
@@ -259,10 +345,20 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
       p_opt_whatsapp: opt.optWhatsapp !== 'off' && optIn.whatsapp,
       p_age_ok: opt.ageCheck ? ageOk : false,
       p_use_credit: usedCredit > 0,
+      p_delivery: activeKey || null,
+      p_zone: sendZone,
     });
     setBusy(false);
     if (err) return setError(err.message);
-    setResult({ number: data.order_number, total: data.total, method: payment, thankYou: data.thank_you ?? null });
+    setResult({
+      number: data.order_number,
+      total: data.total,
+      method: payment,
+      thankYou: data.thank_you ?? null,
+      delivery: activeKey ? `${methodName(activeKey)}${sendZone ? ` · ${sendZone}` : ''}` : '',
+      pickup: activeKey === 'pickup' ? { address: sh.pickup.address, instructions: sh.pickup.instructions } : null,
+      eta: data.delivery_eta ?? null,
+    });
     if (usedCredit > 0) setAccount((a) => (a ? { ...a, credit: Math.max(0, a.credit - usedCredit) } : a));
     setUseCredit(false);
     setCart({});
@@ -296,10 +392,10 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     if (step === 'done' || step === 'track') setStep('cart');
   }
 
-  const groups = new Map<string, SiteProduct[]>();
+  const categoryGroups = new Map<string, SiteProduct[]>();
   for (const pr of products) {
     const key = pr.category?.trim() || 'Products';
-    groups.set(key, [...(groups.get(key) ?? []), pr]);
+    categoryGroups.set(key, [...(categoryGroups.get(key) ?? []), pr]);
   }
 
   const marketingShown =
@@ -335,9 +431,9 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
               We are not taking orders right now. Please check back soon.
             </p>
           )}
-          {[...groups.entries()].map(([category, items]) => (
+          {[...categoryGroups.entries()].map(([category, items]) => (
             <div key={category} className="mt-8">
-              {groups.size > 1 && <h3 className="mb-4 text-lg font-semibold text-slate-700">{category}</h3>}
+              {categoryGroups.size > 1 && <h3 className="mb-4 text-lg font-semibold text-slate-700">{category}</h3>}
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {items.map((pr) => {
                   const soldOut = pr.stock !== null && pr.stock <= 0;
@@ -500,6 +596,72 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     <textarea className={field} rows={2} placeholder="Note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
                   )}
 
+                  {offered.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-sm font-medium">How do you want to receive your order?</p>
+                      <div className="space-y-2">
+                        {offered.map((m) => {
+                          const ok = avail(m.key);
+                          const on = activeKey === m.key;
+                          return (
+                            <div
+                              key={m.key}
+                              className={`rounded-xl border p-3 ${on ? 'border-blue-600 bg-blue-50/40' : 'border-slate-300'} ${ok ? '' : 'opacity-60'}`}
+                            >
+                              <label className={`flex items-center gap-2 text-sm font-medium ${ok ? 'cursor-pointer' : ''}`}>
+                                <input
+                                  type="radio"
+                                  disabled={!ok}
+                                  checked={on}
+                                  onChange={() => {
+                                    setDeliveryKey(m.key);
+                                    setZone('');
+                                  }}
+                                />
+                                {m.name}
+                              </label>
+                              {!ok && (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {m.key === 'local'
+                                    ? `Needs an order of at least ${naira(sh.local.minOrder)}.`
+                                    : 'Not available for the items in your cart.'}
+                                </p>
+                              )}
+                              {on && m.key === 'shipping' && (
+                                <select className={`${field} mt-2`} value={zone} onChange={(e) => setZone(e.target.value)}>
+                                  <option value="">Choose your delivery area</option>
+                                  {zoneNames.map((z) => (
+                                    <option key={z} value={z}>{z}</option>
+                                  ))}
+                                </select>
+                              )}
+                              {on && m.key === 'local' && localAreas.length > 0 && (
+                                <select className={`${field} mt-2`} value={zone} onChange={(e) => setZone(e.target.value)}>
+                                  <option value="">Choose your area</option>
+                                  {localAreas.map((a) => (
+                                    <option key={a} value={a}>{a}</option>
+                                  ))}
+                                </select>
+                              )}
+                              {on && m.key === 'pickup' && (
+                                <div className="mt-2 text-xs text-slate-600">
+                                  {sh.pickup.address && <p>Pick up at: {sh.pickup.address}</p>}
+                                  {sh.pickup.instructions && <p className="mt-1">{sh.pickup.instructions}</p>}
+                                </div>
+                              )}
+                              {on && deliveryReady && (
+                                <p className="mt-2 text-xs text-slate-500">
+                                  {shipFee > 0 ? naira(shipFee) : 'Free'}
+                                  {etaStr ? ` · Estimated: ${etaStr}` : ''}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {marketingShown && (
                     <div className="space-y-2">
                       {opt.optEmail !== 'off' && opt.email !== 'off' && (
@@ -582,6 +744,18 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                 <div className="space-y-4 text-sm text-slate-700">
                   <p className="text-base font-semibold text-slate-900">Thank you! Your order #{result.number} has been received.</p>
                   {result.thankYou && <p className="whitespace-pre-line">{result.thankYou}</p>}
+                  {result.delivery && (
+                    <div className="rounded-xl bg-slate-50 p-4">
+                      <p className="font-semibold text-slate-900">{result.delivery}</p>
+                      {result.eta && <p className="mt-1 text-xs text-slate-500">Estimated: {result.eta}</p>}
+                      {result.pickup && (
+                        <div className="mt-2 text-xs text-slate-600">
+                          {result.pickup.address && <p>Pick up at: {result.pickup.address}</p>}
+                          {result.pickup.instructions && <p className="mt-1">{result.pickup.instructions}</p>}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <p>Total: <b>{naira(result.total)}</b></p>
                   {result.method === 'transfer' && shop?.bank && result.total > 0 ? (
                     <div className="rounded-xl bg-slate-50 p-4">
@@ -659,6 +833,12 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     <span className="text-green-700">−{naira(discount.amount)}</span>
                   </div>
                 )}
+                {step === 'details' && deliveryReady && (
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-slate-500">{methodName(activeKey)}</span>
+                    <span>{shipFee > 0 ? naira(shipFee) : 'Free'}</span>
+                  </div>
+                )}
                 {taxAmount > 0 && (
                   <div className="mb-1 flex justify-between text-sm">
                     <span className="text-slate-500">
@@ -689,7 +869,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     {taxCfg.label} registration no. {taxCfg.vatNumber}
                   </p>
                 )}
-                                {shop && shop.policies.length > 0 && (
+                {shop && shop.policies.length > 0 && (
                   <p className="mb-3 text-[11px] text-slate-400">
                     {shop.policies.map((p, i) => (
                       <span key={p.href}>
@@ -701,7 +881,6 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     ))}
                   </p>
                 )}
-                
                 {belowMin && (
                   <p className="mb-3 text-xs text-amber-700">
                     The minimum order is {naira(minOrder)}. Add {naira(minOrder - total)} more to check out.
