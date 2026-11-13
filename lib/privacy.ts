@@ -38,4 +38,4 @@ export const requestKinds: { v: 'access' | 'delete' | 'marketing' | 'other'; t: 
 
 // Where your Xenon data is stored. Your Supabase project's region is shown in its project settings.
 // Write it here, for example 'Europe (Frankfurt)' or 'United States (East)'.
-export const HOSTING_LOCATION = '';
+export const HOSTING_LOCATION = 'United States (East) — North Virginia';
