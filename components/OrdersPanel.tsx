@@ -35,6 +35,7 @@ type Order = {
   opt_email: boolean;
   opt_sms: boolean;
   opt_whatsapp: boolean;
+    optin_confirmed: boolean;
        discount_code: string | null;
      discount_amount: number;
   created_at: string;
@@ -51,6 +52,11 @@ const badge: Record<string, string> = {
 };
 const field = 'w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500';
 
+function waLink(phone: string, text: string) {
+  let d = phone.replace(/\D/g, '');
+  if (d.startsWith('0')) d = '234' + d.slice(1);
+  return `https://wa.me/${d}?text=${encodeURIComponent(text)}`;
+}
 export default function OrdersPanel({ user, active = true }: { user: User; active?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
   const [businessId, setBusinessId] = useState<string | null>(null);
@@ -59,6 +65,8 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
   const [loading, setLoading] = useState(true);
   const [bank, setBank] = useState({ bank_name: '', account_number: '', account_name: '' });
   const [bankMsg, setBankMsg] = useState('');
+  const [dbl, setDbl] = useState(false);
+  const [storeName, setStoreName] = useState('');
 
   async function load(bid: string) {
     const { data } = await supabase
@@ -73,11 +81,13 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
     (async () => {
       const { data: b } = await supabase
         .from('businesses')
-        .select('id, bank_name, account_number, account_name')
+        .select('id, name, privacy_options, bank_name, account_number, account_name')
         .eq('owner_id', user.id)
         .maybeSingle();
       if (b) {
         setBusinessId(b.id);
+        setDbl(!!(b.privacy_options as { doubleOptIn?: boolean } | null)?.doubleOptIn);
+        setStoreName(b.name ?? '');
         setBank({
           bank_name: b.bank_name ?? '',
           account_number: b.account_number ?? '',
@@ -102,6 +112,14 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
     await supabase.from('orders').update({ request_type: null, request_note: null, request_at: null }).eq('id', o.id);
     setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, request_type: null, request_note: null } : x)));
   }
+
+    async function confirmOptIn(o: Order) {
+    await supabase.from('orders').update({ optin_confirmed: true }).eq('id', o.id);
+    setOrders((list) => list.map((x) => (x.id === o.id ? { ...x, optin_confirmed: true } : x)));
+  }
+
+  const confirmText = (name: string) =>
+    `Hi ${name}, you asked ${storeName || 'our store'} to send you news and offers. Please reply YES to confirm.`;
   async function saveBank() {
     if (!businessId) return;
     const { error } = await supabase
@@ -227,11 +245,42 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
                 </div>
               )}
               
-              {(o.opt_email || o.opt_sms || o.opt_whatsapp) && (
-                <p className="mt-1 text-xs text-slate-500">
-                  Agreed to receive news and offers by:{' '}
-                  {[o.opt_email && 'Email', o.opt_sms && 'SMS', o.opt_whatsapp && 'WhatsApp'].filter(Boolean).join(', ')}
-                </p>
+                            {(o.opt_email || o.opt_sms || o.opt_whatsapp) && (
+                <div className="mt-1 text-xs text-slate-500">
+                  <p>
+                    Agreed to receive news and offers by:{' '}
+                    {[o.opt_email && 'Email', o.opt_sms && 'SMS', o.opt_whatsapp && 'WhatsApp'].filter(Boolean).join(', ')}
+                    {dbl && (o.optin_confirmed ? ' · Confirmed' : ' · Not confirmed yet')}
+                  </p>
+                  {dbl && !o.optin_confirmed && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(o.opt_whatsapp || o.opt_sms) && (
+                        <a
+                          href={waLink(o.phone, confirmText(o.customer_name))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Send WhatsApp confirmation
+                        </a>
+                      )}
+                      {o.opt_email && o.email && (
+                        <a
+                          href={`mailto:${o.email}?subject=${encodeURIComponent('Please confirm')}&body=${encodeURIComponent(confirmText(o.customer_name))}`}
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          Send email confirmation
+                        </a>
+                      )}
+                      <button
+                        onClick={() => confirmOptIn(o)}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700"
+                      >
+                        Mark as confirmed
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

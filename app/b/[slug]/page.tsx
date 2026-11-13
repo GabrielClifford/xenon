@@ -2,15 +2,16 @@ import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import ArtisanSite from '@/components/ArtisanSite';
-import VisitTracker from '@/components/VisitTracker';
+import ConsentGate from '@/components/ConsentGate';
+import { readPrivacy } from '@/lib/privacy';
 import type { Provider } from '@/data/providers';
 import type { SiteSettings, ThemeName } from '@/data/sites';
 import { Skeleton } from '@/components/Skeleton';
 import { readOptions } from '@/lib/checkout';
 import { readAccounts } from '@/lib/accounts';
 import { readTax } from '@/lib/tax';
-import { publishedLinks } from '@/lib/policies';
 import { readShipping } from '@/lib/shipping';
+import { publishedLinks, readPolicies } from '@/lib/policies';
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -57,6 +58,14 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
         businessId: b.id,
   };
 
+    const privacy = readPrivacy(b.privacy_options);
+  const policyLinks = [
+    ...publishedLinks(b.policies, b.slug),
+    ...(privacy.requestsPage && readPolicies(b.policies).showLinks
+      ? [{ label: 'Privacy requests', href: `/b/${b.slug}/privacy-request` }]
+      : []),
+  ];
+
   return (
     <>
     
@@ -70,7 +79,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
           slug: b.slug,
           accounts: readAccounts(b.accounts_options),
           tax: readTax(b.tax_options),
-          policies: publishedLinks(b.policies, b.slug),
+          policies: policyLinks,
           shipping: readShipping(b.shipping_options),
           bank:
             b.bank_name && b.account_number
@@ -87,7 +96,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
         }}
       />
 
-      <VisitTracker businessId={b.id} />
+      <ConsentGate businessId={b.id} privacy={privacy} />
     </>
   );
 }

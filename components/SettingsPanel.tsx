@@ -19,6 +19,8 @@ import {
 } from '@/lib/policies';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { defaultMethods, defaultShipping, readShipping, type Profile, type ShippingSettings, type Zone } from '@/lib/shipping';
+import { BadgeCheck, Cookie, UserCheck } from 'lucide-react';
+import { HOSTING_LOCATION, defaultPrivacy, readPrivacy, requestKinds, type PrivacyOptions } from '@/lib/privacy';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -49,7 +51,7 @@ const items: Item[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell, soon: 'Choose how you are alerted about new orders and enquiries.' },
   { id: 'metafields', label: 'Metafields and metaobjects', icon: Database, soon: 'Add custom information fields to your products and orders.' },
   { id: 'languages', label: 'Languages', icon: Languages, soon: 'Offer your website in more than one language.' },
-  { id: 'privacy', label: 'Customer privacy', icon: Lock, soon: 'Cookie notice and privacy options for your visitors.' },
+  { id: 'privacy', label: 'Customer privacy', icon: Lock },
   { id: 'policies', label: 'Policies', icon: FileText },
 ];
 
@@ -2071,6 +2073,353 @@ function ShippingPage({ user }: { user: User }) {
     </div>
   );
 }
+
+type PrView = null | 'cookie' | 'requests' | 'double';
+type PReq = { id: string; name: string; contact: string; kind: string; details: string | null; status: string; created_at: string };
+
+function PRow({
+  icon: Icon,
+  title,
+  status,
+  badge,
+  onClick,
+}: {
+  icon: React.ElementType;
+  title: string;
+  status: string;
+  badge?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="flex w-full items-center gap-3 py-3.5 text-left">
+      <Icon className="h-5 w-5 shrink-0 text-slate-700" />
+      <span className="flex-1">
+        <span className="block text-sm font-semibold text-slate-900">{title}</span>
+        <span className="block text-xs text-slate-500">{status}</span>
+        {badge && (
+          <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+            <span className="h-2 w-2 rounded-full bg-green-500" /> {badge}
+          </span>
+        )}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+    </button>
+  );
+}
+
+function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [slug, setSlug] = useState('');
+  const [p, setP] = useState<PrivacyOptions>(defaultPrivacy);
+  const [draft, setDraft] = useState<PrivacyOptions>(defaultPrivacy);
+  const [pol, setPol] = useState<Policies>(defaultPolicies);
+  const [reqs, setReqs] = useState<PReq[]>([]);
+  const [view, setView] = useState<PrView>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [copied, setCopied] = useState(false);
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+
+  useEffect(() => {
+    const sb = createClient();
+    sb.from('businesses')
+      .select('id,slug,privacy_options,policies')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(async ({ data }) => {
+        setBizId(data?.id ?? null);
+        if (!data) return;
+        setSlug(data.slug);
+        const po = readPrivacy(data.privacy_options);
+        setP(po);
+        setDraft(po);
+        setPol(readPolicies(data.policies));
+        const { data: rows } = await sb
+          .from('privacy_requests')
+          .select('id,name,contact,kind,details,status,created_at')
+          .eq('business_id', data.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        setReqs((rows as PReq[]) ?? []);
+      });
+  }, [user.id]);
+
+  async function save(next: PrivacyOptions) {
+    if (!bizId) return;
+    setSaving(true);
+    setMsg('');
+    const { error } = await createClient().from('businesses').update({ privacy_options: next }).eq('id', bizId);
+    setSaving(false);
+    if (error) return setMsg('Could not save: ' + error.message);
+    setP(next);
+    setDraft(next);
+    setMsg('Saved.');
+  }
+
+  function openView(v: PrView) {
+    setMsg('');
+    setDraft(p);
+    setView(v);
+  }
+
+  async function setReqStatus(r: PReq, status: 'new' | 'done') {
+    await createClient().from('privacy_requests').update({ status }).eq('id', r.id);
+    setReqs((list) => list.map((x) => (x.id === r.id ? { ...x, status } : x)));
+  }
+
+  const link = slug ? `${origin}/b/${slug}/privacy-request` : '';
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Customer privacy" />
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const saveBtn = (
+    <div>
+      <button onClick={() => save(draft)} disabled={saving} className={primary}>
+        {saving ? 'Saving...' : 'Save'}
+      </button>
+      <Note text={msg} />
+    </div>
+  );
+
+  if (view === 'cookie') {
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Customer privacy" />
+        <Heading title="Cookie banner" text="Ask visitors before your store counts their visit." />
+        <div className={card}>
+          <Toggle
+            checked={draft.cookieBanner}
+            onChange={(v) => setDraft({ ...draft, cookieBanner: v })}
+            title="Show a cookie banner on my store"
+            text="Visitors choose Accept or Decline. Visits are counted only after they accept."
+          />
+          <div className="mt-3 border-t border-slate-100 pt-4">
+            <label className={label}>Banner message</label>
+            <textarea
+              rows={3}
+              maxLength={300}
+              className={field}
+              value={draft.cookieMessage}
+              onChange={(e) => setDraft({ ...draft, cookieMessage: e.target.value })}
+            />
+          </div>
+          <div className="mt-4 rounded-xl bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Preview</p>
+            <p className="mt-2 text-sm text-slate-700">{draft.cookieMessage || '...'}</p>
+            <div className="mt-3 flex gap-2">
+              <span className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Accept</span>
+              <span className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">Decline</span>
+            </div>
+          </div>
+          {draft.cookieBanner && !draft.analytics && (
+            <p className="mt-3 text-xs text-amber-700">Visit analytics is turned off, so the banner will not change what is counted.</p>
+          )}
+        </div>
+        {saveBtn}
+      </div>
+    );
+  }
+
+  if (view === 'requests') {
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Customer privacy" />
+        <Heading title="Privacy requests page" text="A page where customers can ask for their information, ask for it to be deleted, or stop marketing." />
+        <div className={card}>
+          <Toggle
+            checked={draft.requestsPage}
+            onChange={(v) => setDraft({ ...draft, requestsPage: v })}
+            title="Turn on the privacy requests page"
+            text="Adds a Privacy requests link to your store footer and checkout."
+          />
+          <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
+            <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} className={`${field} min-w-0 flex-1 bg-slate-50`} />
+            <button onClick={copy} className={`${primary} flex items-center justify-center gap-2`}>
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied ? 'Copied!' : 'Copy link'}
+            </button>
+          </div>
+        </div>
+        {saveBtn}
+
+        <Sec title="Requests" text="When a customer sends a request, handle it yourself and mark it done. To delete someone's information, remove it from Orders and Customer accounts.">
+          {reqs.length === 0 ? (
+            <p className="text-sm text-slate-500">No requests yet.</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {reqs.map((r) => (
+                <div key={r.id} className="py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {requestKinds.find((k) => k.v === r.kind)?.t ?? r.kind}
+                    </p>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                        r.status === 'done' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {r.status === 'done' ? 'Done' : 'New'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-700">
+                    {r.name} · {r.contact}
+                  </p>
+                  {r.details && <p className="mt-1 whitespace-pre-line text-xs text-slate-500">{r.details}</p>}
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {new Date(r.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                  <button
+                    onClick={() => setReqStatus(r, r.status === 'done' ? 'new' : 'done')}
+                    className="mt-2 text-xs font-semibold text-blue-600 hover:underline"
+                  >
+                    {r.status === 'done' ? 'Reopen' : 'Mark as done'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Sec>
+      </div>
+    );
+  }
+
+  if (view === 'double') {
+    return (
+      <div className="space-y-5">
+        <BackLink onClick={() => setView(null)} text="Customer privacy" />
+        <Heading title="Double opt-in for marketing" text="Ask your customers to confirm their contact details before you send them marketing." />
+        <div className={card}>
+          <Toggle
+            checked={draft.doubleOptIn}
+            onChange={(v) => setDraft({ ...draft, doubleOptIn: v })}
+            title="Require confirmation of marketing consent"
+            text="Customers who agree to marketing on an order show as Not confirmed in Orders."
+          />
+          <div className="mt-3 space-y-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
+            <p>How it works:</p>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>A customer ticks a marketing box at checkout.</li>
+              <li>In Orders, that order shows Not confirmed, with buttons to message them on WhatsApp or by email.</li>
+              <li>When they reply to confirm, press Mark as confirmed.</li>
+              <li>Only message customers who are confirmed.</li>
+            </ol>
+            <p className="text-xs text-slate-500">Xenon does not send these messages itself. The buttons open your own WhatsApp or email.</p>
+          </div>
+        </div>
+        {saveBtn}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-7">
+      <Heading title="Customer privacy" text="Control how your store handles customer information." />
+
+      <Sec title="Privacy settings">
+        <div className="divide-y divide-slate-100">
+          <PRow
+            icon={ScrollText}
+            title="Privacy policy"
+            status={pol.privacy.published ? 'Published on your online store' : 'Not published'}
+            badge={pol.privacy.auto ? 'Automated' : undefined}
+            onClick={() => onGo('policies')}
+          />
+          <PRow
+            icon={Cookie}
+            title="Cookie banner"
+            status={p.cookieBanner ? 'On. Visitors are asked before visits are counted' : 'Off'}
+            onClick={() => openView('cookie')}
+          />
+          <PRow
+            icon={UserCheck}
+            title="Privacy requests page"
+            status={p.requestsPage ? `On. ${reqs.filter((r) => r.status === 'new').length} new request(s)` : 'Off'}
+            onClick={() => openView('requests')}
+          />
+        </div>
+      </Sec>
+
+      <div className={card}>
+        <div className="flex flex-wrap items-center gap-3">
+          <ShieldCheck className="h-5 w-5 shrink-0 text-slate-700" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900">Visit analytics</p>
+            <span
+              className={`mt-1 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                p.analytics ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${p.analytics ? 'bg-green-500' : 'bg-slate-400'}`} />
+              {p.analytics ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+          <button
+            onClick={() => save({ ...p, analytics: !p.analytics })}
+            disabled={saving}
+            className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100"
+          >
+            {p.analytics ? 'Disable' : 'Enable'}
+          </button>
+        </div>
+        <p className="mt-3 text-xs text-slate-500">
+          Xenon counts visits to your store, such as how many people visit and which link they came from, to power your
+          Analytics. These statistics are only shown to you. If you disable this, new visits are not counted.
+        </p>
+      </div>
+
+      <Sec title="Marketing settings">
+        <div className="divide-y divide-slate-100">
+          <PRow
+            icon={Mail}
+            title="Email, SMS and WhatsApp marketing in checkout"
+            status="Ask your customers for their marketing preferences"
+            onClick={() => onGo('checkout')}
+          />
+          <PRow
+            icon={BadgeCheck}
+            title="Double opt-in for marketing"
+            status={p.doubleOptIn ? 'On. Ask your customers to confirm their contact details' : 'Off'}
+            onClick={() => openView('double')}
+          />
+        </div>
+      </Sec>
+
+      <Sec title="Data storage hosting location">
+        <p className="text-sm font-semibold text-slate-900">
+          {HOSTING_LOCATION || 'Location not set yet'}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Your store&apos;s customer information is stored in this region.
+          {HOSTING_LOCATION ? '' : ' Set it in lib/privacy.ts.'}
+        </p>
+      </Sec>
+      <Note text={msg} />
+
+      <p className="text-xs text-slate-500">
+        Recommended privacy settings are for your convenience. Compliance with laws and regulations is your responsibility.
+      </p>
+    </div>
+  );
+}
+
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -2142,6 +2491,8 @@ export default function SettingsPanel({
         return <PoliciesPage user={user} />;
               case 'shipping':
         return <ShippingPage user={user} />;
+              case 'privacy':
+        return <PrivacyPage user={user} onGo={openPage} />;
       default:
         return null;
     }
