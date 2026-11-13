@@ -11,7 +11,7 @@ import { readOptions } from '@/lib/checkout';
 import { readAccounts } from '@/lib/accounts';
 import { readTax } from '@/lib/tax';
 import { readShipping } from '@/lib/shipping';
-import { publishedLinks, readPolicies } from '@/lib/policies';
+import { isPublished, publishedLinks, readPolicies } from '@/lib/policies';
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -59,6 +59,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
   };
 
     const privacy = readPrivacy(b.privacy_options);
+      const privacyHref = isPublished(readPolicies(b.policies), 'privacy') ? `/b/${b.slug}/policies/privacy` : undefined;
   const policyLinks = [
     ...publishedLinks(b.policies, b.slug),
     ...(privacy.requestsPage && readPolicies(b.policies).showLinks
@@ -96,7 +97,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
         }}
       />
 
-      <ConsentGate businessId={b.id} privacy={privacy} />
+        <ConsentGate businessId={b.id} privacy={privacy} privacyHref={privacyHref} />
     </>
   );
 }

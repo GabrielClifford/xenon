@@ -20,7 +20,12 @@ import {
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { defaultMethods, defaultShipping, readShipping, type Profile, type ShippingSettings, type Zone } from '@/lib/shipping';
 import { BadgeCheck, Cookie, UserCheck } from 'lucide-react';
-import { HOSTING_LOCATION, defaultPrivacy, readPrivacy, requestKinds, type PrivacyOptions } from '@/lib/privacy';
+import { Eye } from 'lucide-react';
+import { BannerCard, PrefsCard } from '@/components/CookieUI';
+import {
+  HOSTING_LOCATION, cookieColors, defaultPrivacy, readPrivacy, requestKinds, resolveCookie,
+  type CookiePosition, type CookieSettings, type CookieTexts, type PrivacyOptions,
+} from '@/lib/privacy';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -2107,6 +2112,14 @@ function PRow({
   );
 }
 
+const cookiePositions: { v: CookiePosition; label: string; box: string }[] = [
+  { v: 'center', label: 'Center', box: 'left-1/2 top-1/2 h-8 w-24 -translate-x-1/2 -translate-y-1/2' },
+  { v: 'bottom-full', label: 'Bottom full-width', box: 'inset-x-0 bottom-0 h-6' },
+  { v: 'bottom-center', label: 'Bottom center', box: 'bottom-0 left-1/2 h-7 w-24 -translate-x-1/2' },
+  { v: 'bottom-left', label: 'Bottom left', box: 'bottom-0 left-0 h-7 w-20' },
+  { v: 'bottom-right', label: 'Bottom right', box: 'bottom-0 right-0 h-7 w-20' },
+];
+
 function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void }) {
   const [bizId, setBizId] = useState<string | null | undefined>(undefined);
   const [slug, setSlug] = useState('');
@@ -2115,6 +2128,8 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
   const [pol, setPol] = useState<Policies>(defaultPolicies);
   const [reqs, setReqs] = useState<PReq[]>([]);
   const [view, setView] = useState<PrView>(null);
+  const [ctab, setCtab] = useState<'banner' | 'prefs'>('banner');
+  const [pvOn, setPvOn] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState(false);
@@ -2199,45 +2214,208 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
     </div>
   );
 
+  // ----- cookie banner -----
   if (view === 'cookie') {
+    const ck = draft.cookie;
+    const t = resolveCookie(ck);
+    const colors = cookieColors(ck);
+    const setCk = (patch: Partial<CookieSettings>) => setDraft((d) => ({ ...d, cookie: { ...d.cookie, ...patch } }));
+    const tf = (k: keyof CookieTexts, text: string, rows = 1) => (
+      <div key={k}>
+        <label className={label}>{text}</label>
+        {rows > 1 ? (
+          <textarea
+            rows={rows}
+            maxLength={400}
+            disabled={ck.auto}
+            className={`${field} ${ck.auto ? 'bg-slate-50 text-slate-500' : ''}`}
+            value={ck.auto ? t[k] : ck[k]}
+            onChange={(e) => setCk({ [k]: e.target.value } as Partial<CookieSettings>)}
+          />
+        ) : (
+          <input
+            maxLength={80}
+            disabled={ck.auto}
+            className={`${field} ${ck.auto ? 'bg-slate-50 text-slate-500' : ''}`}
+            value={ck.auto ? t[k] : ck[k]}
+            onChange={(e) => setCk({ [k]: e.target.value } as Partial<CookieSettings>)}
+          />
+        )}
+      </div>
+    );
+
     return (
-      <div className="space-y-5">
+      <div className="space-y-6">
         <BackLink onClick={() => setView(null)} text="Customer privacy" />
         <Heading title="Cookie banner" text="Ask visitors before your store counts their visit." />
+
         <div className={card}>
           <Toggle
             checked={draft.cookieBanner}
             onChange={(v) => setDraft({ ...draft, cookieBanner: v })}
             title="Show a cookie banner on my store"
-            text="Visitors choose Accept or Decline. Visits are counted only after they accept."
+            text="Visits are counted only after a visitor accepts."
           />
-          <div className="mt-3 border-t border-slate-100 pt-4">
-            <label className={label}>Banner message</label>
-            <textarea
-              rows={3}
-              maxLength={300}
-              className={field}
-              value={draft.cookieMessage}
-              onChange={(e) => setDraft({ ...draft, cookieMessage: e.target.value })}
-            />
-          </div>
-          <div className="mt-4 rounded-xl bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Preview</p>
-            <p className="mt-2 text-sm text-slate-700">{draft.cookieMessage || '...'}</p>
-            <div className="mt-3 flex gap-2">
-              <span className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Accept</span>
-              <span className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">Decline</span>
-            </div>
-          </div>
           {draft.cookieBanner && !draft.analytics && (
-            <p className="mt-3 text-xs text-amber-700">Visit analytics is turned off, so the banner will not change what is counted.</p>
+            <p className="mt-2 text-xs text-amber-700">
+              Visit analytics is turned off, so the banner will not change what is counted.
+            </p>
           )}
         </div>
+
+        <Sec title="Regions and content">
+          <Toggle
+            checked={ck.auto}
+            onChange={(v) => setCk({ auto: v })}
+            title="Use recommended settings"
+            text="Keep the wording in sync with Xenon's recommended text. Turn off to write your own."
+          />
+          <div className="mt-2 flex items-start gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <Eye className="mt-0.5 h-4 w-4 shrink-0" />
+            Your store sells in Nigeria, so the banner shows to every visitor when it is turned on.
+          </div>
+        </Sec>
+
+        <div className={card}>
+          <div className="flex gap-2">
+            {(
+              [
+                ['banner', 'Cookie banner'],
+                ['prefs', 'Cookie preferences'],
+              ] as const
+            ).map(([k, text]) => (
+              <button
+                key={k}
+                onClick={() => setCtab(k)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${
+                  ctab === k ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-slate-100 p-4">
+            {ctab === 'banner' ? (
+              <BannerCard t={t} colors={colors} privacyHref={pol.privacy.published ? '#' : undefined} />
+            ) : (
+              <PrefsCard t={t} colors={colors} analytics={pvOn} onToggle={setPvOn} />
+            )}
+          </div>
+
+          <div className="mt-4 space-y-4">
+            {ctab === 'banner' ? (
+              <>
+                {tf('title', 'Title')}
+                {tf('message', 'Message', 3)}
+                {tf('accept', 'Accept button')}
+                {tf('decline', 'Decline button')}
+                {tf('manage', 'Manage preferences link')}
+              </>
+            ) : (
+              <>
+                {tf('prefsTitle', 'Title')}
+                {tf('prefsText', 'Description', 3)}
+                {tf('necessaryTitle', 'Strictly necessary: name')}
+                {tf('necessaryText', 'Strictly necessary: description', 2)}
+                {tf('analyticsTitle', 'Analytics: name')}
+                {tf('analyticsText', 'Analytics: description', 2)}
+                {tf('acceptAll', 'Accept all button')}
+                {tf('declineAll', 'Decline all button')}
+                {tf('save', 'Save choices button')}
+                <p className="text-xs text-slate-500">
+                  Xenon stores set no advertising or marketing cookies, so the only choice a visitor makes is Analytics.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        <Sec title="Colors">
+          {(
+            [
+              ['light', 'Light'],
+              ['dark', 'Dark'],
+              ['custom', 'Custom'],
+            ] as const
+          ).map(([v, text]) => (
+            <label key={v} className="flex cursor-pointer items-center gap-3 py-2 text-sm">
+              <input type="radio" name="cookie-theme" checked={ck.theme === v} onChange={() => setCk({ theme: v })} />
+              {text}
+            </label>
+          ))}
+          {ck.theme === 'custom' && (
+            <div className="mt-2 space-y-3 border-t border-slate-100 pt-4">
+              {(['bg', 'text', 'button'] as const).map((k) => (
+                <label key={k} className="flex items-center gap-3 text-sm">
+                  <input
+                    type="color"
+                    value={ck[k]}
+                    onChange={(e) => setCk({ [k]: e.target.value } as Partial<CookieSettings>)}
+                    className="h-9 w-12 cursor-pointer rounded border border-slate-300"
+                  />
+                  <span>{k === 'bg' ? 'Background' : k === 'text' ? 'Text' : 'Buttons'}</span>
+                  <span className="text-xs text-slate-400">{ck[k]}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </Sec>
+
+        <Sec title="Position" text="Choose how the cookie banner should be positioned in your store.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {cookiePositions.map((o) => (
+              <button
+                key={o.v}
+                onClick={() => setCk({ position: o.v })}
+                className={`overflow-hidden rounded-xl border text-left ${
+                  ck.position === o.v ? 'border-2 border-blue-600' : 'border-slate-200'
+                }`}
+              >
+                <span className="relative block h-20 bg-white">
+                  <span className={`absolute rounded-sm bg-slate-300 ${o.box}`} />
+                </span>
+                <span className="block border-t border-slate-200 py-2 text-center text-sm">{o.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">Bottom right sits over the cart button until the visitor chooses.</p>
+        </Sec>
+
+        <a
+          href={`${origin}/b/${slug}?cookiepreview=1`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200"
+        >
+          <Eye className="h-4 w-4" /> View on my store
+        </a>
+        <p className="-mt-3 text-xs text-slate-500">Shows your saved settings, so press Save first. Your store must be published.</p>
+
+        <Sec title="Checkout">
+          <Toggle
+            checked={ck.inCheckout}
+            onChange={(v) => setCk({ inCheckout: v })}
+            title="Show cookie banner in checkout"
+            text="When this is off, the banner hides while the cart and checkout are open."
+          />
+          {ck.inCheckout && (
+            <p className="mt-2 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span className="font-bold">!</span> This may reduce checkout conversion rate.
+            </p>
+          )}
+        </Sec>
+
         {saveBtn}
+        <p className="text-xs text-slate-500">
+          Recommended privacy settings are for your convenience. Compliance with laws and regulations is your responsibility.
+        </p>
       </div>
     );
   }
 
+  // ----- privacy requests page -----
   if (view === 'requests') {
     return (
       <div className="space-y-5">
@@ -2301,6 +2479,7 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
     );
   }
 
+  // ----- double opt-in -----
   if (view === 'double') {
     return (
       <div className="space-y-5">
@@ -2329,6 +2508,7 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
     );
   }
 
+  // ----- the main page -----
   return (
     <div className="space-y-7">
       <Heading title="Customer privacy" text="Control how your store handles customer information." />
@@ -2403,9 +2583,7 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
       </Sec>
 
       <Sec title="Data storage hosting location">
-        <p className="text-sm font-semibold text-slate-900">
-          {HOSTING_LOCATION || 'Location not set yet'}
-        </p>
+        <p className="text-sm font-semibold text-slate-900">{HOSTING_LOCATION || 'Location not set yet'}</p>
         <p className="mt-1 text-xs text-slate-500">
           Your store&apos;s customer information is stored in this region.
           {HOSTING_LOCATION ? '' : ' Set it in lib/privacy.ts.'}

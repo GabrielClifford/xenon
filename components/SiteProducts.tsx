@@ -158,6 +158,11 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shop?.businessId]);
 
+    // lets the cookie banner know when the cart or checkout is open
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('xenon-cart', { detail: { open } }));
+  }, [open]);
+  
   const lines = useMemo(
     () => products.filter((p) => cart[p.id] > 0).map((p) => ({ p, qty: cart[p.id] })),
     [products, cart]
