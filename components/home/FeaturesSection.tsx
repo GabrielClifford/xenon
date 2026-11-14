@@ -71,8 +71,9 @@ function GrowthLaptop() {
 export default function FeaturesSection() {
   return (
     <section id="why-xenon" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-10 sm:py-14">
-      <div className="relative overflow-hidden rounded-3xl border border-blue-500/40 bg-gradient-to-br from-[#06123a] via-[#0a1a55] to-[#050b24] p-6 shadow-[0_0_80px_-20px_rgba(37,99,235,0.6)] sm:p-10">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_60%,rgba(37,99,235,0.35),transparent_60%)]" />
+      <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br
+from-[#030817] via-[#07132e] to-[#020510] p-6 shadow-[0_0_60px_-25px_rgba(37,99,235,0.3)] sm:p-10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_85%_60%,rgba(37,99,235,0.18),transparent_60%)]" />
 
         <div className="relative grid items-center gap-8 xl:grid-cols-[0.95fr_1.75fr_0.9fr]">
           {/* Text */}
@@ -101,7 +102,7 @@ export default function FeaturesSection() {
             {items.map((i) => (
               <li
                 key={i.title}
-                className="rounded-2xl border border-blue-400/30 bg-gradient-to-b from-white/10 to-white/[0.03] p-4 text-center shadow-[0_0_30px_-12px_rgba(59,130,246,0.7)]"
+                className="rounded-2xl border border-blue-400/20 bg-gradient-to-b from-[#101d3b]/80 to-[#080f22]/90 p-4 text-center shadow-[0_0_30px_-12px_rgba(59,130,246,0.7)]"
               >
                 <span className="mx-auto flex h-11 w-11 items-center justify-center text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]">
                   <i.icon className="h-8 w-8" />
