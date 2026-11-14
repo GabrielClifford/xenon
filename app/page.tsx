@@ -8,6 +8,7 @@ import PricingPlans from '@/components/PricingPlans';
 import ReviewsMarquee from '@/components/ReviewsMarquee';
 import SocialLinks from '@/components/home/SocialLinks';
 import PlatformSection from '@/components/home/PlatformSection';
+import FeaturesSection from '@/components/home/FeaturesSection';
 
 export const metadata = {
   title: 'Xenon | Build Your Online Store',
@@ -146,6 +147,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <FeaturesSection />
+      
       {/* Final call to action */}
       <section className="mx-auto max-w-7xl px-5 pb-14">
         <div className="flex flex-col items-start gap-6 rounded-3xl border border-blue-400/30 bg-gradient-to-br from-[#0a1a4d] to-[#0a1230] p-8 sm:flex-row sm:items-center">
