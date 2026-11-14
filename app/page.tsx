@@ -7,6 +7,7 @@ import Faq from '@/components/home/Faq';
 import PricingPlans from '@/components/PricingPlans';
 import ReviewsMarquee from '@/components/ReviewsMarquee';
 import SocialLinks from '@/components/home/SocialLinks';
+import PlatformSection from '@/components/home/PlatformSection';
 
 export const metadata = {
   title: 'Xenon | Build Your Online Store',
@@ -117,7 +118,9 @@ export default function HomePage() {
         </div>
       </section>
 
-          {/* Reviews */}
+          <PlatformSection />
+
+        {/* Reviews */}
       <section id="reviews" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-14">
         <div className="grid items-center gap-8 lg:grid-cols-[300px_1fr]">
           <div>
