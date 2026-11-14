@@ -12,8 +12,8 @@ const items = [
 export default function PlatformSection() {
   return (
     <section id="platform" className="mx-auto max-w-7xl scroll-mt-24 px-5 py-10 sm:py-14">
-      <div className="relative overflow-hidden rounded-3xl border border-blue-500/40 bg-gradient-to-br from-[#06123a] via-[#0a1a55] to-[#050b24] p-6 shadow-[0_0_80px_-20px_rgba(37,99,235,0.6)] sm:p-10">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_55%_50%,rgba(37,99,235,0.35),transparent_60%)]" />
+      <div className="relative overflow-hidden rounded-3xl border border-blue-500/20 bg-gradient-to-br from-[#030817] via-[#07132e] to-[#020510] p-6 shadow-[0_0_60px_-25px_rgba(37,99,235,0.3)] sm:p-10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_55%_50%,rgba(37,99,235,0.18),transparent_60%)]" />
 
         <div className="relative grid items-center gap-10 lg:grid-cols-[1fr_1.25fr_0.85fr]">
           {/* Text */}
@@ -39,7 +39,7 @@ export default function PlatformSection() {
           {/* Dashboard on a laptop */}
           <div className="mx-auto w-full max-w-[560px] [perspective:1400px]">
             <div className="origin-center transition-transform duration-500 lg:[transform:rotateY(-14deg)_rotateX(4deg)] lg:hover:[transform:rotateY(-6deg)_rotateX(2deg)]">
-              <div className="overflow-hidden rounded-2xl border-[5px] border-slate-800 bg-slate-900 shadow-[0_30px_80px_-20px_rgba(37,99,235,0.8)]">
+              <div className="overflow-hidden rounded-2xl border-[5px] border-slate-800 bg-slate-900 shadow-[0_30px_80px_-20px_rgba(37,99,235,0.4)]">
                 <Image
                   src="/home/dashboard-preview.png"
                   alt="The Xenon dashboard"
