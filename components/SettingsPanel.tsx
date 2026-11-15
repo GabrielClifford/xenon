@@ -26,6 +26,7 @@ import {
   HOSTING_LOCATION, cookieColors, defaultPrivacy, readPrivacy, requestKinds, resolveCookie,
   type CookiePosition, type CookieSettings, type CookieTexts, type PrivacyOptions,
 } from '@/lib/privacy';
+import LocationsPage from '@/components/LocationsPage';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -47,7 +48,7 @@ const items: Item[] = [
   { id: 'accounts', label: 'Customer accounts', icon: UserIcon },
   { id: 'shipping', label: 'Shipping and delivery', icon: Truck },
   { id: 'taxes', label: 'Taxes and duties', icon: Percent },
-  { id: 'locations', label: 'Locations', icon: MapPin, soon: 'Manage your business addresses and where customers can find you.' },
+  { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'markets', label: 'Markets', icon: Globe, soon: 'Sell to customers in other regions and currencies.' },
   { id: 'apps', label: 'Apps', icon: LayoutGrid, soon: 'Connect extra tools to your website.' },
   { id: 'channels', label: 'Sales channels', icon: Share2 },
@@ -2669,6 +2670,8 @@ export default function SettingsPanel({
         return <PoliciesPage user={user} />;
               case 'shipping':
         return <ShippingPage user={user} />;
+              case 'locations':
+  return <LocationsPage user={user} onGo={openPage} />;
               case 'privacy':
         return <PrivacyPage user={user} onGo={openPage} />;
       default:
