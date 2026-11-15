@@ -27,6 +27,7 @@ import {
   type CookiePosition, type CookieSettings, type CookieTexts, type PrivacyOptions,
 } from '@/lib/privacy';
 import LocationsPage from '@/components/LocationsPage';
+import LanguagesPage from '@/components/LanguagesPage';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -56,7 +57,7 @@ const items: Item[] = [
   { id: 'events', label: 'Customer events', icon: MousePointerClick, soon: 'Track what customers do on your website.' },
   { id: 'notifications', label: 'Notifications', icon: Bell, soon: 'Choose how you are alerted about new orders and enquiries.' },
   { id: 'metafields', label: 'Metafields and metaobjects', icon: Database, soon: 'Add custom information fields to your products and orders.' },
-  { id: 'languages', label: 'Languages', icon: Languages, soon: 'Offer your website in more than one language.' },
+  { id: 'languages', label: 'Languages', icon: Languages },
   { id: 'privacy', label: 'Customer privacy', icon: Lock },
   { id: 'policies', label: 'Policies', icon: FileText },
 ];
@@ -2674,6 +2675,8 @@ export default function SettingsPanel({
   return <LocationsPage user={user} onGo={openPage} />;
               case 'privacy':
         return <PrivacyPage user={user} onGo={openPage} />;
+              case 'languages':
+  return <LanguagesPage user={user} onGo={openPage} />;
       default:
         return null;
     }

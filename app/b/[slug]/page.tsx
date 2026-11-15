@@ -11,7 +11,9 @@ import { readOptions } from '@/lib/checkout';
 import { readAccounts } from '@/lib/accounts';
 import { readTax } from '@/lib/tax';
 import { readShipping } from '@/lib/shipping';
+import { applyLocations, formatAddress, readLocations } from '@/lib/locations';
 import { isPublished, publishedLinks, readPolicies } from '@/lib/policies';
+
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const supabase = createClient(
@@ -51,15 +53,15 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
     tagline: b.tagline ?? '',
     services: b.services ?? [],
     serviceAreas: b.service_areas ?? [],
-        theme: ['classic', 'bold', 'spark'].includes(b.theme) ? (b.theme as ThemeName) : 'classic',
+    theme: ['classic', 'bold', 'spark'].includes(b.theme) ? (b.theme as ThemeName) : 'classic',
     phone: b.phone ?? undefined,
     photoUrl: b.photo_url ?? undefined,
     gallery: b.gallery ?? [],
-        businessId: b.id,
+    businessId: b.id,
   };
 
-    const privacy = readPrivacy(b.privacy_options);
-      const privacyHref = isPublished(readPolicies(b.policies), 'privacy') ? `/b/${b.slug}/policies/privacy` : undefined;
+  const privacy = readPrivacy(b.privacy_options);
+  const privacyHref = isPublished(readPolicies(b.policies), 'privacy') ? `/b/${b.slug}/policies/privacy` : undefined;
   const policyLinks = [
     ...publishedLinks(b.policies, b.slug),
     ...(privacy.requestsPage && readPolicies(b.policies).showLinks
@@ -67,21 +69,27 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
       : []),
   ];
 
+  // locations: they decide which delivery options customers can use, and which addresses show on the store
+  const locs = readLocations(b.locations_options);
+  const storefronts = locs
+    .filter((l) => l.active && l.storefront)
+    .map((l) => ({ name: l.name, address: formatAddress(l.address) }));
+
   return (
     <>
-    
-       <ArtisanSite
+      <ArtisanSite
         p={p}
         s={s}
         sample={false}
         products={products ?? []}
+        storefronts={storefronts}
         shop={{
           businessId: b.id,
           slug: b.slug,
           accounts: readAccounts(b.accounts_options),
           tax: readTax(b.tax_options),
           policies: policyLinks,
-          shipping: readShipping(b.shipping_options),
+          shipping: applyLocations(readShipping(b.shipping_options), locs),
           bank:
             b.bank_name && b.account_number
               ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }
@@ -97,14 +105,14 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
         }}
       />
 
-        <ConsentGate businessId={b.id} privacy={privacy} privacyHref={privacyHref} />
+      <ConsentGate businessId={b.id} privacy={privacy} privacyHref={privacyHref} />
     </>
   );
 }
 
 export default function BusinessPage({ params }: { params: Promise<{ slug: string }> }) {
   return (
-        <Suspense
+    <Suspense
       fallback={
         <div className="mx-auto max-w-5xl space-y-6 px-5 py-10">
           <Skeleton className="h-64 w-full rounded-2xl" />

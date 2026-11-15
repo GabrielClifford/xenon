@@ -9,18 +9,22 @@ import SiteProducts, { type SiteProduct, type Shop } from '@/components/SiteProd
 import { Provider } from '@/data/providers';
 import { SiteSettings, ThemeName, themes } from '@/data/sites';
 
+export type Storefront = { name: string; address: string };
+
 export default function ArtisanSite({
   p,
   s,
   sample = true,
   products = [],
   shop,
+  storefronts = [],
 }: {
   p: Provider;
   s: SiteSettings;
   sample?: boolean;
   products?: SiteProduct[];
   shop?: Shop;
+  storefronts?: Storefront[];
 }) {
   const [theme, setTheme] = useState<ThemeName>(s.theme);
   const Active = theme === 'bold' ? BoldTheme : theme === 'spark' ? SparkTheme : ClassicTheme;
@@ -29,19 +33,30 @@ export default function ArtisanSite({
     <>
       <Active p={p} s={s} />
 
-      <SiteProducts products={products} />
+      <SiteProducts products={products} shop={shop} />
 
       <footer className={`bg-slate-900 px-5 py-6 text-center text-xs text-slate-400 ${sample ? 'pb-24' : ''}`}>
-                {shop && shop.policies.length > 0 && (
+        {storefronts.length > 0 && (
+          <div className="mb-4 space-y-1">
+            <p className="font-semibold text-slate-200">Find us</p>
+            {storefronts.map((l) => (
+              <p key={`${l.name}-${l.address}`}>
+                {l.name}: {l.address}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {shop && shop.policies.length > 0 && (
           <p className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            {shop.policies.map((p) => (
-              <a key={p.href} href={p.href} className="hover:text-white">
-                {p.label}
+            {shop.policies.map((link) => (
+              <a key={link.href} href={link.href} className="hover:text-white">
+                {link.label}
               </a>
             ))}
           </p>
         )}
-        
+
         <p>
           {sample ? 'Sample website for demonstration. ' : ''}Made with{' '}
           <Link href="/" className="font-semibold text-blue-400">Xenon</Link>

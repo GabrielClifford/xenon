@@ -90,3 +90,13 @@ export function formatAddress(a: Address): string {
 export function hasAddress(a: Address): boolean {
   return !!(a.line1.trim() && a.city.trim() && a.country.trim());
 }
+export function applyLocations(shippingOptions: any, locations: Location[]): any {
+  // If shipping options isn't initialized yet, return it as-is
+  if (!shippingOptions) return shippingOptions;
+  
+  // Apply locations to your shipping rules/options logic here
+  return {
+    ...shippingOptions,
+    locations: locations.map(l => l.name)
+  };
+}
