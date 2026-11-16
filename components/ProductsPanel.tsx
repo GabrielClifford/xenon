@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ImagePlus, Pencil, Trash2, X } from 'lucide-react';
+import { ImagePlus, Pencil, Star, Trash2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   appliesTo,
@@ -18,6 +18,7 @@ type Product = {
   price: number;
   category: string | null;
   image_url: string | null;
+  images: string[] | null;
   available: boolean;
   custom_fields: Record<string, unknown> | null;
 };
@@ -30,16 +31,22 @@ type FormState = {
   custom: Record<string, FieldInput>;
 };
 
+// One photo in the form: either already saved (url) or newly picked (file + preview)
+type Img = { key: string; url: string | null; file: File | null; preview: string | null };
+
 const emptyForm: FormState = { name: '', price: '', category: '', description: '', custom: {} };
 
 const BUCKET = 'product-images';
 const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGES = 6;
 const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const field =
   'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-600';
 
 const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`;
+
+const coverOf = (p: Product) => p.images?.[0] ?? p.image_url ?? null;
 
 export default function ProductsPanel({ businessId }: { businessId: string }) {
   const supabase = useMemo(() => createClient(), []);
@@ -50,22 +57,12 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  // photo: the saved url (when editing), a newly picked file, and its preview
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
-  }, [preview]);
+  const [imgs, setImgs] = useState<Img[]>([]);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('id,name,description,price,category,image_url,available,custom_fields')
+      .select('id,name,description,price,category,image_url,images,available,custom_fields')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false });
     if (error) setErrorMsg(error.message);
@@ -100,29 +97,68 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
     setForm((f) => ({ ...f, custom: { ...f.custom, [key]: value } }));
   }
 
-  function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  // ----- photos -----
+  function pickImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (!file) return;
-    if (!TYPES.includes(file.type)) {
-      setErrorMsg('Choose a JPG, PNG or WebP photo.');
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      setErrorMsg('That photo is too big. Choose one under 5 MB.');
-      return;
-    }
+    if (files.length === 0) return;
     setErrorMsg('');
-    setImageFile(file);
-    setPreview(URL.createObjectURL(file));
+    const room = MAX_IMAGES - imgs.length;
+    const added: Img[] = [];
+    let problem = '';
+    for (const file of files) {
+      if (added.length >= room) {
+        problem = `You can add up to ${MAX_IMAGES} photos per product.`;
+        break;
+      }
+      if (!TYPES.includes(file.type)) {
+        problem = 'Only JPG, PNG or WebP photos can be added.';
+        continue;
+      }
+      if (file.size > MAX_BYTES) {
+        problem = 'A photo was skipped because it is over 5 MB.';
+        continue;
+      }
+      added.push({ key: crypto.randomUUID(), url: null, file, preview: URL.createObjectURL(file) });
+    }
+    if (added.length) setImgs((l) => [...l, ...added]);
+    if (problem) setErrorMsg(problem);
   }
 
-  function clearImage() {
-    setImageFile(null);
-    setPreview(null);
-    setImageUrl(null);
+  function removeImage(key: string) {
+    setImgs((l) => {
+      const gone = l.find((x) => x.key === key);
+      if (gone?.preview) URL.revokeObjectURL(gone.preview);
+      return l.filter((x) => x.key !== key);
+    });
   }
 
+  function makeCover(key: string) {
+    setImgs((l) => {
+      const pick = l.find((x) => x.key === key);
+      return pick ? [pick, ...l.filter((x) => x.key !== key)] : l;
+    });
+  }
+
+  function clearImages() {
+    setImgs((l) => {
+      l.forEach((x) => x.preview && URL.revokeObjectURL(x.preview));
+      return [];
+    });
+  }
+
+  async function uploadImage(file: File): Promise<string> {
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${businessId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+      contentType: file.type,
+      cacheControl: '31536000',
+    });
+    if (error) throw new Error('Could not upload a photo: ' + error.message);
+    return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+
+  // ----- form -----
   function startEdit(p: Product) {
     const custom: Record<string, FieldInput> = {};
     for (const d of defs) custom[d.key] = toInput(d, p.custom_fields?.[d.key]);
@@ -134,9 +170,9 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
       description: p.description ?? '',
       custom,
     });
-    setImageUrl(p.image_url);
-    setImageFile(null);
-    setPreview(null);
+    clearImages();
+    const urls = p.images?.length ? p.images : p.image_url ? [p.image_url] : [];
+    setImgs(urls.map((u) => ({ key: crypto.randomUUID(), url: u, file: null, preview: null })));
     setErrorMsg('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -144,18 +180,7 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
   function resetForm() {
     setEditingId(null);
     setForm(emptyForm);
-    clearImage();
-  }
-
-  async function uploadImage(file: File): Promise<string> {
-    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-    const path = `${businessId}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-      contentType: file.type,
-      cacheControl: '31536000',
-    });
-    if (error) throw new Error('Could not upload the photo: ' + error.message);
-    return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+    clearImages();
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -179,12 +204,12 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
     }
 
     setSaving(true);
-    let finalImage = imageUrl;
+    let urls: string[];
     try {
-      if (imageFile) finalImage = await uploadImage(imageFile);
+      urls = await Promise.all(imgs.map((x) => (x.file ? uploadImage(x.file) : Promise.resolve(x.url as string))));
     } catch (err) {
       setSaving(false);
-      setErrorMsg(err instanceof Error ? err.message : 'Could not upload the photo.');
+      setErrorMsg(err instanceof Error ? err.message : 'Could not upload a photo.');
       return;
     }
 
@@ -193,7 +218,8 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
       price,
       category: form.category.trim() || null,
       description: form.description.trim() || null,
-      image_url: finalImage,
+      images: urls,
+      image_url: urls[0] ?? null, // cover photo, kept for parts of the site that show one image
       custom_fields,
     };
     const { error } = editingId
@@ -228,8 +254,6 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
     }
   }
 
-  const shownImage = preview ?? imageUrl;
-
   return (
     <div className="space-y-6">
       <div>
@@ -249,27 +273,51 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
         </p>
 
         <div>
-          {shownImage ? (
-            <div className="relative h-40 w-40 overflow-hidden rounded-xl border border-slate-200">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={shownImage} alt="Product photo" className="h-full w-full object-cover" />
-              <button
-                type="button"
-                onClick={clearImage}
-                aria-label="Remove photo"
-                className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 text-slate-700 shadow hover:bg-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : (
-            <label className="flex h-40 w-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-blue-500 hover:text-blue-600">
-              <ImagePlus className="h-6 w-6" />
-              Add a photo
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={pickImage} className="hidden" />
-            </label>
-          )}
-          <p className="mt-1 text-xs text-slate-400">JPG, PNG or WebP, up to 5 MB.</p>
+          <div className="flex flex-wrap gap-3">
+            {imgs.map((x, i) => (
+              <div key={x.key} className="relative h-28 w-28 overflow-hidden rounded-xl border border-slate-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={x.preview ?? x.url ?? ''} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeImage(x.key)}
+                  aria-label="Remove photo"
+                  className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-slate-700 shadow hover:bg-white"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                {i === 0 ? (
+                  <span className="absolute bottom-1 left-1 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                    Cover
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => makeCover(x.key)}
+                    className="absolute bottom-1 left-1 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-700 shadow hover:bg-white"
+                  >
+                    <Star className="h-3 w-3" /> Make cover
+                  </button>
+                )}
+              </div>
+            ))}
+            {imgs.length < MAX_IMAGES && (
+              <label className="flex h-28 w-28 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-blue-500 hover:text-blue-600">
+                <ImagePlus className="h-6 w-6" />
+                Add photos
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={pickImages}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+          <p className="mt-1.5 text-xs text-slate-400">
+            Up to {MAX_IMAGES} photos (JPG, PNG or WebP, 5 MB each). The first one is the cover.
+          </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -403,49 +451,60 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {products.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 p-4">
-                {p.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.image_url} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />
-                ) : (
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
-                    <ImagePlus className="h-5 w-5" />
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-900">{p.name}</p>
-                  <p className="text-xs text-slate-500">
-                    {naira(p.price)}
-                    {p.category ? ` · ${p.category}` : ''}
-                    {!p.available ? ' · Sold out' : ''}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleAvailable(p)}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  {p.available ? 'Mark sold out' : 'Mark available'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => startEdit(p)}
-                  aria-label={`Edit ${p.name}`}
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => remove(p)}
-                  aria-label={`Delete ${p.name}`}
-                  className="rounded-lg p-2 text-red-500 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
+            {products.map((p) => {
+              const cover = coverOf(p);
+              const count = p.images?.length ?? (p.image_url ? 1 : 0);
+              return (
+                <li key={p.id} className="flex items-center gap-3 p-4">
+                  <div className="relative h-12 w-12 shrink-0">
+                    {cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cover} alt="" className="h-12 w-12 rounded-lg border border-slate-200 object-cover" />
+                    ) : (
+                      <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+                        <ImagePlus className="h-5 w-5" />
+                      </span>
+                    )}
+                    {count > 1 && (
+                      <span className="absolute -right-1 -top-1 rounded-full bg-slate-800 px-1.5 text-[10px] font-semibold text-white">
+                        {count}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900">{p.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {naira(p.price)}
+                      {p.category ? ` · ${p.category}` : ''}
+                      {!p.available ? ' · Sold out' : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleAvailable(p)}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    {p.available ? 'Mark sold out' : 'Mark available'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(p)}
+                    aria-label={`Edit ${p.name}`}
+                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => remove(p)}
+                    aria-label={`Delete ${p.name}`}
+                    className="rounded-lg p-2 text-red-500 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
