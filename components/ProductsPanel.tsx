@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { ImagePlus, Pencil, Trash2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   appliesTo,
@@ -32,6 +32,10 @@ type FormState = {
 
 const emptyForm: FormState = { name: '', price: '', category: '', description: '', custom: {} };
 
+const BUCKET = 'product-images';
+const MAX_BYTES = 5 * 1024 * 1024;
+const TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 const field =
   'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-blue-600';
 
@@ -46,6 +50,17 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // photo: the saved url (when editing), a newly picked file, and its preview
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -85,6 +100,29 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
     setForm((f) => ({ ...f, custom: { ...f.custom, [key]: value } }));
   }
 
+  function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!TYPES.includes(file.type)) {
+      setErrorMsg('Choose a JPG, PNG or WebP photo.');
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setErrorMsg('That photo is too big. Choose one under 5 MB.');
+      return;
+    }
+    setErrorMsg('');
+    setImageFile(file);
+    setPreview(URL.createObjectURL(file));
+  }
+
+  function clearImage() {
+    setImageFile(null);
+    setPreview(null);
+    setImageUrl(null);
+  }
+
   function startEdit(p: Product) {
     const custom: Record<string, FieldInput> = {};
     for (const d of defs) custom[d.key] = toInput(d, p.custom_fields?.[d.key]);
@@ -96,6 +134,9 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
       description: p.description ?? '',
       custom,
     });
+    setImageUrl(p.image_url);
+    setImageFile(null);
+    setPreview(null);
     setErrorMsg('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -103,6 +144,18 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
   function resetForm() {
     setEditingId(null);
     setForm(emptyForm);
+    clearImage();
+  }
+
+  async function uploadImage(file: File): Promise<string> {
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${businessId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+      contentType: file.type,
+      cacheControl: '31536000',
+    });
+    if (error) throw new Error('Could not upload the photo: ' + error.message);
+    return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -126,11 +179,21 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
     }
 
     setSaving(true);
+    let finalImage = imageUrl;
+    try {
+      if (imageFile) finalImage = await uploadImage(imageFile);
+    } catch (err) {
+      setSaving(false);
+      setErrorMsg(err instanceof Error ? err.message : 'Could not upload the photo.');
+      return;
+    }
+
     const payload = {
       name: form.name.trim(),
       price,
       category: form.category.trim() || null,
       description: form.description.trim() || null,
+      image_url: finalImage,
       custom_fields,
     };
     const { error } = editingId
@@ -165,6 +228,8 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
     }
   }
 
+  const shownImage = preview ?? imageUrl;
+
   return (
     <div className="space-y-6">
       <div>
@@ -182,6 +247,31 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
         <p className="font-display font-bold text-slate-900">
           {editingId ? 'Edit product' : 'Add a product'}
         </p>
+
+        <div>
+          {shownImage ? (
+            <div className="relative h-40 w-40 overflow-hidden rounded-xl border border-slate-200">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={shownImage} alt="Product photo" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={clearImage}
+                aria-label="Remove photo"
+                className="absolute right-1.5 top-1.5 rounded-full bg-white/90 p-1 text-slate-700 shadow hover:bg-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="flex h-40 w-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 text-xs font-medium text-slate-500 hover:border-blue-500 hover:text-blue-600">
+              <ImagePlus className="h-6 w-6" />
+              Add a photo
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={pickImage} className="hidden" />
+            </label>
+          )}
+          <p className="mt-1 text-xs text-slate-400">JPG, PNG or WebP, up to 5 MB.</p>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <input
             required
@@ -315,6 +405,14 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
           <ul className="divide-y divide-slate-100">
             {products.map((p) => (
               <li key={p.id} className="flex items-center gap-3 p-4">
+                {p.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.image_url} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-slate-200 object-cover" />
+                ) : (
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
+                    <ImagePlus className="h-5 w-5" />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-900">{p.name}</p>
                   <p className="text-xs text-slate-500">
