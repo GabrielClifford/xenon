@@ -8,6 +8,8 @@ import SparkTheme from '@/components/themes/SparkTheme';
 import SiteProducts, { type SiteProduct, type Shop } from '@/components/SiteProducts';
 import { Provider } from '@/data/providers';
 import { SiteSettings, ThemeName, themes } from '@/data/sites';
+import ProductsSection from '@/components/ProductsSection';
+import MetaobjectsSection from '@/components/MetaobjectsSection';
 
 export type Storefront = { name: string; address: string };
 
@@ -33,8 +35,11 @@ export default function ArtisanSite({
     <>
       <Active p={p} s={s} />
 
+{!sample && s.businessId && (
+  <ProductsSection businessId={s.businessId} businessName={p.name} phone={s.phone} />
+)}
       <SiteProducts products={products} shop={shop} />
-
+      {!sample && s.businessId && <MetaobjectsSection businessId={s.businessId} />}
       <footer className={`bg-slate-900 px-5 py-6 text-center text-xs text-slate-400 ${sample ? 'pb-24' : ''}`}>
         {storefronts.length > 0 && (
           <div className="mb-4 space-y-1">

@@ -22,6 +22,7 @@ import AnalyticsPanel from '@/components/AnalyticsPanel';
 import MarketingPanel from '@/components/MarketingPanel';
 import SupportPanel from '@/components/SupportPanel';
 import SettingsPanel from '@/components/SettingsPanel';
+import CustomFieldsPanel from '@/components/CustomFieldsPanel';
 
 type Meta = { full_name?: string; phone?: string; role?: string; trade?: string };
 type NavId = Tab | 'analytics' | 'marketing' | 'templates' | 'support';
@@ -415,11 +416,20 @@ export default function DashboardPage() {
                                 <BusinessForm key={formKey} user={user} />
               </div>
             )}
-            {isArtisan && mount('products') && (
-              <div className={`mx-auto max-w-3xl ${show('products')}`}>
-                <ProductsPanel user={user} />
-              </div>
-            )}
+          {isArtisan && mount('products') && (
+  <div className={`mx-auto max-w-3xl space-y-10 ${show('products')}`}>
+    {biz ? (
+      <>
+        <ProductsPanel businessId={biz.id} />
+        <CustomFieldsPanel businessId={biz.id} />
+      </>
+    ) : (
+      <p className="text-sm text-slate-500">
+        Set up your website first to add products and custom fields.
+      </p>
+    )}
+  </div>
+)}
             {isArtisan && mount('customers') && (
               <div className={`mx-auto max-w-3xl ${show('customers')}`}>
                 <CustomersPanel user={user} />
@@ -431,7 +441,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-                        {isArtisan && mount('templates') && (
+            {isArtisan && mount('templates') && (
               <div className={`mx-auto max-w-5xl ${show('templates')}`}>
                 <TemplatesPanel user={user} onChanged={() => setFormKey((k) => k + 1)} />
               </div>
