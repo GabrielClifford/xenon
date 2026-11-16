@@ -47,6 +47,7 @@ function Pill({ tone, children }: { tone: 'green' | 'gray'; children: React.Reac
 
 export default function LanguagesPage({ user, onGo }: { user: User; onGo: (id: 'general') => void }) {
   const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [loadError, setLoadError] = useState('');
   const [slug, setSlug] = useState('');
   const [langs, setLangs] = useState<StoreLanguage[]>([]);
   const [menu, setMenu] = useState<string | null>(null);
@@ -64,7 +65,12 @@ export default function LanguagesPage({ user, onGo }: { user: User; onGo: (id: '
       .select('id,slug,languages_options')
       .eq('owner_id', user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          setLoadError(error.message);
+          setBizId(null);
+          return;
+        }
         setBizId(data?.id ?? null);
         if (data) {
           setSlug(data.slug);
@@ -142,7 +148,18 @@ export default function LanguagesPage({ user, onGo }: { user: User; onGo: (id: '
       <div className="space-y-5">
         <Heading title="Languages" />
         <div className={card}>
-          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+          {loadError ? (
+            <p className="text-sm text-red-600">
+              Could not load languages: {loadError}
+              {/languages_options/.test(loadError) && (
+                <span className="mt-2 block text-slate-600">
+                  Run this in your Supabase SQL editor, then refresh: alter table businesses add column if not exists languages_options jsonb;
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+          )}
         </div>
       </div>
     );

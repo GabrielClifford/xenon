@@ -91,6 +91,7 @@ function Pill({ tone, children }: { tone: 'green' | 'gray'; children: React.Reac
 
 export default function LocationsPage({ user, onGo }: { user: User; onGo: (id: 'shipping') => void }) {
   const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [loadError, setLoadError] = useState('');
   const [locs, setLocs] = useState<Location[]>([]);
   const [draft, setDraft] = useState<Location | null>(null);
   const [isNew, setIsNew] = useState(false);
@@ -107,7 +108,12 @@ export default function LocationsPage({ user, onGo }: { user: User; onGo: (id: '
       .select('id,locations_options')
       .eq('owner_id', user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          setLoadError(error.message);
+          setBizId(null);
+          return;
+        }
         setBizId(data?.id ?? null);
         if (data) setLocs(readLocations(data.locations_options));
       });
@@ -234,7 +240,18 @@ export default function LocationsPage({ user, onGo }: { user: User; onGo: (id: '
       <div className="space-y-5">
         <Heading title="Locations" />
         <div className={card}>
-          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+          {loadError ? (
+            <p className="text-sm text-red-600">
+              Could not load locations: {loadError}
+              {/locations_options/.test(loadError) && (
+                <span className="mt-2 block text-slate-600">
+                  Run this in your Supabase SQL editor, then refresh: alter table businesses add column if not exists locations_options jsonb;
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+          )}
         </div>
       </div>
     );
