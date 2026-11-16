@@ -28,6 +28,8 @@ import {
 } from '@/lib/privacy';
 import LocationsPage from '@/components/LocationsPage';
 import LanguagesPage from '@/components/LanguagesPage';
+import CustomFieldsPanel from '@/components/CustomFieldsPanel';
+import MetaobjectsPanel from '@/components/MetaobjectsPanel';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -56,7 +58,7 @@ const items: Item[] = [
   { id: 'domains', label: 'Domains', icon: Link2 },
   { id: 'events', label: 'Customer events', icon: MousePointerClick, soon: 'Track what customers do on your website.' },
   { id: 'notifications', label: 'Notifications', icon: Bell, soon: 'Choose how you are alerted about new orders and enquiries.' },
-  { id: 'metafields', label: 'Metafields and metaobjects', icon: Database, soon: 'Add custom information fields to your products and orders.' },
+  { id: 'metafields', label: 'Metafields and metaobjects', icon: Database },
   { id: 'languages', label: 'Languages', icon: Languages },
   { id: 'privacy', label: 'Customer privacy', icon: Lock },
   { id: 'policies', label: 'Policies', icon: FileText },
@@ -2600,6 +2602,50 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
   );
 }
 
+function MetafieldsPage({ user }: { user: User }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+  const [tab, setTab] = useState<'fields' | 'objects'>('fields');
+
+  useEffect(() => {
+    createClient()
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setBizId(data?.id ?? null));
+  }, [user.id]);
+
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Metafields and metaobjects" />
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <Heading title="Metafields and metaobjects" text="Add your own information to products, and create your own kinds of content." />
+      <div className="flex gap-2">
+        {([['fields', 'Metafields (products)'], ['objects', 'Metaobjects (custom content)']] as const).map(([k, t]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === k ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {tab === 'fields' ? <CustomFieldsPanel businessId={bizId} /> : <MetaobjectsPanel businessId={bizId} />}
+    </div>
+  );
+}
+
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -2677,6 +2723,8 @@ export default function SettingsPanel({
         return <PrivacyPage user={user} onGo={openPage} />;
               case 'languages':
   return <LanguagesPage user={user} onGo={openPage} />;
+        case 'metafields':
+        return <MetafieldsPage user={user} />;
       default:
         return null;
     }
