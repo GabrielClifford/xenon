@@ -30,6 +30,7 @@ import LocationsPage from '@/components/LocationsPage';
 import LanguagesPage from '@/components/LanguagesPage';
 import CustomFieldsPanel from '@/components/CustomFieldsPanel';
 import MetaobjectsPanel from '@/components/MetaobjectsPanel';
+import MarketsPanel from '@/components/MarketsPanel';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -52,7 +53,7 @@ const items: Item[] = [
   { id: 'shipping', label: 'Shipping and delivery', icon: Truck },
   { id: 'taxes', label: 'Taxes and duties', icon: Percent },
   { id: 'locations', label: 'Locations', icon: MapPin },
-  { id: 'markets', label: 'Markets', icon: Globe, soon: 'Sell to customers in other regions and currencies.' },
+  { id: 'markets', label: 'Markets', icon: Globe },
   { id: 'apps', label: 'Apps', icon: LayoutGrid, soon: 'Connect extra tools to your website.' },
   { id: 'channels', label: 'Sales channels', icon: Share2 },
   { id: 'domains', label: 'Domains', icon: Link2 },
@@ -2646,6 +2647,38 @@ function MetafieldsPage({ user }: { user: User }) {
   );
 }
 
+function MarketsPage({ user }: { user: User }) {
+  const [bizId, setBizId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    createClient()
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setBizId(data?.id ?? null));
+  }, [user.id]);
+
+  if (bizId === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (bizId === null) {
+    return (
+      <div className="space-y-5">
+        <Heading title="Markets" />
+        <div className={card}>
+          <p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <Heading title="Markets" text="Decide where in Nigeria you sell, and what customers in each place see." />
+      <MarketsPanel businessId={bizId} />
+    </div>
+  );
+}
+
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -2725,6 +2758,8 @@ export default function SettingsPanel({
   return <LanguagesPage user={user} onGo={openPage} />;
         case 'metafields':
         return <MetafieldsPage user={user} />;
+        case 'markets':
+  return <MarketsPage user={user} />;
       default:
         return null;
     }
