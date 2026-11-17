@@ -10,6 +10,7 @@ import { Provider } from '@/data/providers';
 import { SiteSettings, ThemeName, themes } from '@/data/sites';
 import ProductsSection from '@/components/ProductsSection';
 import MetaobjectsSection from '@/components/MetaobjectsSection';
+import PixelRunner from './PixelRunner';
 
 export type Storefront = { name: string; address: string };
 
@@ -38,6 +39,7 @@ export default function ArtisanSite({
 {!sample && s.businessId && (
   <ProductsSection businessId={s.businessId} businessName={p.name} phone={s.phone} />
 )}
+{!sample && s.businessId && <PixelRunner businessId={s.businessId} />}
       <SiteProducts products={products} shop={shop} />
       {!sample && s.businessId && <MetaobjectsSection businessId={s.businessId} />}
       <footer className={`bg-slate-900 px-5 py-6 text-center text-xs text-slate-400 ${sample ? 'pb-24' : ''}`}>

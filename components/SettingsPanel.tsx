@@ -32,6 +32,7 @@ import CustomFieldsPanel from '@/components/CustomFieldsPanel';
 import MetaobjectsPanel from '@/components/MetaobjectsPanel';
 import MarketsPanel from '@/components/MarketsPanel';
 import NotificationsPanel from '@/components/NotificationsPanel';
+import CustomerEvents from './CustomerEventsPanel';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -58,7 +59,7 @@ const items: Item[] = [
   { id: 'apps', label: 'Apps', icon: LayoutGrid, soon: 'Connect extra tools to your website.' },
   { id: 'channels', label: 'Sales channels', icon: Share2 },
   { id: 'domains', label: 'Domains', icon: Link2 },
-  { id: 'events', label: 'Customer events', icon: MousePointerClick, soon: 'Track what customers do on your website.' },
+  { id: 'events', label: 'Customer events', icon: MousePointerClick},
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'metafields', label: 'Metafields and metaobjects', icon: Database },
   { id: 'languages', label: 'Languages', icon: Languages },
@@ -2775,6 +2776,8 @@ export default function SettingsPanel({
   return <MarketsPage user={user} />;
         case 'notifications':
   return <NotificationsPage user={user} />;
+       case 'events':
+  return <CustomerEvents user={user} />;
       default:
         return null;
     }
