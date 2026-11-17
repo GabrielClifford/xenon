@@ -17,7 +17,7 @@ type Product = {
   description: string | null;
   price: number;
   category: string | null;
-  image_url: string | null;
+  photo_url: string | null;
   images: string[] | null;
   available: boolean;
   custom_fields: Record<string, unknown> | null;
@@ -46,7 +46,7 @@ const field =
 
 const naira = (n: number) => `₦${n.toLocaleString('en-NG')}`;
 
-const coverOf = (p: Product) => p.images?.[0] ?? p.image_url ?? null;
+const coverOf = (p: Product) => p.images?.[0] ?? p.photo_url ?? null;
 
 export default function ProductsPanel({ businessId }: { businessId: string }) {
   const supabase = useMemo(() => createClient(), []);
@@ -62,7 +62,7 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('id,name,description,price,category,image_url,images,available,custom_fields')
+      .select('id,name,description,price,category,photo_url,images,available,custom_fields')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false });
     if (error) setErrorMsg(error.message);
@@ -171,7 +171,7 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
       custom,
     });
     clearImages();
-    const urls = p.images?.length ? p.images : p.image_url ? [p.image_url] : [];
+    const urls = p.images?.length ? p.images : p.photo_url ? [p.photo_url] : [];
     setImgs(urls.map((u) => ({ key: crypto.randomUUID(), url: u, file: null, preview: null })));
     setErrorMsg('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -219,7 +219,7 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
       category: form.category.trim() || null,
       description: form.description.trim() || null,
       images: urls,
-      image_url: urls[0] ?? null, // cover photo, kept for parts of the site that show one image
+      photo_url: urls[0] ?? null, // cover photo, kept for parts of the site that show one image
       custom_fields,
     };
     const { error } = editingId
@@ -453,7 +453,7 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
           <ul className="divide-y divide-slate-100">
             {products.map((p) => {
               const cover = coverOf(p);
-              const count = p.images?.length ?? (p.image_url ? 1 : 0);
+              const count = p.images?.length ?? (p.photo_url ? 1 : 0);
               return (
                 <li key={p.id} className="flex items-center gap-3 p-4">
                   <div className="relative h-12 w-12 shrink-0">
