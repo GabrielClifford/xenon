@@ -31,6 +31,7 @@ import LanguagesPage from '@/components/LanguagesPage';
 import CustomFieldsPanel from '@/components/CustomFieldsPanel';
 import MetaobjectsPanel from '@/components/MetaobjectsPanel';
 import MarketsPanel from '@/components/MarketsPanel';
+import NotificationsPanel from '@/components/NotificationsPanel';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -58,7 +59,7 @@ const items: Item[] = [
   { id: 'channels', label: 'Sales channels', icon: Share2 },
   { id: 'domains', label: 'Domains', icon: Link2 },
   { id: 'events', label: 'Customer events', icon: MousePointerClick, soon: 'Track what customers do on your website.' },
-  { id: 'notifications', label: 'Notifications', icon: Bell, soon: 'Choose how you are alerted about new orders and enquiries.' },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'metafields', label: 'Metafields and metaobjects', icon: Database },
   { id: 'languages', label: 'Languages', icon: Languages },
   { id: 'privacy', label: 'Customer privacy', icon: Lock },
@@ -2679,6 +2680,18 @@ function MarketsPage({ user }: { user: User }) {
   );
 }
 
+function NotificationsPage({ user }: { user: User }) {
+  const [biz, setBiz] = useState<{ id: string; name: string } | null | undefined>(undefined);
+  useEffect(() => {
+    createClient().from('businesses').select('id,name').eq('owner_id', user.id).maybeSingle()
+      .then(({ data }) => setBiz(data ?? null));
+  }, [user.id]);
+
+  if (biz === undefined) return <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />;
+  if (biz === null) return <div className={card}><p className="text-sm text-slate-600">Create your website first (My website) to set this up.</p></div>;
+  return <NotificationsPanel businessId={biz.id} businessName={biz.name} ownerEmail={user.email ?? ''} />;
+}
+
 export default function SettingsPanel({
   user,
   onNavigate,
@@ -2760,6 +2773,8 @@ export default function SettingsPanel({
         return <MetafieldsPage user={user} />;
         case 'markets':
   return <MarketsPage user={user} />;
+        case 'notifications':
+  return <NotificationsPage user={user} />;
       default:
         return null;
     }
