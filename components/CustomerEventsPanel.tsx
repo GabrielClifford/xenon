@@ -61,8 +61,22 @@ export default function CustomerEvents({ user, businessId }: { user?: { id: stri
   }, [user?.id, businessId]);
 
   if (missing) return <p className="text-sm text-slate-600">Create your business first, then you can manage pixels here.</p>;
-  if (!bid) return <p className="text-sm text-slate-500">Loading...</p>;
+  if (!bid)
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="h-7 w-44 animate-pulse rounded-lg bg-slate-200" />
+          <div className="h-10 w-40 animate-pulse rounded-xl bg-slate-200" />
+        </div>
+        <div className="h-5 w-20 animate-pulse rounded-lg bg-slate-200" />
+        <GreyCard />
+      </div>
+    );
   return <CustomerEventsInner businessId={bid} />;
+}
+
+function GreyCard() {
+  return <div className="h-72 animate-pulse rounded-2xl bg-slate-100" />;
 }
 
 function CustomerEventsInner({ businessId }: { businessId: string }) {
@@ -133,7 +147,7 @@ function CustomerEventsInner({ businessId }: { businessId: string }) {
       {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
       {loading ? (
-        <p className="text-sm text-slate-500">Loading...</p>
+        <GreyCard />
       ) : rows.length === 0 ? (
         <div className={`${card} flex flex-col items-center px-6 py-12 text-center`}>
           <div className="mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 font-mono text-2xl text-slate-400">&lt;/&gt;</div>
