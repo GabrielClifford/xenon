@@ -224,7 +224,6 @@ function Apps({ rows, onBack, onPick }: { rows: Row[]; onBack: () => void; onPic
             ))}
         </section>
       ))}
-      <p className="text-xs text-slate-500">Need another tool? Go back and add a custom pixel with your own code.</p>
     </div>
   );
 }
