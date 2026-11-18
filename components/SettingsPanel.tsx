@@ -2785,7 +2785,9 @@ export default function SettingsPanel({
   return (
     <div className="mx-auto max-w-5xl">
       <div className="grid gap-6 lg:grid-cols-[18rem_1fr] lg:items-start">
-        <aside className={`${page ? 'hidden lg:block' : ''}`}>
+        <aside
+  className={`${page ? 'hidden lg:block' : ''} lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto`}
+>
           <h1 className="font-display text-2xl font-bold text-slate-900">Settings</h1>
           <div className="relative mt-4">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
