@@ -33,6 +33,7 @@ import MetaobjectsPanel from '@/components/MetaobjectsPanel';
 import MarketsPanel from '@/components/MarketsPanel';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import CustomerEvents from './CustomerEventsPanel';
+import Roles from './RolesPanel';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -47,7 +48,7 @@ const items: Item[] = [
   { id: 'plan', label: 'Plan', icon: ClipboardList, soon: 'See your current Xenon plan and compare plans. Online plan payments are coming once our payment setup is complete.' },
   { id: 'billing', label: 'Billing', icon: Receipt, soon: 'Your Xenon invoices and payment history will show here.' },
   { id: 'users', label: 'Users', icon: Users },
-  { id: 'roles', label: 'Roles', icon: KeyRound, sub: true, soon: 'Choose what each team member can see and do.' },
+  { id: 'roles', label: 'Roles', icon: KeyRound, sub: true },
   { id: 'security', label: 'Security', icon: ShieldCheck, sub: true },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'checkout', label: 'Checkout', icon: ShoppingCart },
@@ -2777,6 +2778,8 @@ export default function SettingsPanel({
   return <NotificationsPage user={user} />;
        case 'events':
   return <CustomerEvents user={user} />;
+        case 'roles':
+  return <Roles user={user} />;
       default:
         return null;
     }
