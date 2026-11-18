@@ -448,7 +448,7 @@ export default function VisitsOverview({
                     setRange(r.key);
                   }}
                   className={`rounded-full px-3.5 py-1.5 text-xs font-semibold ${
-                    range === r.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    range === r.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   {r.key}

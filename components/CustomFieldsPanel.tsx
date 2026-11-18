@@ -277,7 +277,7 @@ export default function CustomFieldsPanel({ businessId }: { businessId: string }
                   type="button"
                   onClick={() => startEdit(d)}
                   aria-label={`Edit ${d.name}`}
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-200"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>

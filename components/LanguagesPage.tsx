@@ -213,7 +213,7 @@ export default function LanguagesPage({ user, onGo }: { user: User; onGo: (id: '
                   <div className="relative">
                     <button
                       onClick={() => setMenu(menu === r.code ? null : r.code)}
-                      className="rounded-full bg-slate-100 p-2 hover:bg-slate-200"
+                      className="rounded-full bg-slate-100 p-2 hover:bg-slate-100"
                       aria-label={`Actions for ${langName(r.code)}`}
                     >
                       <MoreHorizontal className="h-5 w-5" />

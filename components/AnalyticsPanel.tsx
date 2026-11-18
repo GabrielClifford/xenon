@@ -377,7 +377,7 @@ export default function AnalyticsPanel({
                 key={k}
                 onClick={() => setMetric(k)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-semibold ${
-                  metric === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  metric === k ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 {metrics[k].label}

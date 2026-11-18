@@ -422,7 +422,7 @@ export default function NotificationsPanel({
           <p className="mt-2 text-xs text-slate-500">Tap a name to add it. It is replaced with the real value in each email. The order summary and a store link are added automatically.</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {variableList.map((v) => (
-              <button key={v} type="button" className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200" onClick={() => setTBody((b) => `${b}{{${v}}}`)}>
+              <button key={v} type="button" className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100" onClick={() => setTBody((b) => `${b}{{${v}}}`)}>
                 {`{{${v}}}`}
               </button>
             ))}
@@ -642,7 +642,7 @@ export default function NotificationsPanel({
               setHSecret('whsec_' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''));
               go({ k: 'hook', id: null });
             }}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100"
           >
             <Plus className="h-4 w-4" /> Add webhook
           </button>

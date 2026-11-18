@@ -524,7 +524,7 @@ export default function LocationsPage({ user, onGo }: { user: User; onGo: (id: '
         <button
           onClick={openNew}
           disabled={atLimit}
-          className="mt-3 w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-3 w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
           + Location
         </button>

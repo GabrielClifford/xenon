@@ -258,7 +258,7 @@ export default function MetaobjectsPanel({ businessId }: { businessId: string })
               );
             })}
           </div>
-          <button onClick={addField} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200">
+          <button onClick={addField} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100">
             <Plus className="h-4 w-4" /> Add field
           </button>
         </div>
@@ -405,7 +405,7 @@ export default function MetaobjectsPanel({ businessId }: { businessId: string })
             })}
           </div>
         )}
-        <button onClick={() => openDef(null)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-200">
+        <button onClick={() => openDef(null)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-100">
           <Plus className="h-4 w-4" /> New content type
         </button>
       </div>

@@ -42,14 +42,12 @@ const mainItems: Item[] = [
     { id: 'support', label: 'Support', icon: Headphones, artisanOnly: true },
 ];
 
-const row =
-  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200';
+const row = 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition';
 
 const tone = (active: boolean) =>
   active
-    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-600/20'
-    : 'text-black hover:bg-slate-800/70 hover:text-white';
-
+    ? 'bg-blue-600 text-white shadow-sm'
+    : 'text-black hover:bg-slate-100';
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -325,7 +323,7 @@ export default function DashboardPage() {
           <button onClick={() => go('settings')} className={`${row} ${tone(tab === 'settings')}`}>
             <Settings className="h-5 w-5" /> Settings
           </button>
-          <button onClick={logout} className={`${row} text-slate-600 hover:bg-slate-200`}>
+          <button onClick={logout} className={`${row} text-black hover:bg-slate-100`}>
             <LogOut className="h-5 w-5" /> Log out
           </button>
         </div>
@@ -341,7 +339,7 @@ export default function DashboardPage() {
             <div className="ml-auto flex items-center gap-2">
               <button
                 onClick={() => setSearchOpen(true)}
-                className="rounded-full p-2 text-slate-600 hover:bg-slate-200 md:hidden"
+                className="rounded-full p-2 text-slate-600 hover:bg-slate-100 md:hidden"
                 aria-label="Search"
               >
                 <Search className="h-5 w-5" />
@@ -349,7 +347,7 @@ export default function DashboardPage() {
               {isArtisan && (
                 <button
                   onClick={() => go(newOrders > 0 ? 'orders' : 'customers')}
-                  className="relative rounded-full p-2 text-slate-600 hover:bg-slate-200"
+                  className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100"
                   aria-label="Notifications"
                 >
                   <Bell className="h-5 w-5" />
@@ -361,7 +359,7 @@ export default function DashboardPage() {
                 </button>
               )}
               <div className="relative">
-                <button onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-1.5 rounded-full p-1 hover:bg-slate-200">
+                <button onClick={() => setMenuOpen((o) => !o)} className="flex items-center gap-1.5 rounded-full p-1 hover:bg-slate-100">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                     {initials}
                   </span>
@@ -396,7 +394,7 @@ export default function DashboardPage() {
                   setSearchOpen(false);
                   setQuery('');
                 }}
-                className="rounded-full p-2 text-slate-600 hover:bg-slate-200"
+                className="rounded-full p-2 text-slate-600 hover:bg-slate-100"
                 aria-label="Close search"
               >
                 <X className="h-5 w-5" />
@@ -510,7 +508,7 @@ export default function DashboardPage() {
           >
             <div className="mb-2 flex items-center justify-between px-2">
               <p className="font-display text-lg font-bold">More</p>
-              <button onClick={() => setMoreOpen(false)} className="rounded-lg p-2 hover:bg-slate-200" aria-label="Close">
+              <button onClick={() => setMoreOpen(false)} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Close">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -539,7 +537,7 @@ export default function DashboardPage() {
               <button onClick={() => go('settings')} className={`${row} ${tone(tab === 'settings')}`}>
                 <Settings className="h-5 w-5" /> Settings
               </button>
-              <button onClick={logout} className={`${row} text-slate-600 hover:bg-slate-200`}>
+              <button onClick={logout} className={`${row} text-black hover:bg-slate-100`}>
                 <LogOut className="h-5 w-5" /> Log out
               </button>
             </div>

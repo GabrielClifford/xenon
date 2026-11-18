@@ -341,7 +341,7 @@ export default function CatalogsPanel({ businessId }: { businessId: string }) {
                   type="button"
                   onClick={() => nudge(-1)}
                   aria-label="Decrease adjustment"
-                  className="rounded-xl bg-slate-100 px-4 text-slate-700 hover:bg-slate-200"
+                  className="rounded-xl bg-slate-100 px-4 text-slate-700 hover:bg-slate-100"
                 >
                   <Minus className="h-4 w-4" />
                 </button>
@@ -349,7 +349,7 @@ export default function CatalogsPanel({ businessId }: { businessId: string }) {
                   type="button"
                   onClick={() => nudge(1)}
                   aria-label="Increase adjustment"
-                  className="rounded-xl bg-slate-100 px-4 text-slate-700 hover:bg-slate-200"
+                  className="rounded-xl bg-slate-100 px-4 text-slate-700 hover:bg-slate-100"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -502,7 +502,7 @@ export default function CatalogsPanel({ businessId }: { businessId: string }) {
                     type="button"
                     onClick={() => startEdit(c)}
                     aria-label={`Edit ${c.title}`}
-                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-200"
+                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
