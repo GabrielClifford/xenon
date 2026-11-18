@@ -502,7 +502,7 @@ export default function CatalogsPanel({ businessId }: { businessId: string }) {
                     type="button"
                     onClick={() => startEdit(c)}
                     aria-label={`Edit ${c.title}`}
-                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-200"
                   >
                     <Pencil className="h-4 w-4" />
                   </button>

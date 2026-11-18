@@ -346,7 +346,7 @@ function MarketsList({ businessId }: { businessId: string }) {
               type="button"
               onClick={() => setFilter(f)}
               className={`rounded-full px-4 py-1.5 text-sm font-medium ${
-                filter === f ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:bg-slate-100'
+                filter === f ? 'bg-slate-200 text-slate-900' : 'text-slate-500 hover:bg-slate-200'
               }`}
             >
               {f === 'all' ? 'All' : 'Regions'}
@@ -405,7 +405,7 @@ function MarketsList({ businessId }: { businessId: string }) {
                   type="button"
                   onClick={() => startEdit(m)}
                   aria-label={`Edit ${m.name}`}
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-200"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>

@@ -473,11 +473,11 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                             </button>
                           ) : (
                             <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-300 p-1">
-                              <button onClick={() => setQty(pr, qty - 1)} className="rounded-md p-2 hover:bg-slate-100" aria-label="Less">
+                              <button onClick={() => setQty(pr, qty - 1)} className="rounded-md p-2 hover:bg-slate-200" aria-label="Less">
                                 <Minus className="h-4 w-4" />
                               </button>
                               <span className="text-sm font-semibold">{qty}</span>
-                              <button onClick={() => setQty(pr, qty + 1)} className="rounded-md p-2 hover:bg-slate-100" aria-label="More">
+                              <button onClick={() => setQty(pr, qty + 1)} className="rounded-md p-2 hover:bg-slate-200" aria-label="More">
                                 <Plus className="h-4 w-4" />
                               </button>
                             </div>
@@ -515,7 +515,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
               <h3 className="text-lg font-bold text-slate-900">
                 {step === 'cart' ? 'Your cart' : step === 'details' ? 'Checkout' : step === 'done' ? 'Order placed' : 'Track your order'}
               </h3>
-              <button onClick={closeAll} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Close">
+              <button onClick={closeAll} className="rounded-lg p-2 hover:bg-slate-200" aria-label="Close">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -539,11 +539,11 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                           <p className="text-xs text-slate-500">{naira(p.price)}</p>
                         </div>
                         <div className="flex items-center gap-1 rounded-lg border border-slate-300 p-0.5">
-                          <button onClick={() => setQty(p, qty - 1)} className="rounded p-1.5 hover:bg-slate-100" aria-label="Less">
+                          <button onClick={() => setQty(p, qty - 1)} className="rounded p-1.5 hover:bg-slate-200" aria-label="Less">
                             <Minus className="h-3.5 w-3.5" />
                           </button>
                           <span className="w-6 text-center text-sm font-semibold">{qty}</span>
-                          <button onClick={() => setQty(p, qty + 1)} className="rounded p-1.5 hover:bg-slate-100" aria-label="More">
+                          <button onClick={() => setQty(p, qty + 1)} className="rounded p-1.5 hover:bg-slate-200" aria-label="More">
                             <Plus className="h-3.5 w-3.5" />
                           </button>
                         </div>

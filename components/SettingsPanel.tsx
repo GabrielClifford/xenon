@@ -2040,10 +2040,10 @@ function ShippingPage({ user }: { user: User }) {
             {sh.methods.map((m, i) => (
               <div key={m.key} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
                 <div className="flex flex-col">
-                  <button onClick={() => moveMethod(i, -1)} disabled={i === 0} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Move up">
+                  <button onClick={() => moveMethod(i, -1)} disabled={i === 0} className="rounded p-1 text-slate-500 hover:bg-slate-200 disabled:opacity-30" aria-label="Move up">
                     <ArrowUp className="h-4 w-4" />
                   </button>
-                  <button onClick={() => moveMethod(i, 1)} disabled={i === sh.methods.length - 1} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-30" aria-label="Move down">
+                  <button onClick={() => moveMethod(i, 1)} disabled={i === sh.methods.length - 1} className="rounded p-1 text-slate-500 hover:bg-slate-200 disabled:opacity-30" aria-label="Move down">
                     <ArrowDown className="h-4 w-4" />
                   </button>
                 </div>
@@ -2294,7 +2294,7 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
                 key={k}
                 onClick={() => setCtab(k)}
                 className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                  ctab === k ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-100'
+                  ctab === k ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-200'
                 }`}
               >
                 {text}
@@ -2560,7 +2560,7 @@ function PrivacyPage({ user, onGo }: { user: User; onGo: (id: PageId) => void })
           <button
             onClick={() => save({ ...p, analytics: !p.analytics })}
             disabled={saving}
-            className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100"
+            className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-200"
           >
             {p.analytics ? 'Disable' : 'Enable'}
           </button>
@@ -2637,7 +2637,7 @@ function MetafieldsPage({ user }: { user: User }) {
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === k ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-100'}`}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === k ? 'bg-slate-200 text-slate-900' : 'text-slate-600 hover:bg-slate-200'}`}
           >
             {t}
           </button>
@@ -2807,7 +2807,7 @@ export default function SettingsPanel({
                   onClick={() => openPage(i.id)}
                   className={`flex w-full items-center gap-3 rounded-xl py-3 pr-3 text-left text-[15px] font-medium transition ${
                     i.sub && !q ? 'pl-12' : 'pl-3'
-                  } ${active ? 'lg:bg-blue-50 lg:text-blue-700' : 'text-slate-800 hover:bg-slate-100'}`}
+                  } ${active ? 'lg:bg-blue-50 lg:text-blue-700' : 'text-slate-800 hover:bg-slate-200'}`}
                 >
                   {!(i.sub && !q) && <i.icon className="h-5 w-5 shrink-0" />}
                   <span className="flex-1">{i.label}</span>
