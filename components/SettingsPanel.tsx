@@ -36,7 +36,7 @@ import CustomerEvents from './CustomerEventsPanel';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
-  | 'accounts' | 'shipping' | 'taxes' | 'locations' | 'markets' | 'apps' | 'channels' | 'domains'
+  | 'accounts' | 'shipping' | 'taxes' | 'locations' | 'markets' | 'channels' | 'domains'
   | 'events' | 'notifications' | 'metafields' | 'languages' | 'privacy' | 'policies';
 
 // "soon" holds the text shown on a page that is not built yet
@@ -56,7 +56,6 @@ const items: Item[] = [
   { id: 'taxes', label: 'Taxes and duties', icon: Percent },
   { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'markets', label: 'Markets', icon: Globe },
-  { id: 'apps', label: 'Apps', icon: LayoutGrid, soon: 'Connect extra tools to your website.' },
   { id: 'channels', label: 'Sales channels', icon: Share2 },
   { id: 'domains', label: 'Domains', icon: Link2 },
   { id: 'events', label: 'Customer events', icon: MousePointerClick},
