@@ -321,6 +321,13 @@ export async function dispatchOrder(
   const settings = await loadSettings(db, biz.id);
   const sender = await senderFor(db, biz, settings);
   const storeUrl = `${siteUrl()}/b/${biz.slug}`;
+
+  // Use the owner's Order ID format (Settings > General) in emails and webhooks.
+  const { data: prof } = await db.from('store_profile').select('order_prefix,order_suffix').eq('business_id', biz.id).maybeSingle();
+  if (prof) {
+    const bare = order.number.replace(/^#/, '');
+    order = { ...order, number: `${prof.order_prefix ?? '#'}${bare}${prof.order_suffix ?? ''}` };
+  }
   const jobs: Promise<unknown>[] = [];
   const base = { business_id: biz.id, order_id: order.id };
 

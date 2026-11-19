@@ -34,6 +34,7 @@ import MarketsPanel from '@/components/MarketsPanel';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import CustomerEvents from './CustomerEventsPanel';
 import Roles from './RolesPanel';
+import GeneralPanel from '@/components/GeneralPanel';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -2742,8 +2743,8 @@ export default function SettingsPanel({
   function body() {
     if (item.soon) return <SoonPage title={item.label} text={item.soon} />;
     switch (current) {
-      case 'general':
-        return <GeneralPage user={user} onUserChange={onUserChange} onNavigate={onNavigate} />;
+       case 'general':
+  return <GeneralPanel user={user} onUserChange={onUserChange} onNavigate={onNavigate} onGo={openPage} />;
       case 'users':
         return <UsersPage user={user} />;
       case 'security':
