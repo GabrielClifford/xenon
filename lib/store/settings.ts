@@ -24,7 +24,25 @@ export type StoreProfile = {
   order_suffix: string;
   fulfill_after_paid: 'all' | 'none';
   archive_when_done: boolean;
+  // Business entity (the "Edit business details" screen)
+  entity_nickname: string;
+  entity_first_name: string;
+  entity_last_name: string;
+  entity_dob: string; // YYYY-MM-DD or ''
+  entity_email: string;
+  entity_phone_country: string;
+  entity_phone: string; // digits only, without the country code
+  entity_line1: string;
+  entity_line2: string;
+  entity_city: string;
+  entity_state: string;
+  entity_postal: string;
+  tax_id: string;
+  website: string;
+  business_ids: BusinessId[];
 };
+
+export type BusinessId = { country: string; kind: string; value: string };
 
 export const defaultProfile: StoreProfile = {
   business_type: null,
@@ -45,9 +63,24 @@ export const defaultProfile: StoreProfile = {
   order_suffix: '',
   fulfill_after_paid: 'none',
   archive_when_done: true,
+  entity_nickname: '',
+  entity_first_name: '',
+  entity_last_name: '',
+  entity_dob: '',
+  entity_email: '',
+  entity_phone_country: 'NG',
+  entity_phone: '',
+  entity_line1: '',
+  entity_line2: '',
+  entity_city: '',
+  entity_state: '',
+  entity_postal: '',
+  tax_id: '',
+  website: '',
+  business_ids: [],
 };
 
-const str = (v: unknown, d: string) => (typeof v === 'string' ? v : d);
+const str =(v: unknown, d: string) => (typeof v === 'string' ? v : d);
 const oneOf = <T extends string>(v: unknown, list: readonly T[], d: T): T => (typeof v === 'string' && (list as readonly string[]).includes(v) ? (v as T) : d);
 
 // Turns a database row (or nothing) into a complete, safe profile.
@@ -75,8 +108,154 @@ export function readProfile(row: Record<string, unknown> | null | undefined): St
     order_suffix: str(r.order_suffix, d.order_suffix),
     fulfill_after_paid: oneOf(r.fulfill_after_paid, ['all', 'none'] as const, d.fulfill_after_paid),
     archive_when_done: typeof r.archive_when_done === 'boolean' ? r.archive_when_done : d.archive_when_done,
+    entity_nickname: str(r.entity_nickname, ''),
+    entity_first_name: str(r.entity_first_name, ''),
+    entity_last_name: str(r.entity_last_name, ''),
+    entity_dob: typeof r.entity_dob === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.entity_dob) ? r.entity_dob : '',
+    entity_email: str(r.entity_email, ''),
+    entity_phone_country: str(r.entity_phone_country, d.entity_phone_country) || d.entity_phone_country,
+    entity_phone: str(r.entity_phone, ''),
+    entity_line1: str(r.entity_line1, ''),
+    entity_line2: str(r.entity_line2, ''),
+    entity_city: str(r.entity_city, ''),
+    entity_state: str(r.entity_state, ''),
+    entity_postal: str(r.entity_postal, ''),
+    tax_id: str(r.tax_id, ''),
+    website: str(r.website, ''),
+    business_ids: readBusinessIds(r.business_ids),
   };
 }
+
+function readBusinessIds(v: unknown): BusinessId[] {
+  if (!Array.isArray(v)) return [];
+  const out: BusinessId[] = [];
+  for (const x of v) {
+    if (x && typeof x === 'object') {
+      const o = x as Record<string, unknown>;
+      if (typeof o.country === 'string' && typeof o.kind === 'string' && typeof o.value === 'string') out.push({ country: o.country, kind: o.kind, value: o.value });
+    }
+  }
+  return out.slice(0, 10);
+}
+
+/* ------------------------- business entity helpers ------------------------ */
+
+export type PersonRole = 'account_representative' | 'owner' | 'executive' | 'director';
+
+export const personRoles: { v: PersonRole; t: string }[] = [
+  { v: 'account_representative', t: 'Account representative' },
+  { v: 'owner', t: 'Owner' },
+  { v: 'executive', t: 'Executive' },
+  { v: 'director', t: 'Director' },
+];
+export const roleName = (r: string) => personRoles.find((x) => x.v === r)?.t ?? r;
+
+export type Person = {
+  id: string; // 'new-...' until it has been saved
+  role: PersonRole;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_country: string;
+  phone: string;
+  dob: string;
+  job_title: string;
+  ownership: string; // percent, as typed
+};
+
+export const blankPerson = (role: PersonRole, country: string): Person => ({
+  id: `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  role,
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone_country: country,
+  phone: '',
+  dob: '',
+  job_title: '',
+  ownership: '',
+});
+
+export function readPerson(row: Record<string, unknown>): Person {
+  const s = (v: unknown) => (typeof v === 'string' ? v : '');
+  const role = personRoles.some((x) => x.v === row.role) ? (row.role as PersonRole) : 'owner';
+  return {
+    id: s(row.id),
+    role,
+    first_name: s(row.first_name),
+    last_name: s(row.last_name),
+    email: s(row.email),
+    phone_country: s(row.phone_country) || 'NG',
+    phone: s(row.phone),
+    dob: /^\d{4}-\d{2}-\d{2}$/.test(s(row.dob)) ? s(row.dob) : '',
+    job_title: s(row.job_title),
+    ownership: row.ownership_percent === null || row.ownership_percent === undefined ? '' : String(row.ownership_percent),
+  };
+}
+
+export const personMissing = (p: Person) => !p.first_name.trim() || !p.last_name.trim() || !isEmail(p.email);
+
+export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// Returns YYYY-MM-DD for a real calendar date, otherwise null.
+export function buildDob(y: string, m: string, d: string): string | null {
+  const yy = Number(y);
+  const mm = Number(m);
+  const dd = Number(d);
+  if (!/^\d{4}$/.test(y) || yy < 1900 || !Number.isInteger(mm) || !Number.isInteger(dd)) return null;
+  const t = new Date(Date.UTC(yy, mm - 1, dd));
+  if (t.getUTCFullYear() !== yy || t.getUTCMonth() !== mm - 1 || t.getUTCDate() !== dd) return null;
+  return `${y}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+}
+
+export function splitDob(iso: string): { y: string; m: string; d: string } {
+  const x = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return x ? { y: x[1], m: String(Number(x[2])), d: String(Number(x[3])) } : { y: '', m: '', d: '' };
+}
+
+export function ageOf(iso: string, now = new Date()): number {
+  const x = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!x) return 0;
+  let age = now.getFullYear() - Number(x[1]);
+  if (now.getMonth() + 1 < Number(x[2]) || (now.getMonth() + 1 === Number(x[2]) && now.getDate() < Number(x[3]))) age -= 1;
+  return age;
+}
+
+export const dialCodes: Record<string, string> = {
+  NG: '234', GH: '233', KE: '254', ZA: '27', EG: '20', MA: '212', TZ: '255', UG: '256', RW: '250', ET: '251', SN: '221', CI: '225', CM: '237',
+  BJ: '229', TG: '228', NE: '227', BF: '226', ML: '223', LR: '231', SL: '232', GM: '220', ZM: '260', ZW: '263', BW: '267', NA: '264', AO: '244',
+  DZ: '213', TN: '216', GB: '44', IE: '353', FR: '33', DE: '49', ES: '34', IT: '39', NL: '31', BE: '32', PT: '351', SE: '46', NO: '47', DK: '45',
+  CH: '41', US: '1', CA: '1', MX: '52', BR: '55', AR: '54', AE: '971', SA: '966', TR: '90', IN: '91', PK: '92', CN: '86', JP: '81', KR: '82',
+  SG: '65', MY: '60', PH: '63', ID: '62', AU: '61', NZ: '64',
+};
+
+// Keeps digits only, drops a typed country code (+234...) and a leading trunk zero (0803... becomes 803...).
+export function normalizePhone(raw: string, country: string): string {
+  const t = raw.trim();
+  let s = t.replace(/\D/g, '');
+  const dial = dialCodes[country] ?? '';
+  if (t.startsWith('+') && dial && s.startsWith(dial)) s = s.slice(dial.length);
+  return s.replace(/^0+/, '');
+}
+export const validPhone = (digits: string) => /^\d{6,14}$/.test(digits);
+export const showPhone = (country: string, digits: string) => (digits ? `+${dialCodes[country] ?? ''} ${digits}` : '');
+
+// Extra registration details a country can ask for. Nigeria has none beyond the CAC and tax numbers in the optional fields.
+export const businessIdKinds: Record<string, { code: string; label: string }[]> = {
+  US: [{ code: 'ein', label: 'Employer identification number (EIN)' }],
+  GB: [{ code: 'crn', label: 'Company registration number' }, { code: 'vat', label: 'VAT number' }],
+  IE: [{ code: 'cro', label: 'Company registration number' }, { code: 'vat', label: 'VAT number' }],
+  CA: [{ code: 'bn', label: 'Business number (BN)' }],
+  AU: [{ code: 'abn', label: 'Australian business number (ABN)' }],
+  IN: [{ code: 'gstin', label: 'GSTIN' }, { code: 'pan', label: 'PAN' }],
+  ZA: [{ code: 'cipc', label: 'CIPC registration number' }, { code: 'vat', label: 'VAT number' }],
+  GH: [{ code: 'rgd', label: 'Registrar General number' }, { code: 'tin', label: 'Tax identification number (TIN)' }],
+  KE: [{ code: 'kra', label: 'KRA PIN' }, { code: 'reg', label: 'Business registration number' }],
+  DE: [{ code: 'hrb', label: 'Handelsregister number' }, { code: 'vat', label: 'VAT ID' }],
+  FR: [{ code: 'siren', label: 'SIREN number' }, { code: 'vat', label: 'VAT number' }],
+  AE: [{ code: 'trn', label: 'Tax registration number (TRN)' }, { code: 'licence', label: 'Trade licence number' }],
+};
+export const kindLabel = (country: string, code: string) => businessIdKinds[country]?.find((k) => k.code === code)?.label ?? code;
 
 export type StoreBrand = {
   logo_url: string;
@@ -191,3 +370,4 @@ export async function logActivity(sb: Sb, businessId: string, actor: string, act
     /* ignore */
   }
 }
+

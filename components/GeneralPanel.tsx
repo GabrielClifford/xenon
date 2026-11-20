@@ -5,8 +5,8 @@ import type { User } from '@supabase/supabase-js';
 import { ArrowLeft, Building2, Check, ChevronRight, Copy, Database, History, Info, Lock, MapPin, MoreHorizontal, Palette, Store, Trash2, Upload, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { Tab } from '@/components/DashboardOverview';
+import BusinessDetailsModal from '@/components/BusinessDetailsModal';
 import {
-  businessTypes,
   countries,
   countryName,
   defaultBrand,
@@ -22,7 +22,6 @@ import {
   timeZones,
   validOrderAffix,
   weightUnits,
-  type BusinessType,
   type StoreBrand,
   type StoreProfile,
   type UnitSystem,
@@ -154,59 +153,6 @@ function Footer({ busy, onClose, onSave, saveText = 'Save' }: { busy: boolean; o
 }
 
 /* ---------------------------------- modals -------------------------------- */
-
-function BusinessModal({ profile, onSave, onClose }: { profile: StoreProfile; onSave: Save; onClose: () => void }) {
-  const [country, setCountry] = useState(profile.country);
-  const [type, setType] = useState<BusinessType | ''>(profile.business_type ?? '');
-  const [legal, setLegal] = useState(profile.legal_name);
-  const [reg, setReg] = useState(profile.registration_number);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-
-  async function go() {
-    setErr('');
-    if (!type) return setErr('Choose the type of business you have.');
-    if (!legal.trim()) return setErr(type === 'individual' ? 'Enter your full legal name.' : 'Enter your legal business name.');
-    if (legal.trim().length > 200) return setErr('The legal name is too long.');
-    if (reg.trim().length > 60) return setErr('The registration number is too long.');
-    setBusy(true);
-    const e = await onSave({ country, business_type: type, legal_name: legal.trim(), registration_number: type === 'individual' ? '' : reg.trim() });
-    setBusy(false);
-    if (e) setErr(e);
-    else onClose();
-  }
-
-  return (
-    <Modal title="Edit business details" onClose={onClose}>
-      <div className="space-y-4">
-        <div>
-          <label className={label}>Country or region</label>
-          <CountrySelect value={country} onChange={setCountry} />
-        </div>
-        <div>
-          <p className={label}>What type of business do you have?</p>
-          <div role="radiogroup" className="space-y-1">
-            {businessTypes.map((t) => (
-              <Radio key={t.v} on={type === t.v} title={t.t} text={t.text} onClick={() => setType(t.v)} />
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className={label}>{type === 'individual' ? 'Full legal name' : 'Legal business name'}</label>
-          <input className={field} value={legal} maxLength={200} onChange={(e) => setLegal(e.target.value)} />
-        </div>
-        {(type === 'company' || type === 'nonprofit') && (
-          <div>
-            <label className={label}>{country === 'NG' ? 'CAC registration number (optional)' : 'Registration number (optional)'}</label>
-            <input className={field} value={reg} maxLength={60} placeholder={country === 'NG' ? 'RC1234567' : ''} onChange={(e) => setReg(e.target.value)} />
-          </div>
-        )}
-        <Err text={err} />
-      </div>
-      <Footer busy={busy} onClose={onClose} onSave={go} />
-    </Modal>
-  );
-}
 
 function ContactModal({ biz, email, onSave, onClose }: { biz: Biz; email: string; onSave: (name: string, phone: string, email: string) => Promise<string | null>; onClose: () => void }) {
   const [name, setName] = useState(biz.name);
@@ -809,7 +755,7 @@ export default function GeneralPanel({
       const sb = createClient();
       const next = { ...profile, ...patch };
       const { error: e } = await sb.from('store_profile').upsert({ business_id: biz.id, ...next, updated_at: new Date().toISOString() }, { onConflict: 'business_id' });
-      if (e) return /store_profile/.test(e.message) ? 'Run general.sql in Supabase first.' : e.message;
+      if (e) return /entity_|tax_id|business_ids|website/.test(e.message) ? 'Run business-details.sql in Supabase first.' : /store_profile/.test(e.message) ? 'Run general.sql in Supabase first.' : e.message;
       setProfile(next);
       for (const a of activity) logActivity(sb, biz.id, actor, a.action, a.detail ?? '');
       return null;
@@ -951,7 +897,7 @@ export default function GeneralPanel({
         <div className={`${card} relative flex items-center gap-4`}>
           <span className="text-3xl leading-none">{flag(profile.country)}</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-slate-900">{profile.legal_name.trim() ? profile.legal_name : `${biz.name} - entity`}</p>
+            <p className="truncate font-medium text-slate-900">{profile.entity_nickname.trim() || profile.legal_name.trim() || `${biz.name} - entity`}</p>
             <p className="text-sm text-slate-600">{countryName(profile.country)}</p>
           </div>
           <button aria-label="Business details menu" className="rounded-full p-2 text-slate-600 hover:bg-slate-100" onClick={() => setMenu((v) => !v)}>
@@ -1181,10 +1127,12 @@ export default function GeneralPanel({
       )}
 
       {modal === 'business' && (
-        <BusinessModal
+        <BusinessDetailsModal
+          bizId={biz.id}
+          bizName={biz.name}
           profile={profile}
           onClose={() => setModal(null)}
-          onSave={(p) => saveProfile(p, [{ action: 'Updated business details' }])}
+          onSave={saveProfile}
         />
       )}
       {modal === 'contact' && <ContactModal biz={biz} email={email} onSave={saveContact} onClose={() => setModal(null)} />}
