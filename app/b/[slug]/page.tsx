@@ -13,6 +13,7 @@ import { readTax } from '@/lib/tax';
 import { readShipping } from '@/lib/shipping';
 import { applyLocations, formatAddress, readLocations } from '@/lib/locations';
 import { isPublished, publishedLinks, readPolicies } from '@/lib/policies';
+import { readPayments } from '@/lib/paymentMethods';
 
 async function Site({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -89,6 +90,7 @@ async function Site({ params }: { params: Promise<{ slug: string }> }) {
           accounts: readAccounts(b.accounts_options),
           tax: readTax(b.tax_options),
           policies: policyLinks,
+          payments: readPayments(b.payments_options),
           shipping: applyLocations(readShipping(b.shipping_options), locs),
           bank:
             b.bank_name && b.account_number

@@ -35,6 +35,7 @@ import NotificationsPanel from '@/components/NotificationsPanel';
 import CustomerEvents from './CustomerEventsPanel';
 import Roles from './RolesPanel';
 import GeneralPanel from '@/components/GeneralPanel';
+import PaymentsSettings from '@/components/PaymentsSettings';
 
 type PageId =
   | 'general' | 'plan' | 'billing' | 'users' | 'roles' | 'security' | 'payments' | 'checkout'
@@ -2749,8 +2750,8 @@ export default function SettingsPanel({
         return <UsersPage user={user} />;
       case 'security':
         return <SecurityPage onLogout={onLogout} />;
-      case 'payments':
-        return <PaymentsPage user={user} />;
+        case 'payments':
+  return <PaymentsSettings user={user} />;
       case 'channels':
         return <ChannelsPage onNavigate={onNavigate} />;
       case 'domains':

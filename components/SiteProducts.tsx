@@ -8,6 +8,14 @@ import { defaultOptions, type CheckoutOptions, type FieldMode } from '@/lib/chec
 import { defaultAccounts, type AccountsOptions } from '@/lib/accounts';
 import { defaultTax, type TaxSettings } from '@/lib/tax';
 import { defaultShipping, etaText, splitAreas, type MethodKey, type ShippingSettings } from '@/lib/shipping';
+import {
+  buildPayOptions,
+  payWithProvider,
+  providerName,
+  type PayOption,
+  type PaymentsConfig,
+  type ProviderConn,
+} from '@/lib/paymentMethods';
 
 export type SiteProduct = {
   id: string;
@@ -38,10 +46,24 @@ export type Shop = {
   tax: TaxSettings;
   policies: { label: string; href: string }[];
   shipping: ShippingSettings;
+  payments?: PaymentsConfig;
 };
 
 type Tracked = { status: string; total: number; created_at: string; items: { name: string; quantity: number }[] };
 type Account = { id: string; full_name: string | null; email: string | null; phone: string | null; credit: number };
+type PayResult = {
+  kind: PayOption['kind'];
+  label: string;
+  status: 'none' | 'pending' | 'paid' | 'error';
+  ref: string;
+  instructions: string;
+  link: string;
+  provider?: ProviderConn;
+  amount: number;
+  email: string;
+  phone: string;
+  name: string;
+};
 type Result = {
   number: number;
   total: number;
@@ -50,6 +72,7 @@ type Result = {
   delivery: string;
   pickup: { address: string; instructions: string } | null;
   eta: string | null;
+  pay: PayResult;
 };
 
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
@@ -76,7 +99,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'cart' | 'details' | 'done' | 'track'>('cart');
   const [form, setForm] = useState(emptyForm);
-  const [payment, setPayment] = useState<'cod' | 'transfer'>('cod');
+  const [payKey, setPayKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Result | null>(null);
@@ -158,15 +181,17 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shop?.businessId]);
 
-    // lets the cookie banner know when the cart or checkout is open
+  // lets the cookie banner know when the cart or checkout is open
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('xenon-cart', { detail: { open } }));
   }, [open]);
-  
+
   const lines = useMemo(
     () => products.filter((p) => cart[p.id] > 0).map((p) => ({ p, qty: cart[p.id] })),
     [products, cart]
   );
+  const payOptions = useMemo(() => buildPayOptions(shop?.payments, !!shop?.bank), [shop?.payments, shop?.bank]);
+  const payOpt = payOptions.find((o) => o.key === payKey) ?? payOptions[0];
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
   const payable = Math.max(0, total - (discount?.amount ?? 0));
@@ -305,6 +330,14 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     setCodeMsg('Discount applied.');
   }
 
+  // opens the provider's payment window for an order that is already placed
+  async function runPayment(p: PayResult) {
+    if (!p.provider) return;
+    setResult((r) => (r ? { ...r, pay: { ...r.pay, status: 'pending' } } : r));
+    const s = await payWithProvider(p.provider, { email: p.email, phone: p.phone, name: p.name, amount: p.amount, ref: p.ref });
+    setResult((r) => (r ? { ...r, pay: { ...r.pay, status: s === 'paid' ? 'paid' : s === 'error' ? 'error' : 'pending' } } : r));
+  }
+
   async function placeOrder() {
     if (!shop) return;
     if (needSignIn) return setError('Please sign in to place an order.');
@@ -331,13 +364,25 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     setError('');
     const usedCredit = creditApplied;
     const sendZone = activeKey === 'shipping' || (activeKey === 'local' && localAreas.length > 0) ? zone : null;
+
+    // the chosen way to pay: it decides how the order is recorded and what happens after
+    const po = payOpt;
+    const ref = po.kind === 'provider' ? `XN-${Date.now().toString(36).toUpperCase()}` : '';
+    const payLine =
+      po.kind === 'provider' && po.provider
+        ? `Online payment via ${providerName(po.provider.id)}, ref ${ref}`
+        : po.kind === 'custom'
+          ? `Payment method: ${po.label}`
+          : '';
+    const noteText = [form.note.trim(), payLine ? `[${payLine}]` : ''].filter(Boolean).join('\n');
+
     const { data, error: err } = await createClient().rpc('place_order', {
       p_business_id: shop.businessId,
       p_name: fullName,
       p_phone: form.phone,
       p_address: form.address,
-      p_note: form.note,
-      p_payment: payment,
+      p_note: noteText,
+      p_payment: po.base,
       p_items: lines.map((l) => ({ product_id: l.p.id, quantity: l.qty })),
       p_code: discount?.code ?? null,
       p_email: opt.email === 'off' ? null : form.email,
@@ -355,14 +400,31 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     });
     setBusy(false);
     if (err) return setError(err.message);
+
+    const digits = form.phone.replace(/\D/g, '') || 'customer';
+    const pay: PayResult = {
+      kind: po.kind,
+      label: po.label,
+      status: po.kind === 'provider' && Number(data.total) > 0 ? 'pending' : 'none',
+      ref,
+      instructions: po.method?.instructions ?? '',
+      link: po.method?.link ?? '',
+      provider: po.provider,
+      amount: Number(data.total),
+      email: form.email.trim() || `${digits}@${window.location.hostname}`,
+      phone: form.phone.trim(),
+      name: fullName,
+    };
+
     setResult({
       number: data.order_number,
       total: data.total,
-      method: payment,
+      method: po.base,
       thankYou: data.thank_you ?? null,
       delivery: activeKey ? `${methodName(activeKey)}${sendZone ? ` · ${sendZone}` : ''}` : '',
       pickup: activeKey === 'pickup' ? { address: sh.pickup.address, instructions: sh.pickup.instructions } : null,
       eta: data.delivery_eta ?? null,
+      pay,
     });
     if (usedCredit > 0) setAccount((a) => (a ? { ...a, credit: Math.max(0, a.credit - usedCredit) } : a));
     setUseCredit(false);
@@ -373,6 +435,8 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     setTipChoice('none');
     setCustomTip('');
     setStep('done');
+
+    if (pay.status === 'pending') void runPayment(pay);
   }
 
   async function trackOrder() {
@@ -732,14 +796,21 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
                   <div>
                     <p className="mb-2 text-sm font-medium">How will you pay?</p>
-                    <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 p-3 text-sm">
-                      <input type="radio" checked={payment === 'cod'} onChange={() => setPayment('cod')} /> Pay on delivery
-                    </label>
-                    {shop?.bank && (
-                      <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 p-3 text-sm">
-                        <input type="radio" checked={payment === 'transfer'} onChange={() => setPayment('transfer')} /> Bank transfer
-                      </label>
-                    )}
+                    {payOptions.map((o) => {
+                      const on = payOpt?.key === o.key;
+                      return (
+                        <label key={o.key} className="mb-2 flex cursor-pointer items-start gap-2 rounded-xl border border-slate-300 p-3 text-sm">
+                          <input type="radio" className="mt-0.5" checked={on} onChange={() => setPayKey(o.key)} />
+                          <span>
+                            <span className="block">{o.label}</span>
+                            {on && o.method?.instructions && <span className="mt-1 block text-xs text-slate-500">{o.method.instructions}</span>}
+                            {on && o.kind === 'provider' && (
+                              <span className="mt-1 block text-xs text-slate-500">You will pay in a secure window after you place the order.</span>
+                            )}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                   {error && <p className="text-sm text-red-600">{error}</p>}
                 </div>
@@ -762,12 +833,51 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                     </div>
                   )}
                   <p>Total: <b>{naira(result.total)}</b></p>
-                  {result.method === 'transfer' && shop?.bank && result.total > 0 ? (
+
+                  {result.pay.kind === 'provider' && result.total > 0 ? (
+                    <div className="rounded-xl bg-slate-50 p-4">
+                      {result.pay.status === 'paid' ? (
+                        <>
+                          <p className="font-semibold text-green-700">Payment sent. Thank you!</p>
+                          <p className="mt-1 text-xs text-slate-500">Reference: {result.pay.ref}. The business will confirm your payment and contact you.</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-semibold text-slate-900">
+                            {result.pay.status === 'error' ? 'We could not open the payment window.' : 'Your payment is not complete yet.'}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">Reference: {result.pay.ref}</p>
+                          <button
+                            onClick={() => runPayment(result.pay)}
+                            className="mt-3 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                          >
+                            Pay now
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ) : result.pay.kind === 'transfer' && shop?.bank && result.total > 0 ? (
                     <div className="rounded-xl bg-slate-50 p-4">
                       <p className="font-semibold text-slate-900">Please transfer to:</p>
                       <p className="mt-2">{shop.bank.bank_name}</p>
                       <p className="text-lg font-bold">{shop.bank.account_number}</p>
                       <p>{shop.bank.account_name}</p>
+                      <p className="mt-2 text-xs text-slate-500">Use order #{result.number} as the reference.</p>
+                    </div>
+                  ) : result.pay.kind === 'custom' && result.total > 0 ? (
+                    <div className="rounded-xl bg-slate-50 p-4">
+                      <p className="font-semibold text-slate-900">{result.pay.label}</p>
+                      {result.pay.instructions && <p className="mt-2 whitespace-pre-line">{result.pay.instructions}</p>}
+                      {result.pay.link && (
+                        <a
+                          href={result.pay.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                        >
+                          Pay now
+                        </a>
+                      )}
                       <p className="mt-2 text-xs text-slate-500">Use order #{result.number} as the reference.</p>
                     </div>
                   ) : result.total > 0 ? (
