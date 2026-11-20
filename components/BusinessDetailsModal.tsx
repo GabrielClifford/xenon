@@ -2,7 +2,7 @@
 
 // The full "Edit business details" screen: business type, entity details, address, phone,
 // extra business information, optional fields and the People list.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Building2, Check, ChevronsUpDown, Plus, Search, Trash2, User, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -220,17 +220,44 @@ function FlagSelect({ value, onChange }: { value: string; onChange: (c: string) 
 
 function TypeSelect({ value, onChange }: { value: BusinessType | ''; onChange: (t: BusinessType) => void }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; maxH: number } | null>(null);
+  const btn = useRef<HTMLButtonElement>(null);
   const current = businessTypes.find((t) => t.v === value);
+
+  // The list is pinned to the button with fixed positioning, so it floats above the form
+  // instead of stretching (and scrolling) the form underneath it.
+  const place = useCallback(() => {
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    const top = r.bottom + 6;
+    setPos({ top, left: r.left, width: r.width, maxH: Math.max(220, window.innerHeight - top - 16) });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open, place]);
+
   return (
     <div className="relative min-w-0 flex-1">
-      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex h-[3.1rem] w-full items-center justify-between gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-4 text-left text-[15px] text-slate-900">
-        <span className={`truncate ${current ? '' : 'text-slate-700'}`}>{current ? current.t : 'Select business type'}</span>
+      <button ref={btn} type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex h-[3.1rem] w-full items-center justify-between gap-2 rounded-2xl border border-slate-300 bg-slate-50 px-4 text-left text-[15px] text-slate-900">
+        <span className="truncate">{current ? (current.v === 'nonprofit' ? 'Non-Profit' : current.t) : 'Select business type'}</span>
         <ChevronsUpDown size={16} className="shrink-0 text-slate-500" />
       </button>
-      {open && (
+      {open && pos && (
         <>
-          <button type="button" aria-label="Close list" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
-          <div role="listbox" className="absolute left-0 right-0 top-full z-20 mt-1 max-h-[60vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+          <button type="button" aria-label="Close list" className="fixed inset-0 z-[70] cursor-default" onClick={() => setOpen(false)} />
+          <div
+            role="listbox"
+            style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxH }}
+            className="fixed z-[71] overflow-y-auto overscroll-contain rounded-3xl border border-slate-200 bg-white p-2 shadow-2xl"
+          >
             {businessTypes.map((t) => (
               <div key={t.v}>
                 <p className="px-3 pb-1 pt-3 text-lg text-slate-500">{t.t}</p>
@@ -242,10 +269,10 @@ function TypeSelect({ value, onChange }: { value: BusinessType | ''; onChange: (
                     onChange(t.v);
                     setOpen(false);
                   }}
-                  className={`block w-full rounded-xl px-3 py-2 text-left hover:bg-slate-50 ${value === t.v ? 'bg-slate-50' : ''}`}
+                  className={`block w-full rounded-2xl px-3 py-2 text-left hover:bg-slate-50 ${value === t.v ? 'bg-slate-100' : ''}`}
                 >
-                  <span className="block text-lg font-semibold text-slate-900">{t.t === 'Non-profit' ? 'Non-Profit' : t.t}</span>
-                  <span className="mt-1 block text-[15px] leading-6 text-slate-700">{t.text}</span>
+                  <span className="block text-xl font-semibold text-slate-900">{t.v === 'nonprofit' ? 'Non-Profit' : t.t}</span>
+                  <span className="mt-1 block text-base leading-7 text-slate-700">{t.text}</span>
                 </button>
               </div>
             ))}
