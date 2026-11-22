@@ -5,17 +5,19 @@ import AllProducts from '@/components/products/AllProducts';
 import CollectionsPage from '@/components/products/CollectionsPage';
 import InventoryPage from '@/components/products/InventoryPage';
 import PurchaseOrdersPage from '@/components/products/PurchaseOrdersPage';
+import TransfersPage from '@/components/products/TransfersPage';
 
-type Sub = 'all' | 'collections' | 'inventory' | 'purchase';
+type Sub = 'all' | 'collections' | 'inventory' | 'purchase' | 'transfers';
 
 const tabs: { id: Sub; label: string }[] = [
   { id: 'all', label: 'All products' },
   { id: 'collections', label: 'Collections' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'purchase', label: 'Purchase orders' },
+  { id: 'transfers', label: 'Transfers' },
 ];
 
-// The Products section. Transfers join this bar in the next stage.
+// The Products section.
 export default function ProductsPanel({ businessId }: { businessId: string }) {
   const [sub, setSub] = useState<Sub>('all');
   return (
@@ -41,6 +43,7 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
       {sub === 'collections' && <CollectionsPage businessId={businessId} />}
       {sub === 'inventory' && <InventoryPage businessId={businessId} />}
       {sub === 'purchase' && <PurchaseOrdersPage businessId={businessId} />}
+      {sub === 'transfers' && <TransfersPage businessId={businessId} />}
     </div>
   );
 }
