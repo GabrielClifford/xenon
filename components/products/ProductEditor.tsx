@@ -653,6 +653,7 @@ export default function ProductEditor({ businessId, productId, onClose }: { busi
                   <div>
                     <label className={labelCls}>Quantity in stock</label>
                     <input className={field} inputMode="numeric" value={form.stock} onChange={(e) => set({ stock: e.target.value.replace(/\D/g, '') })} />
+                    <p className="mt-1 text-xs text-slate-400">With several locations, changes here go to your default location. Use Inventory to count each location.</p>
                   </div>
                 )}
                 <div>
