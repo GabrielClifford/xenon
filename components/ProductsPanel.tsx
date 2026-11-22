@@ -4,16 +4,18 @@ import { useState } from 'react';
 import AllProducts from '@/components/products/AllProducts';
 import CollectionsPage from '@/components/products/CollectionsPage';
 import InventoryPage from '@/components/products/InventoryPage';
+import PurchaseOrdersPage from '@/components/products/PurchaseOrdersPage';
 
-type Sub = 'all' | 'collections' | 'inventory';
+type Sub = 'all' | 'collections' | 'inventory' | 'purchase';
 
 const tabs: { id: Sub; label: string }[] = [
   { id: 'all', label: 'All products' },
   { id: 'collections', label: 'Collections' },
   { id: 'inventory', label: 'Inventory' },
+  { id: 'purchase', label: 'Purchase orders' },
 ];
 
-// The Products section. Purchase orders and Transfers join this bar in the next stage.
+// The Products section. Transfers join this bar in the next stage.
 export default function ProductsPanel({ businessId }: { businessId: string }) {
   const [sub, setSub] = useState<Sub>('all');
   return (
@@ -38,6 +40,7 @@ export default function ProductsPanel({ businessId }: { businessId: string }) {
       {sub === 'all' && <AllProducts businessId={businessId} />}
       {sub === 'collections' && <CollectionsPage businessId={businessId} />}
       {sub === 'inventory' && <InventoryPage businessId={businessId} />}
+      {sub === 'purchase' && <PurchaseOrdersPage businessId={businessId} />}
     </div>
   );
 }
