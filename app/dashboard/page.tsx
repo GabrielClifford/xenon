@@ -420,7 +420,7 @@ export default function DashboardPage() {
               </div>
             )}
           {isArtisan && mount('products') && (
-  <div className={`mx-auto max-w-3xl space-y-10 ${show('products')}`}>
+  <div className={`mx-auto max-w-6xl space-y-10 ${show('products')}`}>
     {biz ? (
       <>
         <ProductsPanel businessId={biz.id} />
