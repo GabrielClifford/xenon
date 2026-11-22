@@ -10,12 +10,12 @@ import {
   buildPayOptions,
   defaultPayments,
   isHttps,
-  isTestKey,
-  isValidKey,
-  looksSecret,
+  isTestConn,
   providerName,
   readPayments,
+  validateProvider,
   type CustomMethod,
+  type Mode,
   type PaymentsConfig,
   type ProviderId,
 } from '@/lib/paymentMethods';
@@ -105,8 +105,8 @@ export default function PaymentsSettings({ user }: { user: User }) {
   const [sheet, setSheet] = useState(false);
   const [tab, setTab] = useState<'method' | 'provider'>('method');
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'available' | 'soon'>('all');
-  const [keyText, setKeyText] = useState('');
+  const [filter, setFilter] = useState<'all' | 'connected' | 'new'>('all');
+  const [pf, setPf] = useState<{ publicKey: string; extra: string; mode: Mode }>({ publicKey: '', extra: '', mode: 'test' });
   const [bankDraft, setBankDraft] = useState(bank);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -170,16 +170,17 @@ export default function PaymentsSettings({ user }: { user: User }) {
 
   /* ----- providers ----- */
   function openProvider(id: ProviderId) {
-    setKeyText(cfg.providers.find((p) => p.id === id)?.publicKey ?? '');
+    const c = cfg.providers.find((p) => p.id === id);
+    setPf(c ? { publicKey: c.publicKey, extra: c.extra, mode: c.mode } : { publicKey: '', extra: '', mode: 'test' });
     go({ v: 'provider', id });
   }
 
   async function saveProvider(id: ProviderId, active: boolean) {
-    const key = keyText.trim();
-    if (looksSecret(key)) return setMsg('Could not save: that looks like a secret key. Never paste a secret key here. Use the public key.');
-    if (!isValidKey(id, key)) return setMsg(`Could not save: enter a valid ${providerName(id)} public key.`);
+    const v = { publicKey: pf.publicKey.trim(), extra: pf.extra.trim(), mode: pf.mode };
+    const problem = validateProvider(id, v);
+    if (problem) return setMsg(`Could not save: ${problem}.`);
     const others = cfg.providers.filter((p) => p.id !== id);
-    const next = { ...cfg, providers: [...others, { id, publicKey: key, active }] };
+    const next = { ...cfg, providers: [...others, { id, ...v, active }] };
     if (await change(next, `${providerName(id)} saved.`)) setView({ v: 'main' });
   }
 
@@ -282,7 +283,8 @@ export default function PaymentsSettings({ user }: { user: User }) {
   /* ================= provider list ================= */
   if (view.v === 'providers') {
     const q = query.trim().toLowerCase();
-    const list = PROVIDERS.filter((p) => (filter === 'all' ? true : filter === 'available' ? p.available : !p.available)).filter((p) => !q || p.name.toLowerCase().includes(q));
+    const isConn = (id: string) => cfg.providers.some((c) => c.id === id);
+    const list = PROVIDERS.filter((p) => (filter === 'all' ? true : filter === 'connected' ? isConn(p.id) : !isConn(p.id))).filter((p) => !q || p.name.toLowerCase().includes(q));
     return (
       <div className="space-y-5">
         <BackLink onClick={() => go({ v: 'main' })} text="Payments" />
@@ -294,8 +296,8 @@ export default function PaymentsSettings({ user }: { user: User }) {
           </div>
           <select aria-label="Filter" className="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm" value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
             <option value="all">All</option>
-            <option value="available">Available</option>
-            <option value="soon">Coming soon</option>
+            <option value="connected">Connected</option>
+            <option value="new">Not connected</option>
           </select>
         </div>
         <div className={`${card} divide-y divide-slate-100 !py-2`}>
@@ -303,21 +305,15 @@ export default function PaymentsSettings({ user }: { user: User }) {
           {list.map((p) => {
             const conn = cfg.providers.find((c) => c.id === p.id);
             return (
-              <button
-                key={p.id}
-                disabled={!p.available}
-                onClick={() => p.available && openProvider(p.id as ProviderId)}
-                className={`flex w-full items-center gap-3 py-4 text-left ${p.available ? '' : 'opacity-60'}`}
-              >
+              <button key={p.id} onClick={() => openProvider(p.id)} className="flex w-full items-center gap-3 py-4 text-left">
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
                     {p.name}
                     {conn && <Pill tone={conn.active ? 'green' : 'gray'}>{conn.active ? 'Active' : 'Inactive'}</Pill>}
-                    {!p.available && <Pill tone="gray">Coming soon</Pill>}
                   </span>
                   <span className="mt-2 flex flex-wrap gap-1.5">{p.methods.map((m) => <Chip key={m}>{m}</Chip>)}</span>
                 </span>
-                {p.available && <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />}
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
               </button>
             );
           })}
@@ -330,22 +326,40 @@ export default function PaymentsSettings({ user }: { user: User }) {
   if (view.v === 'provider') {
     const info = PROVIDERS.find((p) => p.id === view.id)!;
     const conn = cfg.providers.find((p) => p.id === view.id);
-    const key = keyText.trim();
+    const typed = pf.publicKey.trim();
+    const looksTest = typed && !validateProvider(view.id, { ...pf, extra: info.extra ? pf.extra || '0000' : '' }) && isTestConn({ id: view.id, publicKey: typed, mode: pf.mode });
     return (
       <div className="space-y-5">
         <BackLink onClick={() => go({ v: 'providers' })} text="Providers" />
         <Heading title={info.name} text={info.blurb} />
         <div className={card}>
           <div className="flex flex-wrap gap-1.5">{info.methods.map((m) => <Chip key={m}>{m}</Chip>)}</div>
-          <div className="mt-4">
-            <label className={label}>{info.keyLabel}</label>
-            <input className={field} placeholder={info.keyExample} autoComplete="off" value={keyText} onChange={(e) => setKeyText(e.target.value)} />
-            <p className="mt-1 text-xs text-slate-500">{info.keyHint}</p>
-            {key && isValidKey(view.id, key) && isTestKey(key) && (
-              <p className="mt-2"><Pill tone="amber">Test key: no real money moves</Pill></p>
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className={label}>{info.key.label}</label>
+              <input className={field} placeholder={info.key.example} autoComplete="off" value={pf.publicKey} onChange={(e) => setPf({ ...pf, publicKey: e.target.value })} />
+              <p className="mt-1 text-xs text-slate-500">{info.key.hint}</p>
+            </div>
+            {info.extra && (
+              <div>
+                <label className={label}>{info.extra.label}</label>
+                <input className={field} placeholder={info.extra.example} autoComplete="off" value={pf.extra} onChange={(e) => setPf({ ...pf, extra: e.target.value })} />
+                <p className="mt-1 text-xs text-slate-500">{info.extra.hint}</p>
+              </div>
             )}
-            <p className="mt-3 rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-900">
-              Only paste your <b>public</b> key. Never paste a secret key here. Your public key is visible to anyone who opens your store.
+            {info.modeSelect && (
+              <div>
+                <p className="text-sm font-medium text-slate-900">Mode</p>
+                {([['test', 'Test (no real money moves)'], ['live', 'Live (real payments)']] as const).map(([v, t]) => (
+                  <label key={v} className="mt-2 flex cursor-pointer items-center gap-2 text-sm">
+                    <input type="radio" checked={pf.mode === v} onChange={() => setPf({ ...pf, mode: v })} /> {t}
+                  </label>
+                ))}
+              </div>
+            )}
+            {looksTest && !info.modeSelect && <p><Pill tone="amber">Test credentials: no real money moves</Pill></p>}
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs text-amber-900">
+              Only paste <b>public</b> details. Never paste a secret key here. Anything you save is visible to anyone who opens your store.
             </p>
           </div>
         </div>
@@ -389,7 +403,7 @@ export default function PaymentsSettings({ user }: { user: User }) {
     const ctx = view.ctx;
     const toMethod = (draft: CustomMethod) => setView({ v: 'method', draft, isNew: true });
     const byMethod: CatalogItem[] = [
-      { id: 'cards', name: 'Credit and debit cards', desc: 'Pay online with Paystack or Flutterwave', ctx: 'any', go: () => go({ v: 'providers' }) },
+      { id: 'cards', name: 'Credit and debit cards', desc: 'Pay online with Paystack, Flutterwave, Monnify, Interswitch, Remita or Squad', ctx: 'any', go: () => go({ v: 'providers' }) },
       { id: 'bank', name: 'Bank transfer', desc: 'Customers send money to your account', ctx: 'manual', go: () => { setBankDraft(bank); go({ v: 'bank' }); } },
       { id: 'cod', name: 'Cash on delivery', desc: 'Customers pay when the order arrives', ctx: 'manual', go: () => { void change({ ...cfg, cod: true }, 'Cash on delivery is on.').then((ok) => ok && go({ v: 'main' })); } },
       { id: 'pos', name: 'POS on delivery', desc: 'Your rider brings a card machine', ctx: 'manual', go: () => toMethod(blankMethod('manual', 'POS on delivery', 'Our rider will bring a POS machine. Pay by card when your order arrives.', 'cod')) },
@@ -397,8 +411,7 @@ export default function PaymentsSettings({ user }: { user: User }) {
       { id: 'link', name: 'Payment link', desc: 'Send customers to a payment page', ctx: 'offsite', go: () => toMethod(blankMethod('offsite')) },
     ];
     const byProvider: CatalogItem[] = [
-      { id: 'paystack', name: 'Paystack', desc: 'Pay in a secure Paystack window', ctx: 'any', go: () => openProvider('paystack') },
-      { id: 'flutterwave', name: 'Flutterwave', desc: 'Pay in a secure Flutterwave window', ctx: 'any', go: () => openProvider('flutterwave') },
+      ...PROVIDERS.map((p): CatalogItem => ({ id: p.id, name: p.name, desc: `Pay in a secure ${p.name} window`, ctx: 'any', go: () => openProvider(p.id) })),
       { id: 'psl', name: 'Paystack payment page', desc: 'Your Paystack payment link', ctx: 'offsite', go: () => toMethod(blankMethod('offsite', 'Pay with Paystack link')) },
       { id: 'flwl', name: 'Flutterwave payment link', desc: 'Your Flutterwave payment link', ctx: 'offsite', go: () => toMethod(blankMethod('offsite', 'Pay with Flutterwave link')) },
       { id: 'other', name: 'Other payment link', desc: 'Selar, Bumpa or any https payment page', ctx: 'offsite', go: () => toMethod(blankMethod('offsite', 'Pay online')) },
@@ -611,7 +624,7 @@ export default function PaymentsSettings({ user }: { user: User }) {
               </label>
             ))}
             <p className="mt-4 rounded-xl bg-blue-50 px-4 py-3 text-xs text-blue-900">
-              Paystack and Flutterwave take payment right away, so capture is always automatic at checkout for now.
+              These providers take payment right away, so capture is always automatic at checkout for now.
             </p>
             <button onClick={() => setSheet(false)} className="mt-5 w-full rounded-xl border border-slate-300 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">Close</button>
           </div>

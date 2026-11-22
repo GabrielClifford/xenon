@@ -10,6 +10,7 @@ import { defaultTax, type TaxSettings } from '@/lib/tax';
 import { defaultShipping, etaText, splitAreas, type MethodKey, type ShippingSettings } from '@/lib/shipping';
 import {
   buildPayOptions,
+  makeRef,
   payWithProvider,
   providerName,
   type PayOption,
@@ -367,7 +368,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
     // the chosen way to pay: it decides how the order is recorded and what happens after
     const po = payOpt;
-    const ref = po.kind === 'provider' ? `XN-${Date.now().toString(36).toUpperCase()}` : '';
+    const ref = po.kind === 'provider' && po.provider ? makeRef(po.provider.id) : '';
     const payLine =
       po.kind === 'provider' && po.provider
         ? `Online payment via ${providerName(po.provider.id)}, ref ${ref}`
