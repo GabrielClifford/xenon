@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import {
   BarChart3, Bell, ChevronDown, Crown, Globe, Headphones, Home, LayoutGrid, LogOut,
-  Megaphone, Menu, MoreHorizontal, Package, Search, Settings, ShoppingBag, Tag, Users, X, Zap,
+  Megaphone, MoreHorizontal, Package, Search, Settings, ShoppingBag, Tag, Users, X, Zap,
 } from 'lucide-react';
 import BusinessForm from '@/components/BusinessForm';
 import ChannelsPanel from '@/components/ChannelsPanel';
@@ -67,7 +67,6 @@ export default function DashboardPage() {
   const [newEnq, setNewEnq] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [drawer, setDrawer] = useState(false); // desktop menu, slides over the page when a section is open
   const [query, setQuery] = useState('');
   const [warm, setWarm] = useState(false);
   const [homeKey, setHomeKey] = useState(0);
@@ -104,7 +103,6 @@ export default function DashboardPage() {
       setTabState(t);
       setMoreOpen(false);
       setMenuOpen(false);
-      setDrawer(false);
       setSearchOpen(false);
       if (t === 'home' && Date.now() - homeLoaded.current > 120000) {
         setHomeKey((k) => k + 1);
@@ -161,7 +159,6 @@ export default function DashboardPage() {
     setTab(t);
     setMoreOpen(false);
     setMenuOpen(false);
-    setDrawer(false);
     setQuery('');
     setSearchOpen(false);
   }
@@ -170,7 +167,6 @@ export default function DashboardPage() {
     setChannel(id);
     setTab('channels');
     setMoreOpen(false);
-    setDrawer(false);
   }
 
   if (!user) return <div className="min-h-screen bg-slate-50" />;
@@ -181,8 +177,6 @@ export default function DashboardPage() {
   const initials = name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
   const items = mainItems.filter((i) => isArtisan || !i.artisanOnly);
   const alerts = newOrders + newEnq;
-  // The menu stays docked on Home only. Inside a section it hides so the page gets the full width.
-  const docked = tab === 'home';
   const show = (id: Tab) => (tab === id ? '' : 'hidden');
   const mount = (id: Tab) => tab === id || warm;
 
@@ -276,15 +270,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 md:flex">
       {/* Desktop sidebar */}
-      {!docked && drawer && <button className="fixed inset-0 z-40 hidden cursor-default bg-black/30 md:block" onClick={() => setDrawer(false)} aria-label="Close menu" />}
-      <aside
-        aria-hidden={!docked && !drawer}
-        className={
-          docked
-            ? 'hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto'
-            : `fixed inset-y-0 left-0 z-50 hidden w-64 flex-col overflow-y-auto border-r border-slate-200 bg-white p-4 shadow-xl transition-transform duration-200 md:flex ${drawer ? 'translate-x-0' : 'invisible -translate-x-full'}`
-        }
-      >
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto">
         <div className="px-2 pb-6 pt-1">{logo}</div>
         <nav className="space-y-1">{items.map(navItem)}</nav>
 
@@ -347,11 +333,6 @@ export default function DashboardPage() {
         {/* Top bar */}
                 <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
           <div className="flex items-center gap-3 px-4 py-3 sm:px-6">
-            {!docked && (
-              <button onClick={() => setDrawer((d) => !d)} className="hidden rounded-xl p-2 text-slate-600 hover:bg-slate-100 md:block" aria-label="Open menu" aria-expanded={drawer}>
-                <Menu className="h-5 w-5" />
-              </button>
-            )}
             <div className="md:hidden">{logo}</div>
             <div className="hidden max-w-xl flex-1 md:block">{searchBox(false)}</div>
 
@@ -423,23 +404,23 @@ export default function DashboardPage() {
         </header>
         
         <main className="min-w-0 p-4 sm:p-8">
-          <div className="mx-auto max-w-[96rem]">
+          <div className="mx-auto max-w-6xl">
             <div className={show('home')}>
               <DashboardOverview key={homeKey} user={user} isArtisan={isArtisan} onNavigate={setTab} />
             </div>
 
             {isArtisan && mount('orders') && (
-              <div className={`mx-auto max-w-6xl ${show('orders')}`}>
+              <div className={`mx-auto max-w-3xl ${show('orders')}`}>
                 <OrdersPanel user={user} active={tab === 'orders'} />
               </div>
             )}
             {isArtisan && mount('website') && (
-              <div className={`mx-auto max-w-6xl ${show('website')}`}>
+              <div className={`mx-auto max-w-3xl ${show('website')}`}>
                                 <BusinessForm key={formKey} user={user} />
               </div>
             )}
           {isArtisan && mount('products') && (
-  <div className={`mx-auto max-w-[90rem] space-y-10 ${show('products')}`}>
+  <div className={`mx-auto max-w-3xl space-y-10 ${show('products')}`}>
     {biz ? (
       <>
         <ProductsPanel businessId={biz.id} />
@@ -453,18 +434,18 @@ export default function DashboardPage() {
   </div>
 )}
             {isArtisan && mount('customers') && (
-              <div className={`mx-auto max-w-6xl ${show('customers')}`}>
+              <div className={`mx-auto max-w-3xl ${show('customers')}`}>
                 <CustomersPanel user={user} />
               </div>
             )}
             {isArtisan && mount('discounts') && (
-              <div className={`mx-auto max-w-6xl ${show('discounts')}`}>
+              <div className={`mx-auto max-w-3xl ${show('discounts')}`}>
                 <DiscountsPanel user={user} />
               </div>
             )}
 
             {isArtisan && mount('templates') && (
-              <div className={`mx-auto max-w-6xl ${show('templates')}`}>
+              <div className={`mx-auto max-w-5xl ${show('templates')}`}>
                 <TemplatesPanel user={user} onChanged={() => setFormKey((k) => k + 1)} />
               </div>
             )}
