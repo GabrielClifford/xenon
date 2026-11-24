@@ -48,7 +48,7 @@ export default function ChannelsPanel({
     return (
       <div className={`${card} p-6`}>
         <h1 className="font-display text-2xl font-bold text-slate-900">Sales channels</h1>
-        <p className="mt-2 text-sm text-slate-600">Create your website first, then your channel links will appear here.</p>
+        <p className="mt-2 text-sm text-slate-600">Create your Online Store first, then your channel links will appear here.</p>
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function ChannelsPanel({
 
         {!biz.published && (
           <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Your website isn&apos;t published yet, so these links won&apos;t work. Publish it from My website first.
+            Your Online Store isn&apos;t published yet, so these links won&apos;t work. Publish it from Online Store first.
           </p>
         )}
 

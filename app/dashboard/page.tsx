@@ -32,7 +32,6 @@ type Biz = { id: string; name: string; slug: string; published: boolean };
 const mainItems: Item[] = [
   { id: 'home', label: 'Dashboard', icon: Home },
   { id: 'orders', label: 'Orders', icon: ShoppingBag, artisanOnly: true },
-  { id: 'website', label: 'Online Store', icon: Globe, artisanOnly: true },
   { id: 'products', label: 'Products', icon: Package, artisanOnly: true },
   { id: 'customers', label: 'Customers', icon: Users, artisanOnly: true },
   { id: 'discounts', label: 'Discounts', icon: Tag, artisanOnly: true },
@@ -180,7 +179,7 @@ export default function DashboardPage() {
   const show = (id: Tab) => (tab === id ? '' : 'hidden');
   const mount = (id: Tab) => tab === id || warm;
 
-  const pages = [...items.filter((i) => !i.soon), { id: 'settings' as NavId, label: 'Settings', icon: Settings }];
+  const pages = [...items.filter((i) => !i.soon), ...(isArtisan ? [{ id: 'website' as NavId, label: 'Online Store', icon: Globe }] : []), { id: 'settings' as NavId, label: 'Settings', icon: Settings }];
   const matches = query.trim()
     ? pages.filter((p) => p.label.toLowerCase().includes(query.trim().toLowerCase()))
     : [];
@@ -281,8 +280,8 @@ export default function DashboardPage() {
               {channels.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
-                  onClick={() => openChannel(id)}
-                  className={`${row} ${tone(tab === 'channels' && channel === id)}`}
+                  onClick={() => (id === 'website' ? go('website') : openChannel(id))}
+                  className={`${row} ${tone(id === 'website' ? tab === 'website' : tab === 'channels' && channel === id)}`}
                 >
                   <Icon className="h-5 w-5" /> {label}
                 </button>
@@ -488,7 +487,6 @@ export default function DashboardPage() {
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white md:hidden">
         {tabBtn('home', 'Home', Home)}
         {isArtisan && tabBtn('orders', 'Orders', ShoppingBag, newOrders)}
-        {isArtisan && tabBtn('website', 'Store', Globe)}
         {isArtisan && tabBtn('products', 'Products', Package)}
         <button
           onClick={() => setMoreOpen(true)}
@@ -524,8 +522,8 @@ export default function DashboardPage() {
                   {channels.map(({ id, label, icon: Icon }) => (
                     <button
                       key={id}
-                      onClick={() => openChannel(id)}
-                      className={`${row} ${tone(tab === 'channels' && channel === id)}`}
+                      onClick={() => (id === 'website' ? go('website') : openChannel(id))}
+                      className={`${row} ${tone(id === 'website' ? tab === 'website' : tab === 'channels' && channel === id)}`}
                     >
                       <Icon className="h-5 w-5" /> {label}
                     </button>

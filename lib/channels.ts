@@ -5,7 +5,7 @@ import { Camera, Globe, MessageCircle, Music, Search, Users } from 'lucide-react
 export type ChannelId = 'website' | 'whatsapp' | 'instagram' | 'facebook' | 'tiktok' | 'google';
 
 export const channels: { id: ChannelId; label: string; icon: ElementType; tip: string }[] = [
-  { id: 'website', label: 'My website', icon: Globe, tip: 'Your main link. Put it on business cards, flyers and your shop sign.' },
+  { id: 'website', label: 'Online Store', icon: Globe, tip: 'Your main link. Put it on business cards, flyers and your shop sign.' },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, tip: 'Add this link to your WhatsApp Business profile and send it to customers in chats.' },
   { id: 'instagram', label: 'Instagram', icon: Camera, tip: 'Put this link in your Instagram bio.' },
   { id: 'facebook', label: 'Facebook', icon: Users, tip: 'Add this link to your Facebook page and posts.' },
