@@ -1,130 +1,51 @@
 import { Suspense } from 'react';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
-import ArtisanSite from '@/components/ArtisanSite';
+import type { Metadata } from 'next';
+import Storefront from '@/components/store/Storefront';
+import PasswordGate from '@/components/store/PasswordGate';
 import ConsentGate from '@/components/ConsentGate';
-import { readPrivacy } from '@/lib/privacy';
-import type { Provider } from '@/data/providers';
-import type { SiteSettings, ThemeName } from '@/data/sites';
 import { Skeleton } from '@/components/Skeleton';
-import { readOptions } from '@/lib/checkout';
-import { readAccounts } from '@/lib/accounts';
-import { readTax } from '@/lib/tax';
-import { readShipping } from '@/lib/shipping';
-import { applyLocations, formatAddress, readLocations } from '@/lib/locations';
-import { isPublished, publishedLinks, readPolicies } from '@/lib/policies';
-import { readPayments } from '@/lib/paymentMethods';
+import { loadStore } from '@/lib/store/load';
+import { cookieName, tokenOk } from '@/lib/store/access';
 
-async function Site({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
-
-  const { data: b } = await supabase
-    .from('businesses')
-    .select('*')
-    .eq('slug', slug)
-    .eq('published', true)
-    .maybeSingle();
-  if (!b) notFound();
-
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, name, description, price, category, photo_url, stock, taxable')
-    .eq('business_id', b.id)
-    .eq('available', true)
-    .order('created_at', { ascending: true });
-
-  const p: Provider = {
-    id: b.slug,
-    name: b.name,
-    trade: b.trade,
-    area: b.area,
-    city: b.city,
-    rating: 0,
-    reviews: 0,
-    years: b.years ?? 0,
-    verified: false,
-    priceFrom: b.price_from ?? 0,
-    about: b.about ?? '',
+  const d = await loadStore(slug, false);
+  if (!d) return {};
+  const title = d.prefs.seoTitle || `${d.b.name}${d.b.tagline ? ` - ${d.b.tagline}` : ''}`;
+  const description = d.prefs.seoDescription || d.b.about || d.b.tagline || undefined;
+  const image = d.prefs.socialImage || d.b.photo_url || undefined;
+  return {
+    title, description,
+    robots: d.prefs.noindex || d.prefs.private ? { index: false, follow: false } : undefined,
+    openGraph: { title, description, images: image ? [image] : undefined, type: 'website' },
   };
-  const s: SiteSettings = {
-    tagline: b.tagline ?? '',
-    services: b.services ?? [],
-    serviceAreas: b.service_areas ?? [],
-    theme: ['classic', 'bold', 'spark'].includes(b.theme) ? (b.theme as ThemeName) : 'classic',
-    phone: b.phone ?? undefined,
-    photoUrl: b.photo_url ?? undefined,
-    gallery: b.gallery ?? [],
-    businessId: b.id,
-  };
+}
 
-  const privacy = readPrivacy(b.privacy_options);
-  const privacyHref = isPublished(readPolicies(b.policies), 'privacy') ? `/b/${b.slug}/policies/privacy` : undefined;
-  const policyLinks = [
-    ...publishedLinks(b.policies, b.slug),
-    ...(privacy.requestsPage && readPolicies(b.policies).showLinks
-      ? [{ label: 'Privacy requests', href: `/b/${b.slug}/privacy-request` }]
-      : []),
-  ];
+async function Site({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ wrong?: string }> }) {
+  const { slug } = await params;
+  const { wrong } = await searchParams;
+  const d = await loadStore(slug, true);
+  if (!d) notFound();
 
-  // locations: they decide which delivery options customers can use, and which addresses show on the store
-  const locs = readLocations(b.locations_options);
-  const storefronts = locs
-    .filter((l) => l.active && l.storefront)
-    .map((l) => ({ name: l.name, address: formatAddress(l.address) }));
+  if (d.prefs.private) {
+    const token = (await cookies()).get(cookieName(slug))?.value;
+    if (!(await tokenOk(slug, token))) return <PasswordGate slug={slug} name={d.info.name} wrong={wrong} />;
+  }
 
   return (
     <>
-      <ArtisanSite
-        p={p}
-        s={s}
-        sample={false}
-        products={products ?? []}
-        storefronts={storefronts}
-        shop={{
-          businessId: b.id,
-          slug: b.slug,
-          accounts: readAccounts(b.accounts_options),
-          tax: readTax(b.tax_options),
-          policies: policyLinks,
-          payments: readPayments(b.payments_options),
-          shipping: applyLocations(readShipping(b.shipping_options), locs),
-          bank:
-            b.bank_name && b.account_number
-              ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' }
-              : null,
-          checkout: {
-            requireAddress: b.checkout_require_address ?? false,
-            showNote: b.checkout_show_note ?? true,
-            accepting: b.checkout_accepting ?? true,
-            minOrder: Number(b.checkout_min_order ?? 0),
-            thankYou: b.checkout_thank_you ?? null,
-            options: readOptions(b.checkout_options),
-          },
-        }}
-      />
-
-      <ConsentGate businessId={b.id} privacy={privacy} privacyHref={privacyHref} />
+      <Storefront theme={d.theme} info={d.info} products={d.products} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} />
+      <ConsentGate businessId={d.b.id} privacy={d.privacy} privacyHref={d.privacyHref} />
     </>
   );
 }
 
-export default function BusinessPage({ params }: { params: Promise<{ slug: string }> }) {
+export default function BusinessPage(props: { params: Promise<{ slug: string }>; searchParams: Promise<{ wrong?: string }> }) {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto max-w-5xl space-y-6 px-5 py-10">
-          <Skeleton className="h-64 w-full rounded-2xl" />
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-5/6" />
-        </div>
-      }
-    >
-      <Site params={params} />
+    <Suspense fallback={<div className="mx-auto max-w-5xl space-y-6 px-5 py-10"><Skeleton className="h-64 w-full rounded-2xl" /><Skeleton className="h-8 w-64" /><Skeleton className="h-4 w-full" /></div>}>
+      <Site params={props.params} searchParams={props.searchParams} />
     </Suspense>
   );
 }

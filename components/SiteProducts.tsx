@@ -91,7 +91,7 @@ const emptyForm = {
   first: '', last: '', name: '', phone: '', altPhone: '', email: '', company: '', address: '', address2: '', note: '',
 };
 
-export default function SiteProducts({ products, shop }: { products: SiteProduct[]; shop?: Shop }) {
+export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false }: { products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean }) {
   const opt = shop?.checkout.options ?? defaultOptions;
   const acc = shop?.accounts ?? defaultAccounts;
   const taxCfg = shop?.tax ?? defaultTax;
@@ -99,6 +99,8 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [bump, setBump] = useState(false);
   const [step, setStep] = useState<'cart' | 'details' | 'done' | 'track'>('cart');
   const [form, setForm] = useState(emptyForm);
   const [payKey, setPayKey] = useState('');
@@ -308,6 +310,19 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   if (products.length === 0) return null;
 
   const canOrder = !!shop && shop.checkout.accepting;
+
+  // the theme's header talks to the cart through window events
+  useEffect(() => {
+    const openCart = () => { setStep('cart'); setOpen(true); };
+    const onSearch = (e: Event) => setSearch(String((e as CustomEvent).detail ?? ''));
+    window.addEventListener('xenon:open-cart', openCart);
+    window.addEventListener('xenon:search', onSearch);
+    return () => { window.removeEventListener('xenon:open-cart', openCart); window.removeEventListener('xenon:search', onSearch); };
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('xenon:cart', { detail: { count, total } }));
+    if (count > 0) { setBump(true); const t = setTimeout(() => setBump(false), 450); return () => clearTimeout(t); }
+  }, [count, total]);
   const minOrder = shop?.checkout.minOrder ?? 0;
   const belowMin = total < minOrder;
   const needSignIn = acc.enabled && acc.requireSignIn && account === null;
@@ -492,17 +507,17 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
 
   return (
     <>
-      <section id="products" className="bg-white px-5 py-14">
+      <section id="products" className={`xs-section ${themed ? '' : 'bg-white'} px-5 py-14`}>
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-2xl font-bold text-slate-900">Products</h2>
+            <h2 className="text-2xl font-bold text-slate-900">{heading}</h2>
             <div className="flex items-center gap-5">
               {shop && acc.enabled && acc.showSignIn && (
                 <Link href={accountHref} className="text-sm font-medium text-blue-600 hover:underline">
                   {account ? 'My account' : 'Sign in'}
                 </Link>
               )}
-              {shop && opt.trackOrders && (
+              {shop && opt.trackOrders && !hideTrack && (
                 <button
                   onClick={() => {
                     setStep('track');
@@ -520,22 +535,22 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
               We are not taking orders right now. Please check back soon.
             </p>
           )}
-          {[...categoryGroups.entries()].map(([category, items]) => (
+          {[...categoryGroups.entries()].map(([category, all]) => { const items = search.trim() ? all.filter((x) => (x.name + ' ' + (x.description ?? '')).toLowerCase().includes(search.trim().toLowerCase())) : all; if (items.length === 0) return null; return (
             <div key={category} className="mt-8">
               {categoryGroups.size > 1 && <h3 className="mb-4 text-lg font-semibold text-slate-700">{category}</h3>}
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              <div className="xs-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {items.map((pr) => {
                   const soldOut = pr.stock !== null && pr.stock <= 0;
                   const qty = cart[pr.id] ?? 0;
                   return (
-                    <div key={pr.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                      <div className="relative aspect-square bg-slate-100">
+                    <div key={pr.id} className="xs-card overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <div className="xs-media relative aspect-square bg-slate-100">
                         {pr.photo_url && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={pr.photo_url} alt={pr.name} className="h-full w-full object-cover" />
                         )}
                         {soldOut && (
-                          <span className="absolute left-2 top-2 rounded-full bg-slate-900 px-2 py-1 text-xs font-semibold text-white">
+                          <span className="xs-badge absolute left-2 top-2 rounded-full bg-slate-900 px-2 py-1 text-xs font-semibold text-white">
                             Sold out
                           </span>
                         )}
@@ -543,7 +558,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                       <div className="p-3">
                         <p className="font-semibold text-slate-900">{pr.name}</p>
                         {pr.description && <p className="mt-1 line-clamp-2 text-sm text-slate-500">{pr.description}</p>}
-                        <p className="mt-2 font-bold text-slate-900">{naira(pr.price)}</p>
+                        <p className="xs-price mt-2 font-bold text-slate-900">{naira(pr.price)}</p>
                         {taxCfg.enabled && taxCfg.inclusive && pr.taxable && (
                           <p className="text-[11px] text-slate-400">incl. {taxCfg.label}</p>
                         )}
@@ -551,7 +566,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                           qty === 0 ? (
                             <button
                               onClick={() => setQty(pr, 1)}
-                              className="mt-3 w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                              className="xs-add mt-3 w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                             >
                               Add to cart
                             </button>
@@ -573,7 +588,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
                 })}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       </section>
 
@@ -583,14 +598,14 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
             setStep('cart');
             setOpen(true);
           }}
-          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-xl hover:bg-blue-700"
+          className={`fixed bottom-5 right-5 z-50 ${bump ? 'xs-bump' : ''} flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-xl hover:bg-blue-700`}
         >
           <ShoppingBag className="h-5 w-5" /> Cart ({count}) · {naira(total)}
         </button>
       )}
 
       {open && (
-        <div className="fixed inset-0 z-[60] flex justify-end bg-black/40" onClick={closeAll}>
+        <div className="xs-modal fixed inset-0 z-[60] flex justify-end bg-black/40" onClick={closeAll}>
           <div
             className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}

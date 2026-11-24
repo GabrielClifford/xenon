@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 import {
-  BarChart3, Bell, ChevronDown, Crown, Globe, Headphones, Home, LayoutGrid, LogOut,
+  BarChart3, Bell, ChevronDown, Crown, Globe, Headphones, Home, LogOut,
   Megaphone, MoreHorizontal, Package, Search, Settings, ShoppingBag, Tag, Users, X, Zap,
 } from 'lucide-react';
-import BusinessForm from '@/components/BusinessForm';
+import OnlineStorePanel from '@/components/OnlineStorePanel';
 import ChannelsPanel from '@/components/ChannelsPanel';
 import CustomersPanel from '@/components/CustomersPanel';
 import DiscountsPanel from '@/components/DiscountsPanel';
@@ -17,7 +17,6 @@ import ProductsPanel from '@/components/ProductsPanel';
 import DashboardOverview, { type Tab } from '@/components/DashboardOverview';
 import { channels, type ChannelId } from '@/lib/channels';
 import { createClient } from '@/lib/supabase/client';
-import TemplatesPanel from '@/components/TemplatesPanel';
 import AnalyticsPanel from '@/components/AnalyticsPanel';
 import MarketingPanel from '@/components/MarketingPanel';
 import SupportPanel from '@/components/SupportPanel';
@@ -37,7 +36,6 @@ const mainItems: Item[] = [
   { id: 'discounts', label: 'Discounts', icon: Tag, artisanOnly: true },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, artisanOnly: true },
     { id: 'marketing', label: 'Marketing', icon: Megaphone, artisanOnly: true },
-  { id: 'templates', label: 'Templates', icon: LayoutGrid, artisanOnly: true },
     { id: 'support', label: 'Support', icon: Headphones, artisanOnly: true },
 ];
 
@@ -71,7 +69,6 @@ export default function DashboardPage() {
   const [homeKey, setHomeKey] = useState(0);
     const homeLoaded = useRef(0);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
@@ -88,7 +85,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const valid: Tab[] = [
       'home', 'website', 'products', 'orders', 'customers', 'discounts',
-      'templates', 'analytics', 'marketing', 'support', 'channels', 'settings',
+      'analytics', 'marketing', 'support', 'channels', 'settings',
     ];
     const fromUrl = window.location.hash.replace('#', '') as Tab;
     const first: Tab = valid.includes(fromUrl) ? fromUrl : 'home';
@@ -414,8 +411,8 @@ export default function DashboardPage() {
               </div>
             )}
             {isArtisan && mount('website') && (
-              <div className={`mx-auto max-w-3xl ${show('website')}`}>
-                                <BusinessForm key={formKey} user={user} />
+              <div className={`mx-auto max-w-5xl ${show('website')}`}>
+                <OnlineStorePanel user={user} />
               </div>
             )}
           {isArtisan && mount('products') && (
@@ -443,11 +440,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {isArtisan && mount('templates') && (
-              <div className={`mx-auto max-w-5xl ${show('templates')}`}>
-                <TemplatesPanel user={user} onChanged={() => setFormKey((k) => k + 1)} />
-              </div>
-            )}
 
             {isArtisan && mount('analytics') && (
               <div className={show('analytics')}>
