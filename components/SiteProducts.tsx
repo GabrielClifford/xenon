@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { clearCheckoutSession, saveCheckout } from '@/lib/shop/saveCheckout';
 import { defaultOptions, type CheckoutOptions, type FieldMode } from '@/lib/checkout';
 import { defaultAccounts, type AccountsOptions } from '@/lib/accounts';
 import { defaultTax, type TaxSettings } from '@/lib/tax';
@@ -196,6 +197,23 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
   const payable = Math.max(0, total - (discount?.amount ?? 0));
+
+  // keep a copy of the cart once we know how to reach the customer, so the owner can follow up if they leave
+  const cartSig = lines.map((l) => `${l.p.id}:${l.qty}`).join(',');
+  useEffect(() => {
+    if (!shop || !open || step !== 'details' || lines.length === 0) return;
+    const phone = form.phone.trim();
+    const email = form.email.trim();
+    if (phone.replace(/\D/g, '').length < 7 && !(opt.email !== 'off' && email.includes('@'))) return;
+    const name = opt.nameMode === 'first_last' ? `${form.first.trim()} ${form.last.trim()}`.trim() : form.name.trim();
+    saveCheckout(shop.businessId, {
+      customer_name: name,
+      phone,
+      email: opt.email === 'off' ? '' : email,
+      items: lines.map((l) => ({ name: l.p.name, price: l.p.price, quantity: l.qty, product_id: l.p.id, image_url: l.p.photo_url ?? undefined })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop?.businessId, open, step, cartSig, form.phone, form.email, form.name, form.first, form.last]);
 
   // ----- delivery: which options the customer can use, and what they cost -----
   const profileOf = (p: SiteProduct) => {
@@ -401,6 +419,7 @@ export default function SiteProducts({ products, shop }: { products: SiteProduct
     });
     setBusy(false);
     if (err) return setError(err.message);
+    clearCheckoutSession(); // the order is placed, so this cart is no longer abandoned
 
     const digits = form.phone.replace(/\D/g, '') || 'customer';
     const pay: PayResult = {
