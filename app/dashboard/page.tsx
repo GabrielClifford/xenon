@@ -32,7 +32,7 @@ type Biz = { id: string; name: string; slug: string; published: boolean };
 const mainItems: Item[] = [
   { id: 'home', label: 'Dashboard', icon: Home },
   { id: 'orders', label: 'Orders', icon: ShoppingBag, artisanOnly: true },
-  { id: 'website', label: 'My website', icon: Globe, artisanOnly: true },
+  { id: 'website', label: 'Online Store', icon: Globe, artisanOnly: true },
   { id: 'products', label: 'Products', icon: Package, artisanOnly: true },
   { id: 'customers', label: 'Customers', icon: Users, artisanOnly: true },
   { id: 'discounts', label: 'Discounts', icon: Tag, artisanOnly: true },
@@ -428,7 +428,7 @@ export default function DashboardPage() {
       </>
     ) : (
       <p className="text-sm text-slate-500">
-        Set up your website first to add products and custom fields.
+        Set up your Online Store first to add products and custom fields.
       </p>
     )}
   </div>
@@ -488,7 +488,7 @@ export default function DashboardPage() {
       <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-slate-200 bg-white md:hidden">
         {tabBtn('home', 'Home', Home)}
         {isArtisan && tabBtn('orders', 'Orders', ShoppingBag, newOrders)}
-        {isArtisan && tabBtn('website', 'Website', Globe)}
+        {isArtisan && tabBtn('website', 'Store', Globe)}
         {isArtisan && tabBtn('products', 'Products', Package)}
         <button
           onClick={() => setMoreOpen(true)}

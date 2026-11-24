@@ -72,7 +72,7 @@ export default function OrdersPanel({ user, active = true }: { user: User; activ
 
   if (loading) return <ListSkeleton />;
   if (!biz) {
-    return <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">Create your website first (My website), then orders will show here.</div>;
+    return <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">Create your store first (Online Store), then orders will show here.</div>;
   }
 
   const shopUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/b/${biz.slug}`;
