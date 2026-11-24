@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, Minus, Plus, Search, Trash2, X, Check } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Minus, Pencil, Plus, Search, Trash2, X, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { calcTotals, customersFrom, invoiceText, mailLink, naira, orderError, parseTags, readOrder, searchCustomers, waLink, type Customer, type Order } from '@/lib/orders';
 import { Err, Grey, Modal, btn, card, field, ghost, small, fetchAll } from './ui';
@@ -487,7 +487,12 @@ function Row({ label, value, action, onAction }: { label: string; value: string;
   return (
     <div className="px-4 py-3">
       <div className="flex items-center justify-between"><span>{label}</span><span>{value}</span></div>
-      {action && <button onClick={onAction} className="mt-1 text-left text-sm text-slate-400 hover:text-blue-700">{action}</button>}
+      {action && (
+        <button type="button" onClick={onAction} className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-left text-sm font-medium text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+          {/\(edit\)$|^Edit/.test(action) ? <Pencil size={13} /> : <Plus size={13} />}
+          {action.replace(/ \(edit\)$/, '')}
+        </button>
+      )}
     </div>
   );
 }
@@ -610,4 +615,3 @@ function TaxModal({ label, rate, incl, onClose, onSave }: { label: string; rate:
     </Modal>
   );
 }
-
