@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, History, Monitor, Plus, Redo2, Smartphone, Trash2, Undo2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { PageSkeleton } from '@/components/Skeleton';
-import { ADDABLE, SECTION_LABELS, newSection, readTheme, type Section, type SectionType, type ThemeData, type ThemeSettings } from '@/lib/store/theme';
+import { ADDABLE, SINGLE, SECTION_LABELS, newSection, readTheme, type Section, type SectionType, type ThemeData, type ThemeSettings } from '@/lib/store/theme';
 import SectionForm from './SectionForm';
 import SettingsPanel from './SettingsPanel';
 import { inp } from './fields';
@@ -114,7 +114,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
     setSel(s.id);
     setTimeout(() => frame.current?.contentWindow?.postMessage({ xenon: 'focus', focus: s.id }, window.location.origin), 300);
   };
-  const addable = ADDABLE.filter((t) => t !== 'products' || !secs.some((s) => s.type === 'products'));
+  const addable = ADDABLE.filter((t) => !SINGLE.includes(t) || !secs.some((s) => s.type === t));
 
   const row = (s: Section, canMove: boolean, canRemove: boolean) => (
     <div key={s.id} className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 ${sel === s.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white'}`}>

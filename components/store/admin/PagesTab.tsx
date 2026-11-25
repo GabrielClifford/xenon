@@ -20,6 +20,16 @@ const STARTERS: { title: string; template: PageRow['template']; body: string }[]
   { title: 'FAQ', template: 'faq', body: '**How do I order?**\nAdd items to your cart and checkout. You can pay by transfer or on delivery.\n\n**Can I return an item?**\nYes. Tell us within 24 hours of delivery.' },
 ];
 
+const phoneOf = (b: Biz) => b.phone || 'our WhatsApp number';
+const SUPPORT = (b: Biz): { title: string; template: PageRow['template']; body: string }[] => [
+  { title: 'Contact us', template: 'contact', body: `We would love to hear from you.\n\nWhatsApp or call: ${phoneOf(b)}\n\nSend us a message any time and we will reply as soon as we can.` },
+  { title: 'Shipping', template: 'default', body: `Delivery areas, fees and timelines depend on your location. Any delivery fee is shown at checkout.\n\nTo confirm delivery to your area before you order, message us on WhatsApp at ${phoneOf(b)}.` },
+  { title: 'Returns & Exchanges', template: 'default', body: `If something is wrong with your order, contact us as soon as possible after it arrives.\n\n- Items must be unused and in their original condition\n- Tell us within 24 hours of delivery\n\nTo start a return or exchange, message us on WhatsApp at ${phoneOf(b)}.` },
+  { title: 'Privacy Policy', template: 'default', body: 'We collect your name, phone number and delivery address only to process and deliver your orders.\n\nWe never sell your personal information. To ask about or delete your data, contact us.' },
+  { title: 'Terms and Conditions', template: 'default', body: 'By using this website and placing an order, you agree to these terms.\n\n- Prices are in Naira (₦)\n- An order is confirmed once payment is received or accepted for pay on delivery\n- We may cancel an order if an item is out of stock, and you will get a full refund\n\nSee our Shipping and Returns & Exchanges pages for delivery and return details.' },
+  { title: 'FAQ', template: 'faq', body: `**How long does delivery take?**\nIt depends on your location. Message us on WhatsApp at ${phoneOf(b)} and we will confirm for your area.\n\n**How can I pay?**\nBy bank transfer, or pay on delivery where available.\n\n**Can I return an item?**\nYes, see our Returns & Exchanges page.` },
+];
+
 export default function PagesTab({ biz }: { biz: Biz }) {
   const supabase = useMemo(() => createClient(), []);
   const [rows, setRows] = useState<PageRow[] | null>(null);
@@ -34,6 +44,17 @@ export default function PagesTab({ biz }: { biz: Biz }) {
     setRows((data ?? []) as PageRow[]);
   }, [supabase, biz.id]);
   useEffect(() => { load(); }, [load]);
+
+  async function addSupport() {
+    const have = new Set((rows ?? []).map((r) => r.handle));
+    const todo = SUPPORT(biz).filter((p) => !have.has(handleOf(p.title)));
+    if (todo.length === 0) return setMsg('You already have all the support pages.');
+    setSaving(true); setMsg('');
+    const { error } = await supabase.from('store_pages').insert(todo.map((p) => ({ business_id: biz.id, title: p.title, handle: handleOf(p.title), body: p.body, template: p.template, visible: true })));
+    setSaving(false);
+    setMsg(error ? error.message : `${todo.length} support page${todo.length === 1 ? '' : 's'} added and visible. Edit the wording so it matches your shop.`);
+    load();
+  }
 
   const start = (t?: (typeof STARTERS)[number]) => {
     setIsNew(true); setPreview(false); setMsg('');
@@ -114,6 +135,11 @@ export default function PagesTab({ biz }: { biz: Biz }) {
       <div className="flex items-center justify-between">
         <div><h2 className="font-semibold text-slate-900">Pages</h2><p className="text-sm text-slate-500">About, Contact, Delivery and other pages customers can read.</p></div>
         <button className={btn} onClick={() => start()}><Plus className="mr-1 inline h-4 w-4" />Add page</button>
+      </div>
+      {msg && <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800">{msg}</p>}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="min-w-0 flex-1"><p className="font-semibold text-slate-900">Customer support pages</p><p className="text-sm text-slate-500">Contact us, Shipping, Returns, Privacy, Terms and FAQ in one tap. They also appear under Customer Support in your store menu.</p></div>
+        <button className={btn2} onClick={addSupport} disabled={saving}>{saving ? 'Adding...' : 'Add support pages'}</button>
       </div>
       {rows.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-5">

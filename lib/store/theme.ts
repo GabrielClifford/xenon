@@ -35,18 +35,19 @@ export type ThemeSettings = {
 
 export type SectionType =
   | 'announcement' | 'header' | 'hero' | 'products' | 'richtext' | 'imagetext'
-  | 'trust' | 'testimonials' | 'faq' | 'contact' | 'footer';
+  | 'trust' | 'testimonials' | 'faq' | 'contact' | 'marquee' | 'floatchat' | 'countdown' | 'footer';
 
 export type Section = { id: string; type: SectionType; visible: boolean; s: Record<string, unknown> };
 export type ThemeData = { settings: ThemeSettings; sections: Section[] };
 
 export const FIXED_TOP: SectionType[] = ['announcement', 'header'];
 export const FIXED_BOTTOM: SectionType[] = ['footer'];
-export const ADDABLE: SectionType[] = ['hero', 'richtext', 'imagetext', 'trust', 'testimonials', 'faq', 'contact', 'products'];
+export const ADDABLE: SectionType[] = ['hero', 'countdown', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
+export const SINGLE: SectionType[] = ['announcement', 'header', 'footer', 'products', 'floatchat'];
 export const SECTION_LABELS: Record<SectionType, string> = {
   announcement: 'Announcement bar', header: 'Header', hero: 'Hero banner', products: 'Products',
   richtext: 'Rich text', imagetext: 'Image with text', trust: 'Trust badges', testimonials: 'Customer reviews',
-  faq: 'FAQ', contact: 'Contact / WhatsApp', footer: 'Footer',
+  faq: 'FAQ', contact: 'Contact / WhatsApp', marquee: 'Scrolling text strip', floatchat: 'Chat buttons (WhatsApp / Live chat)', countdown: 'Sale countdown', footer: 'Footer',
 };
 // icons trust badges can use (rendered with lucide in the storefront)
 export const TRUST_ICONS = ['truck', 'shield', 'phone', 'card', 'gift', 'clock', 'heart', 'star'] as const;
@@ -81,9 +82,9 @@ export const defaultSettings: ThemeSettings = {
 
 export const defaultSectionSettings: Record<SectionType, Record<string, unknown>> = {
   announcement: { text: 'Free delivery on orders over ₦50,000', link: '', bg: '', color: '' },
-  header: { logoText: '', logoImage: '', links: [{ label: 'Shop', href: '#products' }], showSearch: true, showCart: true, sticky: true, center: false },
-  hero: { image: '', heading: 'Browse our latest products', sub: 'Quality you can trust, delivered to your door.', button: 'Shop all', link: '#products', height: 'medium', overlay: 35, align: 'center', textColor: '#ffffff', bg: '' },
-  products: { heading: 'Products', showTrack: true },
+  header: { logoText: '', logoImage: '', links: [{ label: 'Shop', href: '#products' }], showSearch: true, showCart: true, showAccount: true, showMenu: false, sticky: true, center: false, wide: false },
+  hero: { image: '', heading: 'Browse our latest products', sub: 'Quality you can trust, delivered to your door.', button: 'Shop all', link: '#products', height: 'medium', overlay: 35, align: 'center', valign: 'center', eyebrow: '', outline: false, textColor: '#ffffff', bg: '' },
+  products: { heading: 'Products', showTrack: true, layout: 'grid', portrait: false },
   richtext: { heading: 'About our store', text: 'Tell customers who you are and why they can trust you.', align: 'center', button: '', link: '' },
   imagetext: { image: '', heading: 'Our story', text: 'Share what makes your products special.', button: '', link: '', imageSide: 'left' },
   trust: { items: [
@@ -91,16 +92,19 @@ export const defaultSectionSettings: Record<SectionType, Record<string, unknown>
     { icon: 'shield', title: 'Pay safely', text: 'Pay on delivery or by transfer' },
     { icon: 'phone', title: 'We reply fast', text: 'Chat with us on WhatsApp' },
   ] },
-  testimonials: { heading: 'What customers say', items: [
-    { name: 'Amaka O.', text: 'Fast delivery and exactly as described. Will order again.' },
-    { name: 'Tunde B.', text: 'Great service, the seller replied within minutes.' },
+  testimonials: { heading: 'What customers say', subtitle: '', style: 'cards', items: [
+    { name: 'Amaka O.', rating: '5', text: 'Fast delivery and exactly as described. Will order again.' },
+    { name: 'Tunde B.', rating: '5', text: 'Great service, the seller replied within minutes.' },
   ] },
   faq: { heading: 'Questions we get a lot', items: [
     { q: 'How long does delivery take?', a: 'Orders in your city arrive the same or next day. Other states take 2 to 5 days.' },
     { q: 'Can I pay on delivery?', a: 'Yes, pay on delivery is available for most orders.' },
   ] },
+  marquee: { items: [{ text: 'Free delivery' }, { text: 'Pay on delivery' }, { text: 'Genuine products' }], speed: 30, bg: '', color: '' },
+  countdown: { heading: 'Sale ends in', ends: '', endedText: 'This sale has ended', button: 'Shop the sale', link: '#products', bg: '', color: '' },
+  floatchat: { whatsapp: '', message: 'Hi, I have a question.', showWhatsapp: true, tawkProperty: '', tawkWidget: '' },
   contact: { heading: 'Need help ordering?', text: 'Chat with us and we will help you place your order.', whatsapp: '', phone: '', button: 'Chat on WhatsApp' },
-  footer: { text: '', showPolicies: true, showPages: true, showStorefronts: true, instagram: '', facebook: '', tiktok: '', x: '', whatsapp: '', bg: '', color: '' },
+  footer: { text: '', showPolicies: true, showPages: true, showStorefronts: true, instagram: '', facebook: '', tiktok: '', x: '', youtube: '', whatsapp: '', payments: '', showSupport: false, bg: '', color: '' },
 };
 
 let counter = 0;
@@ -129,6 +133,24 @@ const common = (middle: Section[], head: Record<string, unknown> = {}, foot: Rec
 ];
 
 export const TEMPLATES: TemplateDef[] = [
+  {
+    id: 'urban', name: 'Urban', blurb: 'Minimal streetwear look: menu drawer, product rows you swipe, scrolling reviews and chat buttons.', tags: ['cap', 'caps', 'durag', 'streetwear', 'hat', 'hats', 'wear', 'sneakers', 'shoes', 'hair', 'clothes', 'fashion', 'men'],
+    settings: mk({
+      colors: { text: '#171717', background: '#ffffff', card: '#ffffff', border: '#e5e5e5', muted: '#737373', primary: '#171717', primaryText: '#ffffff', accent: '#171717', saleBg: '#171717', saleText: '#ffffff', soldBg: '#171717', soldText: '#ffffff', inputBg: '#ffffff', inputText: '#171717', inputBorder: '#d4d4d4', drawerBg: '#ffffff' },
+      h: { h1: t(56, 'tight', 'heading'), h2: t(28, 'tight', 'heading', 'loose', true), h5: t(12, 'loose', 'subheading', 'loose', true), h6: t(11, 'loose', 'subheading', 'loose', true) },
+      page: { width: 'wide' },
+      buttons: { radius: 0, sRadius: 0, upper: true, border: 1 },
+      cards: { radius: 0, border: 'none', columns: 4 },
+      badges: { radius: 0, upper: true }, inputs: { radius: 0 }, popovers: { radius: 0 }, anim: { hover: 'zoom' },
+    }),
+    sections: () => common([
+      newSection('hero', { eyebrow: 'New Collection', heading: 'Timeless Essentials', sub: 'Premium everyday pieces, delivered to your door.', button: 'Shop now', height: 'large', overlay: 45, align: 'left', valign: 'bottom', outline: true, bg: '#171717' }),
+      newSection('products', { heading: 'Shop', layout: 'rows', portrait: true }),
+      newSection('testimonials', { style: 'marquee', subtitle: 'Real results. Real experiences' }),
+      newSection('marquee', { items: [{ text: 'Premium quality' }, { text: 'Fast delivery' }, { text: 'Pay on delivery' }, { text: 'Genuine products' }] }),
+      newSection('floatchat'),
+    ], { center: true, wide: true, showMenu: true, links: [{ label: 'Shop all', href: '#products' }] }, { showSupport: true, payments: 'Visa, Mastercard, Verve, Bank Transfer' }, { text: '' }),
+  },
   {
     id: 'fresh', name: 'Fresh', blurb: 'Clean and bright. Works for almost any shop.', tags: ['general', 'home', 'gadgets', 'electronics', 'books'],
     settings: mk({}),
@@ -270,7 +292,7 @@ function readSections(raw: unknown): Section[] {
     for (const x of raw as Record<string, unknown>[]) {
       if (!x || typeof x !== 'object' || !types.includes(x.type as SectionType)) continue;
       const type = x.type as SectionType;
-      if ((type === 'header' || type === 'footer' || type === 'announcement' || type === 'products') && list.some((s) => s.type === type)) continue;
+      if (SINGLE.includes(type) && list.some((s) => s.type === type)) continue;
       let id = typeof x.id === 'string' && /^[a-z0-9]{1,40}$/i.test(x.id) ? x.id : newId();
       if (seen.has(id)) id = newId();
       seen.add(id);
@@ -298,8 +320,8 @@ function readSections(raw: unknown): Section[] {
 }
 
 export function readTheme(row: { settings?: unknown; sections?: unknown; template?: string } | null | undefined): ThemeData {
-  if (!row) return freshTheme('fresh');
-  const sectionsRaw = Array.isArray(row.sections) && row.sections.length > 0 ? row.sections : freshTheme(row.template ?? 'fresh').sections;
+  if (!row) return freshTheme('urban');
+  const sectionsRaw = Array.isArray(row.sections) && row.sections.length > 0 ? row.sections : freshTheme(row.template ?? 'urban').sections;
   return { settings: readSettings(row.settings), sections: readSections(sectionsRaw) };
 }
 
@@ -359,6 +381,8 @@ export function themeCss(s: ThemeSettings): string {
     `.xs-store .xs-btn,.xs-store .xs-btn-primary{background:var(--xs-primary)!important;color:var(--xs-primary-text)!important;border:${s.buttons.border}px solid var(--xs-primary)!important;border-radius:${s.buttons.radius}px!important;${s.buttons.upper ? 'text-transform:uppercase;letter-spacing:.06em;' : ''}font-family:${s.buttons.font === 'accent' ? role('accent') : role('body')};display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .15s}`,
     `.xs-store .xs-btn{padding:12px 26px}`,
     `.xs-store .xs-btn:hover,.xs-store .xs-btn-primary:hover{opacity:.88}`,
+    `.xs-store .xs-btn-outline{background:transparent!important;color:inherit!important;border:1px solid currentColor!important;border-radius:${s.buttons.radius}px!important;padding:14px 30px;display:inline-flex;align-items:center;gap:12px;font-weight:700;text-transform:uppercase;letter-spacing:.2em;font-size:12px;text-decoration:none;transition:background .2s,color .2s}`,
+    `.xs-store .xs-btn-outline:hover{background:var(--xs-bg)!important;color:var(--xs-text)!important}`,
     `.xs-store .xs-btn-secondary{background:transparent!important;color:var(--xs-text)!important;border:${Math.max(1, s.buttons.sBorder)}px solid var(--xs-text)!important;border-radius:${s.buttons.sRadius}px!important;padding:12px 26px;display:inline-flex;align-items:center;gap:8px;font-weight:600;text-decoration:none;cursor:pointer}`,
     `.xs-store .xs-pill{border:1px solid var(--xs-border);border-radius:${s.buttons.pill}px;padding:4px 12px;font-size:12px}`,
     // existing shopping UI (SiteProducts) picks these up

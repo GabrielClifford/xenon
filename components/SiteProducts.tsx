@@ -91,7 +91,7 @@ const emptyForm = {
   first: '', last: '', name: '', phone: '', altPhone: '', email: '', company: '', address: '', address2: '', note: '',
 };
 
-export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false }: { products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean }) {
+export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false, layout = 'grid', portrait = false, hideCartPill = false }: { products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean; layout?: 'grid' | 'rows'; portrait?: boolean; hideCartPill?: boolean }) {
   const opt = shop?.checkout.options ?? defaultOptions;
   const acc = shop?.accounts ?? defaultAccounts;
   const taxCfg = shop?.tax ?? defaultTax;
@@ -537,22 +537,25 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
           )}
           {[...categoryGroups.entries()].map(([category, all]) => { const items = search.trim() ? all.filter((x) => (x.name + ' ' + (x.description ?? '')).toLowerCase().includes(search.trim().toLowerCase())) : all; if (items.length === 0) return null; return (
             <div key={category} className="mt-8">
-              {categoryGroups.size > 1 && <h3 className="mb-4 text-lg font-semibold text-slate-700">{category}</h3>}
-              <div className="xs-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {(categoryGroups.size > 1 || layout === 'rows') && <div className="mb-4 flex items-end justify-between"><h3 className="text-lg font-semibold text-slate-700">{category}</h3>{layout === 'rows' && <span className="text-xs text-slate-500">{items.length} items</span>}</div>}
+              <div className={layout === 'rows' ? 'xs-rows flex flex-nowrap gap-3 overflow-x-auto snap-x snap-mandatory pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'xs-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'}>
                 {items.map((pr) => {
                   const soldOut = pr.stock !== null && pr.stock <= 0;
                   const qty = cart[pr.id] ?? 0;
                   return (
-                    <div key={pr.id} className="xs-card overflow-hidden rounded-xl border border-slate-200 bg-white">
-                      <div className="xs-media relative aspect-square bg-slate-100">
+                    <div key={pr.id} className={`xs-card overflow-hidden rounded-xl border border-slate-200 bg-white ${layout === 'rows' ? 'w-[46%] shrink-0 snap-start sm:w-[30%] lg:w-[22%]' : ''}`}>
+                      <div className={`xs-media relative ${portrait ? 'aspect-[3/4]' : 'aspect-square'} bg-slate-100`}>
                         {pr.photo_url && (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={pr.photo_url} alt={pr.name} className="h-full w-full object-cover" />
+                          <img src={pr.photo_url} alt={pr.name} className={`h-full w-full object-cover ${portrait ? 'object-top' : ''}`} />
                         )}
                         {soldOut && (
                           <span className="xs-badge absolute left-2 top-2 rounded-full bg-slate-900 px-2 py-1 text-xs font-semibold text-white">
                             Sold out
                           </span>
+                        )}
+                        {!soldOut && pr.stock !== null && pr.stock <= 5 && (
+                          <span className="xs-badge absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-1 text-xs font-semibold text-white">Only {pr.stock} left</span>
                         )}
                       </div>
                       <div className="p-3">
@@ -592,7 +595,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
         </div>
       </section>
 
-      {canOrder && count > 0 && !open && (
+      {canOrder && count > 0 && !open && !hideCartPill && (
         <button
           onClick={() => {
             setStep('cart');
