@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Truck, ShieldCheck, Phone, CreditCard, Gift, Clock, Heart, Star, Search, ShoppingBag, ChevronDown, MessageCircle, Menu, X, User, Music2, ArrowRight } from 'lucide-react';
+import { Truck, ShieldCheck, Phone, CreditCard, Gift, Clock, Heart, Star, Search, ShoppingBag, ChevronDown, MessageCircle, Menu, X, User, Music2, ArrowRight, Sparkles, Leaf, Ruler, RefreshCw, Award, Package, Layers, Sun } from 'lucide-react';
 import { Instagram, Facebook, Youtube } from '@/components/store/SocialIcons';
 import SiteProducts, { type Shop, type SiteProduct } from '@/components/SiteProducts';
 import FloatChat from '@/components/store/FloatChat';
 import Countdown from '@/components/store/Countdown';
+import { CollectionRow, CollectionTabs, CollectionTiles, Gallery, NewsletterForm, PeopleRail, Ticker, type Person, type Tab, type Tile } from '@/components/store/Blocks';
+import { allCollection, collectionHref, productHref, type StoreCollection } from '@/lib/store/collections';
 import { fontsHref, safeColor, safeHref, strokeWidth, themeCss, type Section, type ThemeData } from '@/lib/store/theme';
 import { Markdown, linkFor, type LinkCtx } from '@/lib/store/markdown';
 
@@ -14,13 +16,14 @@ export type StoreInfo = { name: string; slug: string; phone?: string; about?: st
 type IconType = React.ComponentType<{ className?: string; strokeWidth?: number }>;
 export type PageLink = { title: string; handle: string };
 
-const ICONS = { truck: Truck, shield: ShieldCheck, phone: Phone, card: CreditCard, gift: Gift, clock: Clock, heart: Heart, star: Star } as const;
+const ICONS = { truck: Truck, shield: ShieldCheck, phone: Phone, card: CreditCard, gift: Gift, clock: Clock, heart: Heart, star: Star, sparkles: Sparkles, leaf: Leaf, ruler: Ruler, refresh: RefreshCw, award: Award, package: Package, layers: Layers, sun: Sun } as const;
 const s = (v: unknown) => (typeof v === 'string' ? v : '');
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
 export default function Storefront({
-  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', children,
+  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', wide = false, collections = [], children,
 }: {
+  wide?: boolean; collections?: StoreCollection[];
   theme: ThemeData; info: StoreInfo; products: SiteProduct[]; shop?: Shop; pages?: PageLink[];
   policies?: { label: string; href: string }[]; storefronts?: { name: string; address: string }[]; trusted?: string[];
   preview?: boolean; mode?: 'home' | 'page'; children?: React.ReactNode;
@@ -31,6 +34,14 @@ export default function Storefront({
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [shopOpen, setShopOpen] = useState(false);
+  const allCol = allCollection(products);
+  const colList = collections.filter((c) => c.ids.length > 0);
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const resolveCol = (id: string): StoreCollection | null => (id === 'all' ? allCol : collections.find((c) => c.id === id) ?? null);
+  const firstCol = colList[0] ?? allCol;
+  const prodsOf = (c: StoreCollection, limit: number) => c.ids.map((id) => byId.get(id)).filter((p): p is SiteProduct => !!p).slice(0, Math.max(1, limit || 8));
+  const hrefOf = (c: StoreCollection) => collectionHref(info.slug, c);
   const sw = strokeWidth(theme.settings);
   const hdr = theme.sections.find((z) => z.type === 'header' && z.visible);
   const cartInHeader = !!hdr && hdr.s.showCart !== false;
@@ -67,7 +78,7 @@ export default function Storefront({
       case 'announcement': {
         if (!s(x.text)) return null;
         const bg = safeColor(x.bg, 'var(--xs-primary)'); const col = safeColor(x.color, 'var(--xs-primary-text)');
-        const inner = <div className="xs-wrap py-2 text-center text-sm font-medium">{s(x.text)}</div>;
+        const inner = <div className="xs-wrap py-2 text-center text-sm font-medium">{s(x.text)}{s(x.ends) && <Countdown compact lead ends={s(x.ends)} />}</div>;
         return <div style={{ background: bg, color: col }}>{s(x.link) ? <A href={x.link}>{inner}</A> : inner}</div>;
       }
       case 'header': {
@@ -134,13 +145,14 @@ export default function Storefront({
               {s(x.eyebrow) && <span className="xs-sub mb-3 block text-xs font-semibold uppercase tracking-[0.3em] opacity-80">{s(x.eyebrow)}</span>}
               <h1 className="xs-h1">{s(x.heading)}</h1>
               {s(x.sub) && <p className={`mt-3 max-w-xl text-lg opacity-90 ${left ? '' : 'mx-auto'}`}>{s(x.sub)}</p>}
+              {s(x.ends) && <Countdown boxes label={s(x.endsLabel)} ends={s(x.ends)} />}
               {s(x.button) && <div className="mt-6"><A href={x.link} className={x.outline === true ? 'xs-btn-outline' : 'xs-btn'}><span>{s(x.button)}</span>{x.outline === true && <ArrowRight className="h-4 w-4" />}</A></div>}
             </div>
           </section>
         );
       }
       case 'products':
-        return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} />;
+        return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} />;
       case 'richtext':
         return (
           <section className="xs-wrap py-14" style={{ textAlign: x.align === 'left' ? 'left' : 'center' }}>
@@ -287,6 +299,67 @@ export default function Storefront({
           </section>
         );
       }
+      case 'ticker': {
+        const list = arr<{ text: string; link: string }>(x.items).filter((it) => s(it.text)).map((it) => ({ text: s(it.text), href: s(it.link) ? link(it.link).href : '' }));
+        return <Ticker items={list} seconds={Number(x.seconds) || 5} bg={safeColor(x.bg, '')} color={safeColor(x.color, '')} />;
+      }
+      case 'collection': {
+        const c = (s(x.collection) && resolveCol(s(x.collection))) || firstCol;
+        return <CollectionRow products={prodsOf(c, Number(x.limit))} slug={info.slug} heading={s(x.heading) || c.title} button={s(x.button)} href={hrefOf(c)} portrait={x.portrait !== false} />;
+      }
+      case 'collectiontabs': {
+        const raw = arr<{ collection: string; label: string }>(x.tabs).map((t) => ({ c: resolveCol(s(t.collection)), label: s(t.label) })).filter((t) => t.c);
+        const base = raw.length > 0 ? raw : (colList.length > 0 ? colList : [allCol]).slice(0, 4).map((c) => ({ c: c as StoreCollection | null, label: '' }));
+        const tabs: Tab[] = base.map((t) => ({ label: t.label || t.c!.title, href: hrefOf(t.c!), products: prodsOf(t.c!, Number(x.limit)) }));
+        return <CollectionTabs tabs={tabs} slug={info.slug} heading={s(x.heading)} button={s(x.button)} portrait={x.portrait !== false} />;
+      }
+      case 'collectionlist': {
+        const raw = arr<{ collection: string; title: string; image: string; button: string }>(x.items).map((t) => ({ c: resolveCol(s(t.collection)), t })).filter((t) => t.c);
+        const tiles: Tile[] = raw.length > 0
+          ? raw.map(({ c, t }) => ({ title: s(t.title) || c!.title, image: safeHref(t.image, info.slug) || c!.image, href: hrefOf(c!), button: s(t.button) }))
+          : colList.slice(0, 4).map((c) => ({ title: c.title, image: c.image, href: hrefOf(c), button: 'Shop now' }));
+        return <CollectionTiles tiles={tiles} heading={s(x.heading)} columns={Number(x.columns) || 4} />;
+      }
+      case 'infotiles': {
+        const list = arr<{ icon: string; title: string; text: string }>(x.items);
+        return (
+          <section className="xs-wrap py-14">
+            <div className="mx-auto mb-8 max-w-2xl text-center"><h2 className="xs-h2">{s(x.heading)}</h2>{s(x.text) && <p className="xs-muted mt-3">{s(x.text)}</p>}</div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {list.map((it, i) => {
+                const Ic = ICONS[it.icon as keyof typeof ICONS] ?? Star;
+                return (
+                  <div key={i} className="flex flex-col items-center px-4 py-8 text-center" style={{ background: 'color-mix(in srgb, var(--xs-border) 45%, transparent)' }}>
+                    <Ic className="h-8 w-8" strokeWidth={sw} />
+                    <p className="xs-sub mt-4 text-sm font-bold uppercase tracking-wider">{s(it.title)}</p>
+                    <p className="xs-muted mt-2 text-sm">{s(it.text)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      }
+      case 'people': {
+        const list: Person[] = arr<{ image: string; name: string; tag: string; role: string; verified: string; link: string }>(x.items).filter((it) => s(it.name)).map((it) => ({ image: safeHref(it.image, info.slug), name: s(it.name), tag: s(it.tag), role: s(it.role), verified: s(it.verified) !== 'no', href: s(it.link) ? link(it.link).href : '' }));
+        return <PeopleRail items={list} heading={s(x.heading)} subtitle={s(x.subtitle)} />;
+      }
+      case 'gallery': {
+        const list = arr<{ image: string; link: string }>(x.items).map((it) => ({ image: safeHref(it.image, info.slug), href: s(it.link) ? link(it.link).href : '' })).filter((it) => it.image);
+        return <Gallery items={list} heading={s(x.heading)} handleText={s(x.handle)} link={s(x.link) ? link(x.link).href : ''} />;
+      }
+      case 'newsletter': {
+        const bg = safeColor(x.bg, 'var(--xs-card)'); const col = safeColor(x.color, '');
+        return (
+          <section className="py-14 text-center" style={{ background: bg, color: col || undefined }}>
+            <div className="xs-wrap mx-auto max-w-xl">
+              <h2 className="xs-h2">{s(x.heading)}</h2>
+              {s(x.text) && <p className="mt-3 opacity-80">{s(x.text)}</p>}
+              <div className="mt-6 text-left"><NewsletterForm slug={info.slug} button={s(x.button)} success={s(x.success)} preview={preview} /></div>
+            </div>
+          </section>
+        );
+      }
       case 'footer': {
         const bg = safeColor(x.bg, 'transparent'); const col = safeColor(x.color, '');
         const wa = s(x.whatsapp).replace(/\D/g, '') || (info.phone ?? '').replace(/\D/g, '');
@@ -296,6 +369,48 @@ export default function Storefront({
         if (waNum && x.whatsapp !== undefined) social.unshift(['WhatsApp', `https://wa.me/${waNum}`, MessageCircle]);
         const pay = s(x.payments).split(/[,\n]+/).map((z) => z.trim()).filter(Boolean).slice(0, 10);
         const support = x.showSupport === true ? pages : [];
+        if (x.layout === 'columns') {
+          const head = 'xs-sub mb-4 text-xs font-bold uppercase tracking-[0.2em]';
+          const socialRow = social.length > 0 && (
+            <div className="mt-5 flex flex-wrap items-center gap-2.5">
+              {social.map(([name, href, Ic]) => (
+                <a key={name} href={linkFor(href, ctx).href} target="_blank" rel="noopener noreferrer" aria-label={name} title={name} className="flex h-10 w-10 items-center justify-center rounded-full border border-current transition hover:opacity-70"><Ic className="h-4 w-4" strokeWidth={sw} /></a>
+              ))}
+            </div>
+          );
+          return (
+            <footer className="mt-8 py-12 text-sm" style={{ background: bg, color: col || undefined, borderTop: '1px solid var(--xs-border)' }}>
+              <div className="xs-wrap grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+                <div><p className={head}>{s(x.aboutHeading) || 'About'}</p>{(s(x.text) || info.about) && <p className="max-w-xs leading-relaxed opacity-80">{s(x.text) || info.about}</p>}{socialRow}</div>
+                <div><p className={head}>{s(x.shopHeading) || 'Shop'}</p>
+                  <ul className="space-y-2 opacity-90">
+                    <li><Link href={hrefOf(allCol)} className="hover:underline">Shop all</Link></li>
+                    {colList.slice(0, 8).map((c) => <li key={c.id}><Link href={hrefOf(c)} className="hover:underline">{c.title}</Link></li>)}
+                  </ul></div>
+                <div><p className={head}>{s(x.supportHeading) || 'Customer support'}</p>
+                  <ul className="space-y-2 opacity-90">
+                    {x.showPages !== false && pages.map((p) => <li key={p.handle}><Link href={`/b/${info.slug}/pages/${p.handle}`} className="hover:underline">{p.title}</Link></li>)}
+                    {x.showPolicies !== false && policies.map((p) => <li key={p.href}><Link href={p.href} className="hover:underline">{p.label}</Link></li>)}
+                  </ul>
+                  {x.showStorefronts !== false && storefronts.map((st, i) => <p key={i} className="mt-3 opacity-80"><span className="font-semibold">{st.name}</span><br />{st.address}</p>)}
+                </div>
+                <div>
+                  {x.newsletter === true ? (
+                    <><p className={head}>{s(x.newsHeading) || 'Join the community'}</p>{s(x.newsText) && <p className="mb-4 opacity-80">{s(x.newsText)}</p>}<NewsletterForm slug={info.slug} button="" success="Thank you for subscribing!" preview={preview} dark /></>
+                  ) : (
+                    <><p className={head}>Contact</p>{info.phone && <p className="opacity-80">{info.phone}</p>}</>
+                  )}
+                </div>
+              </div>
+              {pay.length > 0 && (
+                <div className="xs-wrap mt-10 flex flex-wrap items-center gap-2 border-t pt-6" style={{ borderColor: 'color-mix(in srgb, currentColor 20%, transparent)' }}>
+                  {pay.map((p) => <span key={p} className="rounded border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider" style={{ borderColor: 'color-mix(in srgb, currentColor 30%, transparent)' }}>{p}</span>)}
+                </div>
+              )}
+              <p className="xs-wrap mt-6 text-xs opacity-60">© {new Date().getFullYear()} {info.name}. Powered by Xenon.</p>
+            </footer>
+          );
+        }
         return (
           <footer className="mt-8 border-t py-10 text-sm" style={{ borderColor: 'var(--xs-border)', background: bg, color: col || undefined }}>
             <div className="xs-wrap grid gap-8 sm:grid-cols-3">
@@ -335,7 +450,7 @@ export default function Storefront({
 
   const secs = theme.sections.filter((sec) => sec.visible);
   const headerLinks = arr<{ label: string; href: string }>(hdr?.s.links);
-  const results = q.trim() ? products.filter((p) => `${p.name} ${p.category ?? ''}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 12) : [];
+  const results = q.trim() ? products.filter((p) => `${p.name} ${p.category ?? ''} ${p.product_type ?? ''} ${p.vendor ?? ''} ${(p.tags ?? []).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 12) : [];
   const closeSearch = () => { setSearchOpen(false); };
   const floatSec = theme.sections.find((z) => z.type === 'floatchat' && z.visible);
   return (
@@ -350,6 +465,13 @@ export default function Storefront({
         </div>
         <nav className="px-6 pt-2 text-sm font-medium uppercase tracking-[0.15em]">
           <Link href={`/b/${info.slug}`} onClick={() => setMenuOpen(false)} className="block border-b py-4" style={{ borderColor: 'var(--xs-border)' }}>Home</Link>
+          <Link href={hrefOf(allCol)} onClick={() => setMenuOpen(false)} className="block border-b py-4" style={{ borderColor: 'var(--xs-border)' }}>Shop all</Link>
+          {colList.length > 0 && (
+            <>
+              <button onClick={() => setShopOpen((v) => !v)} aria-expanded={shopOpen} className="flex w-full items-center justify-between border-b py-4 uppercase tracking-[0.15em]" style={{ borderColor: 'var(--xs-border)' }}>Collections<ChevronDown className={`h-4 w-4 transition ${shopOpen ? 'rotate-180' : ''}`} /></button>
+              {shopOpen && <div className="py-2 pl-3 normal-case tracking-normal">{colList.map((c) => <Link key={c.id} href={hrefOf(c)} onClick={() => setMenuOpen(false)} className="xs-muted block py-3">{c.title}</Link>)}</div>}
+            </>
+          )}
           {headerLinks.map((l, i) => { const k = linkFor(s(l.href), ctx); return <a key={i} href={k.href} onClick={() => setMenuOpen(false)} className="block border-b py-4" style={{ borderColor: 'var(--xs-border)' }}>{s(l.label)}</a>; })}
           {pages.length > 0 && (
             <>
@@ -372,11 +494,11 @@ export default function Storefront({
               : results.length === 0 ? <p className="xs-muted py-10 text-center text-sm">No products found for &ldquo;{q}&rdquo;.</p>
               : <ul className="divide-y" style={{ borderColor: 'var(--xs-border)' }}>{results.map((p) => (
                 <li key={p.id}>
-                  <a href="#products" onClick={() => { window.dispatchEvent(new CustomEvent('xenon:search', { detail: p.name })); setQ(p.name); closeSearch(); }} className="flex items-center gap-4 py-4">
+                  <Link href={productHref(info.slug, p)} onClick={() => { closeSearch(); }} className="flex items-center gap-4 py-4">
                     <span className="h-20 w-16 shrink-0 overflow-hidden" style={{ background: 'var(--xs-border)' }}>{p.photo_url && /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt="" className="h-full w-full object-cover object-top" />}</span>
                     <span className="flex-1 text-sm font-medium">{p.name}</span>
                     <span className="text-sm font-medium">₦{Number(p.price).toLocaleString()}</span>
-                  </a>
+                  </Link>
                 </li>))}</ul>}
           </div>
         </div>
@@ -386,11 +508,13 @@ export default function Storefront({
         : (
           <>
             {theme.sections.filter((x) => x.visible && (x.type === 'announcement' || x.type === 'header')).map((sec) => { const n = render(sec); return n ? <div key={sec.id}>{n}</div> : null; })}
-            <main className="xs-wrap max-w-3xl py-12">{children}</main>
+            <main className={`xs-wrap py-12 ${wide ? '' : 'max-w-3xl'}`}>{children}</main>
             {theme.sections.filter((x) => x.type === 'footer').map((sec) => <div key={sec.id}>{render(sec)}</div>)}
             {floatSec && render(floatSec)}
           </>
         )}
+      {/* the cart and checkout live here when the page has no products section (collection, product and info pages) */}
+      {!(mode === 'home' && secs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} />}
     </div>
   );
 }

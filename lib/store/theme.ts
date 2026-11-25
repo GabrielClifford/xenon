@@ -35,22 +35,24 @@ export type ThemeSettings = {
 
 export type SectionType =
   | 'announcement' | 'header' | 'hero' | 'products' | 'richtext' | 'imagetext'
-  | 'trust' | 'testimonials' | 'faq' | 'contact' | 'marquee' | 'floatchat' | 'countdown' | 'footer';
+  | 'trust' | 'testimonials' | 'faq' | 'contact' | 'marquee' | 'floatchat' | 'countdown' | 'footer'
+  | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
 
 export type Section = { id: string; type: SectionType; visible: boolean; s: Record<string, unknown> };
 export type ThemeData = { settings: ThemeSettings; sections: Section[] };
 
 export const FIXED_TOP: SectionType[] = ['announcement', 'header'];
 export const FIXED_BOTTOM: SectionType[] = ['footer'];
-export const ADDABLE: SectionType[] = ['hero', 'countdown', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
-export const SINGLE: SectionType[] = ['announcement', 'header', 'footer', 'products', 'floatchat'];
+export const ADDABLE: SectionType[] = ['hero', 'ticker', 'collection', 'collectiontabs', 'collectionlist', 'infotiles', 'people', 'gallery', 'newsletter', 'countdown', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
+export const SINGLE: SectionType[] = ['announcement', 'header', 'footer', 'products', 'floatchat', 'ticker'];
 export const SECTION_LABELS: Record<SectionType, string> = {
   announcement: 'Announcement bar', header: 'Header', hero: 'Hero banner', products: 'Products',
   richtext: 'Rich text', imagetext: 'Image with text', trust: 'Trust badges', testimonials: 'Customer reviews',
   faq: 'FAQ', contact: 'Contact / WhatsApp', marquee: 'Scrolling text strip', floatchat: 'Chat buttons (WhatsApp / Live chat)', countdown: 'Sale countdown', footer: 'Footer',
+  ticker: 'Rotating announcements', collection: 'Collection carousel', collectiontabs: 'Collection tabs (Find your deal)', collectionlist: 'Collection tiles', infotiles: 'Heading with icon tiles', people: 'People carousel (ambassadors)', gallery: 'Photo strip (Instagram style)', newsletter: 'Newsletter sign-up',
 };
 // icons trust badges can use (rendered with lucide in the storefront)
-export const TRUST_ICONS = ['truck', 'shield', 'phone', 'card', 'gift', 'clock', 'heart', 'star'] as const;
+export const TRUST_ICONS = ['truck', 'shield', 'phone', 'card', 'gift', 'clock', 'heart', 'star', 'sparkles', 'leaf', 'ruler', 'refresh', 'award', 'package', 'layers', 'sun'] as const;
 
 // ---------- defaults ----------
 const t = (size: number, lh: Tri, font: FontRole, ls: Tri = 'normal', upper = false): Preset => ({ font, size, lh, ls, upper });
@@ -81,9 +83,9 @@ export const defaultSettings: ThemeSettings = {
 };
 
 export const defaultSectionSettings: Record<SectionType, Record<string, unknown>> = {
-  announcement: { text: 'Free delivery on orders over ₦50,000', link: '', bg: '', color: '' },
+  announcement: { text: 'Free delivery on orders over ₦50,000', link: '', bg: '', color: '', ends: '' },
   header: { logoText: '', logoImage: '', links: [{ label: 'Shop', href: '#products' }], showSearch: true, showCart: true, showAccount: true, showMenu: false, sticky: true, center: false, wide: false },
-  hero: { image: '', heading: 'Browse our latest products', sub: 'Quality you can trust, delivered to your door.', button: 'Shop all', link: '#products', height: 'medium', overlay: 35, align: 'center', valign: 'center', eyebrow: '', outline: false, textColor: '#ffffff', bg: '' },
+  hero: { image: '', heading: 'Browse our latest products', sub: 'Quality you can trust, delivered to your door.', button: 'Shop all', link: '#products', height: 'medium', overlay: 35, align: 'center', valign: 'center', eyebrow: '', outline: false, textColor: '#ffffff', bg: '', ends: '', endsLabel: 'Ends in' },
   products: { heading: 'Products', showTrack: true, layout: 'grid', portrait: false },
   richtext: { heading: 'About our store', text: 'Tell customers who you are and why they can trust you.', align: 'center', button: '', link: '' },
   imagetext: { image: '', heading: 'Our story', text: 'Share what makes your products special.', button: '', link: '', imageSide: 'left' },
@@ -104,7 +106,20 @@ export const defaultSectionSettings: Record<SectionType, Record<string, unknown>
   countdown: { heading: 'Sale ends in', ends: '', endedText: 'This sale has ended', button: 'Shop the sale', link: '#products', bg: '', color: '' },
   floatchat: { whatsapp: '', message: 'Hi, I have a question.', showWhatsapp: true, tawkProperty: '', tawkWidget: '' },
   contact: { heading: 'Need help ordering?', text: 'Chat with us and we will help you place your order.', whatsapp: '', phone: '', button: 'Chat on WhatsApp' },
-  footer: { text: '', showPolicies: true, showPages: true, showStorefronts: true, instagram: '', facebook: '', tiktok: '', x: '', youtube: '', whatsapp: '', payments: '', showSupport: false, bg: '', color: '' },
+  ticker: { items: [{ text: 'Extra 10% off automatically applied at checkout', link: '' }, { text: 'Order before 2pm for next day delivery', link: '' }, { text: 'Free shipping above ₦50,000', link: '' }], seconds: 5, bg: '', color: '' },
+  collection: { collection: '', heading: '', button: 'Shop now', limit: 8, portrait: true },
+  collectiontabs: { heading: 'Find your deal', tabs: [], limit: 8, button: 'Shop now', portrait: true },
+  collectionlist: { heading: '', items: [], columns: 4 },
+  infotiles: { heading: 'Why shop with us', text: '', items: [
+    { icon: 'sparkles', title: 'Quality you can feel', text: 'Every piece is checked before it ships.' },
+    { icon: 'ruler', title: 'Made to fit', text: 'Clear sizing so you order with confidence.' },
+    { icon: 'refresh', title: 'Easy exchanges', text: 'Wrong size? We will sort it out.' },
+    { icon: 'award', title: 'Genuine products', text: 'Original items from trusted makers.' },
+  ] },
+  people: { heading: 'Worn by icons', subtitle: '', items: [] },
+  gallery: { heading: '', handle: '', link: '', items: [] },
+  newsletter: { heading: 'Join the community', text: 'Be the first to hear about new drops and offers.', button: 'Subscribe', success: 'Thank you for subscribing!', bg: '', color: '' },
+  footer: { layout: 'classic', aboutHeading: 'About', shopHeading: 'Shop', supportHeading: 'Customer support', newsletter: false, newsHeading: 'Join the community', newsText: 'Be the first to hear about new drops and offers.', text: '', showPolicies: true, showPages: true, showStorefronts: true, instagram: '', facebook: '', tiktok: '', x: '', youtube: '', whatsapp: '', payments: '', showSupport: false, bg: '', color: '' },
 };
 
 let counter = 0;
@@ -133,6 +148,35 @@ const common = (middle: Section[], head: Record<string, unknown> = {}, foot: Rec
 ];
 
 export const TEMPLATES: TemplateDef[] = [
+  {
+    id: 'prestige', name: 'Prestige', blurb: 'Full online-shop look: sale countdown, rotating announcements, collection carousels with Shop now pages, deal tabs, people carousel, newsletter and a 4-column footer.', tags: ['fashion', 'clothes', 'clothing', 'streetwear', 'men', 'women', 'shoes', 'sneakers', 'wear', 'store', 'shop', 'sale', 'brand', 'cap', 'caps', 'durag', 'hat', 'hats', 'bags', 'accessories'],
+    settings: mk({
+      colors: { text: '#111111', background: '#ffffff', card: '#ffffff', border: '#ededed', muted: '#6b6b6b', primary: '#111111', primaryText: '#ffffff', accent: '#111111', saleBg: '#991b1b', saleText: '#ffffff', soldBg: '#111111', soldText: '#ffffff', inputBg: '#ffffff', inputText: '#111111', inputBorder: '#d4d4d4', drawerBg: '#ffffff' },
+      fonts: { body: 'Inter', subheading: 'Montserrat', heading: 'Montserrat', accent: 'Montserrat' },
+      h: { h1: t(60, 'tight', 'heading', 'tight', true), h2: t(26, 'tight', 'heading', 'loose', true), h4: t(20, 'tight', 'heading', 'loose', true), h5: t(12, 'loose', 'subheading', 'loose', true) },
+      page: { width: 'wide' },
+      buttons: { radius: 0, sRadius: 0, upper: true, border: 1 },
+      cards: { radius: 0, border: 'none', columns: 4, mobileColumns: 2 },
+      badges: { radius: 0, upper: true }, inputs: { radius: 0 }, popovers: { radius: 0 }, anim: { hover: 'zoom' },
+    }),
+    sections: () => [
+      newSection('announcement', { text: 'BLACK FRIDAY: UP TO 75% OFF', bg: '#7f1d1d', color: '#ffffff', link: '{store}/collections/all' }),
+      newSection('header', { center: true, wide: true, showMenu: true, sticky: true, links: [{ label: 'Shop all', href: '{store}/collections/all' }] }),
+      newSection('ticker'),
+      newSection('hero', { heading: 'Black Friday', sub: 'Up to 75% off. While stock lasts.', button: 'Shop the sale', link: '{store}/collections/all', height: 'large', overlay: 30, align: 'center', valign: 'center', outline: true, bg: '#1f1f1f' }),
+      newSection('collection', { heading: '', button: 'Shop now' }),
+      newSection('collectiontabs'),
+      newSection('infotiles'),
+      newSection('collection', { collection: 'all', heading: 'Bestsellers', button: 'Shop now' }),
+      newSection('people'),
+      newSection('collectionlist'),
+      newSection('imagetext', { heading: 'Our story', text: 'Tell customers who you are, how you started and why they can trust you.', imageSide: 'left' }),
+      newSection('gallery'),
+      newSection('trust'),
+      newSection('floatchat'),
+      newSection('footer', { layout: 'columns', newsletter: true, showSupport: true, payments: 'Visa, Mastercard, Verve, Bank Transfer', bg: '#111111', color: '#ffffff' }),
+    ].map((x) => (x.type === 'people' || x.type === 'gallery' ? { ...x, visible: false } : x)),
+  },
   {
     id: 'urban', name: 'Urban', blurb: 'Minimal streetwear look: menu drawer, product rows you swipe, scrolling reviews and chat buttons.', tags: ['cap', 'caps', 'durag', 'streetwear', 'hat', 'hats', 'wear', 'sneakers', 'shoes', 'hair', 'clothes', 'fashion', 'men'],
     settings: mk({
@@ -310,18 +354,17 @@ function readSections(raw: unknown): Section[] {
       list.push({ id, type, visible: x.visible !== false, s });
     }
   }
-  // the fixed parts always exist, the products section is required for shopping to work
+  // the fixed parts always exist (the cart works without a products section: collections and pages carry their own products)
   const head = list.find((s) => s.type === 'header') ?? newSection('header');
   const ann = list.find((s) => s.type === 'announcement') ?? newSection('announcement');
   const foot = list.find((s) => s.type === 'footer') ?? newSection('footer');
   const middle = list.filter((s) => !['header', 'announcement', 'footer'].includes(s.type));
-  if (!middle.some((s) => s.type === 'products')) middle.push(newSection('products'));
   return [ann, head, ...middle, foot];
 }
 
 export function readTheme(row: { settings?: unknown; sections?: unknown; template?: string } | null | undefined): ThemeData {
-  if (!row) return freshTheme('urban');
-  const sectionsRaw = Array.isArray(row.sections) && row.sections.length > 0 ? row.sections : freshTheme(row.template ?? 'urban').sections;
+  if (!row) return freshTheme('prestige');
+  const sectionsRaw = Array.isArray(row.sections) && row.sections.length > 0 ? row.sections : freshTheme(row.template ?? 'prestige').sections;
   return { settings: readSettings(row.settings), sections: readSections(sectionsRaw) };
 }
 
@@ -402,6 +445,10 @@ export function themeCss(s: ThemeSettings): string {
     `.xs-store .xs-badge{position:absolute!important;${badgePos};border-radius:${s.badges.radius}px!important;background:${c.soldBg}!important;color:${c.soldText}!important;${s.badges.upper ? 'text-transform:uppercase;letter-spacing:.05em;' : ''}font-size:11px!important;padding:4px 10px!important}`,
     s.cards.quickAdd === 'hover' ? `@media(hover:hover){.xs-store .xs-card .xs-add{opacity:0;transition:opacity .2s}.xs-store .xs-card:hover .xs-add{opacity:1}}` : '',
     `.xs-store .xs-price{color:var(--xs-text)!important}`,
+    `.xs-store .xs-badge.xs-sale{background:${c.saleBg}!important;color:${c.saleText}!important}`,
+    `.xs-store .xs-sale-price{color:${c.saleBg}!important}`,
+    `.xs-store .xs-pname{text-transform:uppercase;letter-spacing:.04em;font-size:13px;font-weight:600}`,
+    `.xs-store .xs-hscroll{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}.xs-store .xs-hscroll::-webkit-scrollbar{display:none}.xs-store .xs-hscroll>*{scroll-snap-align:start;flex:0 0 auto}`,
     `.xs-store .bg-blue-600,.xs-store .hover\\:bg-blue-700:hover{background:var(--xs-primary)!important;color:var(--xs-primary-text)!important}`,
     `.xs-store .text-blue-600,.xs-store .text-blue-700,.xs-store .text-blue-900{color:var(--xs-accent)!important}`,
     `.xs-store .bg-blue-50{background:color-mix(in srgb,var(--xs-accent) 12%,transparent)!important}`,
@@ -426,4 +473,10 @@ export const sampleProducts = Array.from({ length: 8 }, (_, i) => ({
   photo_url: null as string | null,
   stock: i === 5 ? 0 : null as number | null,
   taxable: false,
+  compare_at_price: i % 3 === 0 ? [24000, 0, 0, 20000, 0, 0, 36000, 0][i] : null as number | null,
+  product_type: ['Sneakers', 'Bags', 'Audio', 'Dresses', 'Watches', 'Fragrance', 'Watches', 'Shirts'][i] as string | null,
+  handle: `sample-${i}` as string | null,
+  vendor: null as string | null,
+  tags: [] as string[],
+  created_at: null as string | null,
 }));

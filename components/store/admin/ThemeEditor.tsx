@@ -26,6 +26,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [sel, setSel] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
+  const [cols, setCols] = useState<{ id: string; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const ready = useRef(false);
@@ -38,12 +39,14 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
         supabase.auth.getUser(),
       ]);
       setUserId(u.user?.id ?? '');
+      const { data: cr } = await supabase.from('collections').select('id, title').eq('business_id', businessId).order('title');
+      setCols(((cr ?? []) as { id: string; title: string }[]).filter((c) => c.title));
       if (!row) return setMsg('Theme not found.');
       const t = readTheme(row);
       setName(row.name); setData(t); setSaved(JSON.stringify(t));
       setHistory(Array.isArray(row.history) ? (row.history as Snap[]) : []);
     })();
-  }, [supabase, themeId]);
+  }, [supabase, themeId, businessId]);
 
   const post = useCallback((t: ThemeData) => { frame.current?.contentWindow?.postMessage({ xenon: 'theme', theme: t }, window.location.origin); }, []);
   useEffect(() => { if (data && ready.current) post(data); }, [data, post]);
@@ -171,7 +174,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
               <div className="space-y-2 p-4">
                 {fixedTop.map((s) => row(s, false, false))}
                 <p className="pt-2 text-xs font-bold uppercase text-slate-500">Home page</p>
-                {middle.map((s) => row(s, true, s.type !== 'products'))}
+                {middle.map((s) => row(s, true, true))}
                 {addable.length > 0 && (
                   <label className="block pt-1">
                     <span className="sr-only">Add section</span>
@@ -188,7 +191,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
               <div className="p-4">
                 <button onClick={() => setSel(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-blue-600"><ArrowLeft className="h-4 w-4" />All sections</button>
                 <p className="mb-3 text-base font-bold text-slate-900">{SECTION_LABELS[current.type]}</p>
-                <SectionForm sec={current} owner={{ userId, businessId }} set={(k, v) => change((d) => { const s = d.sections.find((x) => x.id === current.id); if (s) s.s[k] = v; })} />
+                <SectionForm sec={current} collections={cols} owner={{ userId, businessId }} set={(k, v) => change((d) => { const s = d.sections.find((x) => x.id === current.id); if (s) s.s[k] = v; })} />
               </div>
             )}
           </div>

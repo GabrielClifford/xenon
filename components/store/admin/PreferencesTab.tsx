@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { AreaF, BoolF, Field, ImageF, TextF, inp } from './fields';
 import { readPrefs } from '@/lib/store/prefs';
 import type { Biz } from './ThemesHome';
+import Subscribers from './Subscribers';
 
 const btn = 'rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500';
 
@@ -71,6 +72,8 @@ export default function PreferencesTab({ biz, onSaved }: { biz: Biz; onSaved: ()
         <p className="mb-3 text-sm text-slate-500">Links to other websites in your pages show a &quot;you are leaving this store&quot; notice, to protect customers. Add websites you trust to skip it. One per line, like instagram.com.</p>
         <textarea rows={4} className={inp} value={trusted} onChange={(e) => setTrusted(e.target.value)} placeholder={'instagram.com\nwa.me'} />
       </section>
+
+      <Subscribers businessId={biz.id} />
 
       {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{err}</p>}
       {msg && <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">{msg}</p>}

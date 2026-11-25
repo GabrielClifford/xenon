@@ -76,19 +76,23 @@ export function ImageF({ label, value, onChange, owner }: { label: string; value
   );
 }
 
-export function ListF<T extends Record<string, string>>({ label, items, onChange, blank, fields, max = 8 }: {
-  label: string; items: T[]; onChange: (v: T[]) => void; blank: T; fields: { key: keyof T & string; label: string; area?: boolean; options?: string[] }[]; max?: number;
+export type ListField<T> = { key: keyof T & string; label: string; area?: boolean; options?: (string | [string, string])[]; image?: boolean };
+export function ListF<T extends Record<string, string>>({ label, items, onChange, blank, fields, max = 8, owner }: {
+  label: string; items: T[]; onChange: (v: T[]) => void; blank: T; fields: ListField<T>[]; max?: number; owner?: { userId: string; businessId: string };
 }) {
+  const upd = (i: number, key: string, v: string) => onChange(items.map((x, j) => (j === i ? { ...x, [key]: v } : x)));
   return (
     <div className="mb-3">
       <p className={lbl}>{label}</p>
       {items.map((it, i) => (
         <div key={i} className="mb-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
           {fields.map((f) => f.options
-            ? <SelectF key={f.key} label={f.label} value={it[f.key]} options={f.options.map((o) => [o, o] as [string, string])} onChange={(v) => onChange(items.map((x, j) => (j === i ? { ...x, [f.key]: v } : x)))} />
-            : f.area
-              ? <AreaF key={f.key} label={f.label} rows={2} value={it[f.key] ?? ''} onChange={(v) => onChange(items.map((x, j) => (j === i ? { ...x, [f.key]: v } : x)))} />
-              : <TextF key={f.key} label={f.label} value={it[f.key] ?? ''} onChange={(v) => onChange(items.map((x, j) => (j === i ? { ...x, [f.key]: v } : x)))} />)}
+            ? <SelectF key={f.key} label={f.label} value={it[f.key] ?? ''} options={f.options.map((o) => (typeof o === 'string' ? [o, o] : o) as [string, string])} onChange={(v) => upd(i, f.key, v)} />
+            : f.image && owner
+              ? <ImageF key={f.key} label={f.label} value={it[f.key] ?? ''} owner={owner} onChange={(v) => upd(i, f.key, v)} />
+              : f.area
+                ? <AreaF key={f.key} label={f.label} rows={2} value={it[f.key] ?? ''} onChange={(v) => upd(i, f.key, v)} />
+                : <TextF key={f.key} label={f.label} value={it[f.key] ?? ''} onChange={(v) => upd(i, f.key, v)} />)}
           <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="flex items-center gap-1 text-xs font-medium text-red-600"><Trash2 className="h-3.5 w-3.5" />Remove</button>
         </div>
       ))}

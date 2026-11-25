@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 
 async function PageView({ params }: P) {
   const { slug, handle } = await params;
-  const d = await loadStore(slug, false);
+  const d = await loadStore(slug, true);
   if (!d) notFound();
   if (d.prefs.private) {
     const token = (await cookies()).get(cookieName(slug))?.value;
@@ -38,7 +38,7 @@ async function PageView({ params }: P) {
   const ctx = { slug, trusted: d.prefs.trusted };
   const wa = (d.info.phone ?? '').replace(/\D/g, '');
   return (
-    <Storefront theme={d.theme} info={d.info} products={[]} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} mode="page">
+    <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} mode="page">
       <h1 className="xs-h1 mb-6">{pg.title}</h1>
       <Markdown text={pg.body} ctx={ctx} />
       {pg.template === 'contact' && (

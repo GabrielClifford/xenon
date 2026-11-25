@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -28,6 +28,12 @@ export type SiteProduct = {
   photo_url: string | null;
   stock: number | null;
   taxable: boolean;
+  handle?: string | null;
+  compare_at_price?: number | null;
+  vendor?: string | null;
+  product_type?: string | null;
+  tags?: string[] | null;
+  created_at?: string | null;
 };
 
 export type Bank = { bank_name: string; account_number: string; account_name: string };
@@ -91,13 +97,17 @@ const emptyForm = {
   first: '', last: '', name: '', phone: '', altPhone: '', email: '', company: '', address: '', address2: '', note: '',
 };
 
-export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false, layout = 'grid', portrait = false, hideCartPill = false }: { products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean; layout?: 'grid' | 'rows'; portrait?: boolean; hideCartPill?: boolean }) {
+export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false, layout = 'grid', portrait = false, hideCartPill = false, cartPool, hideGrid = false, flat = false }: { cartPool?: SiteProduct[]; hideGrid?: boolean; flat?: boolean; products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean; layout?: 'grid' | 'rows'; portrait?: boolean; hideCartPill?: boolean }) {
   const opt = shop?.checkout.options ?? defaultOptions;
   const acc = shop?.accounts ?? defaultAccounts;
   const taxCfg = shop?.tax ?? defaultTax;
   const sh = shop?.shipping ?? defaultShipping;
 
   const [cart, setCart] = useState<Record<string, number>>({});
+  const pool = cartPool && cartPool.length > 0 ? cartPool : products;
+  const poolRef = useRef(pool);
+  poolRef.current = pool;
+  const [hydrated, setHydrated] = useState(false);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [bump, setBump] = useState(false);
@@ -130,6 +140,23 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
   // restore a saved cart (buy again, or coming back from sign-in) and load the signed-in customer
   useEffect(() => {
     if (!shop) return;
+    // the cart follows the customer from page to page (home, collections, product pages)
+    try {
+      const raw = window.localStorage.getItem(`xenon-cart-${shop.businessId}`);
+      if (raw) {
+        const saved = JSON.parse(raw) as Record<string, number>;
+        const next: Record<string, number> = {};
+        for (const [id, q] of Object.entries(saved)) {
+          const p = poolRef.current.find((x) => x.id === id);
+          if (!p || !(q > 0) || (p.stock !== null && p.stock <= 0)) continue;
+          next[id] = Math.max(1, Math.min(Math.floor(q), opt.maxQty, p.stock ?? opt.maxQty));
+        }
+        if (Object.keys(next).length > 0) setCart(next);
+      }
+    } catch {
+      /* storage blocked */
+    }
+    setHydrated(true);
     try {
       const key = `xenon-again-${shop.businessId}`;
       const raw = window.localStorage.getItem(key);
@@ -139,7 +166,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
         if (Date.now() - saved.t < 3600000) {
           const next: Record<string, number> = {};
           for (const w of saved.items) {
-            const p = products.find((x) => x.id === w.id);
+            const p = pool.find((x) => x.id === w.id);
             if (!p || (p.stock !== null && p.stock <= 0)) continue;
             next[p.id] = Math.max(1, Math.min(w.qty, opt.maxQty, p.stock ?? opt.maxQty));
           }
@@ -191,9 +218,19 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
   }, [open]);
 
   const lines = useMemo(
-    () => products.filter((p) => cart[p.id] > 0).map((p) => ({ p, qty: cart[p.id] })),
-    [products, cart]
+    () => pool.filter((p) => cart[p.id] > 0).map((p) => ({ p, qty: cart[p.id] })),
+    [pool, cart]
   );
+  useEffect(() => {
+    if (!shop || !hydrated) return;
+    try {
+      const k = `xenon-cart-${shop.businessId}`;
+      if (Object.values(cart).some((q) => q > 0)) window.localStorage.setItem(k, JSON.stringify(cart));
+      else window.localStorage.removeItem(k);
+    } catch {
+      /* storage blocked */
+    }
+  }, [cart, shop, hydrated]);
   const payOptions = useMemo(() => buildPayOptions(shop?.payments, !!shop?.bank), [shop?.payments, shop?.bank]);
   const payOpt = payOptions.find((o) => o.key === payKey) ?? payOptions[0];
   const count = lines.reduce((n, l) => n + l.qty, 0);
@@ -203,10 +240,23 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
   useEffect(() => {
     const openCart = () => { setStep('cart'); setOpen(true); };
     const onSearch = (e: Event) => setSearch(String((e as CustomEvent).detail ?? ''));
+    // display-only cards (carousels, collection pages) add to the cart with this event
+    const onAdd = (e: Event) => {
+      const d = (e as CustomEvent).detail as { id?: string; qty?: number; open?: boolean } | undefined;
+      const p = poolRef.current.find((x) => x.id === d?.id);
+      if (!p || (p.stock !== null && p.stock <= 0)) return;
+      const cap = Math.min(opt.maxQty, p.stock === null ? opt.maxQty : p.stock);
+      setCart((c) => ({ ...c, [p.id]: Math.max(1, Math.min((c[p.id] ?? 0) + Math.max(1, d?.qty ?? 1), cap)) }));
+      setDiscount(null);
+      setCodeMsg('');
+      if (d?.open !== false) { setStep('cart'); setOpen(true); }
+    };
     window.addEventListener('xenon:open-cart', openCart);
     window.addEventListener('xenon:search', onSearch);
-    return () => { window.removeEventListener('xenon:open-cart', openCart); window.removeEventListener('xenon:search', onSearch); };
-  }, []);
+    window.addEventListener('xenon:add', onAdd);
+    return () => { window.removeEventListener('xenon:open-cart', openCart); window.removeEventListener('xenon:search', onSearch); window.removeEventListener('xenon:add', onAdd); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opt.maxQty]);
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('xenon:cart', { detail: { count, total } }));
     if (count > 0) { setBump(true); const t = setTimeout(() => setBump(false), 450); return () => clearTimeout(t); }
@@ -320,7 +370,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
       : 0;
   const grand = payable + shipCharged + taxAdded + tipAmount - creditApplied;
 
-  if (products.length === 0) return null;
+  if (products.length === 0 && pool.length === 0) return null;
 
   const canOrder = !!shop && shop.checkout.accepting;
   const minOrder = shop?.checkout.minOrder ?? 0;
@@ -507,6 +557,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
 
   return (
     <>
+      {!hideGrid && (
       <section id="products" className={`xs-section ${themed ? '' : 'bg-white'} px-5 py-14`}>
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -537,11 +588,12 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
           )}
           {[...categoryGroups.entries()].map(([category, all]) => { const items = search.trim() ? all.filter((x) => (x.name + ' ' + (x.description ?? '')).toLowerCase().includes(search.trim().toLowerCase())) : all; if (items.length === 0) return null; return (
             <div key={category} className="mt-8">
-              {(categoryGroups.size > 1 || layout === 'rows') && <div className="mb-4 flex items-end justify-between"><h3 className="text-lg font-semibold text-slate-700">{category}</h3>{layout === 'rows' && <span className="text-xs text-slate-500">{items.length} items</span>}</div>}
+              {!flat && (categoryGroups.size > 1 || layout === 'rows') && <div className="mb-4 flex items-end justify-between"><h3 className="text-lg font-semibold text-slate-700">{category}</h3>{layout === 'rows' && <span className="text-xs text-slate-500">{items.length} items</span>}</div>}
               <div className={layout === 'rows' ? 'xs-rows flex flex-nowrap gap-3 overflow-x-auto snap-x snap-mandatory pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'xs-grid grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4'}>
                 {items.map((pr) => {
                   const soldOut = pr.stock !== null && pr.stock <= 0;
                   const qty = cart[pr.id] ?? 0;
+                  const was = pr.compare_at_price && pr.compare_at_price > pr.price ? pr.compare_at_price : 0;
                   return (
                     <div key={pr.id} className={`xs-card overflow-hidden rounded-xl border border-slate-200 bg-white ${layout === 'rows' ? 'w-[46%] shrink-0 snap-start sm:w-[30%] lg:w-[22%]' : ''}`}>
                       <div className={`xs-media relative ${portrait ? 'aspect-[3/4]' : 'aspect-square'} bg-slate-100`}>
@@ -554,14 +606,22 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
                             Sold out
                           </span>
                         )}
-                        {!soldOut && pr.stock !== null && pr.stock <= 5 && (
+                        {!soldOut && was > 0 && (
+                          <span className="xs-badge xs-sale absolute left-2 top-2 rounded-sm bg-red-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white">Sale</span>
+                        )}
+                        {!soldOut && was === 0 && pr.stock !== null && pr.stock <= 5 && (
                           <span className="xs-badge absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-1 text-xs font-semibold text-white">Only {pr.stock} left</span>
                         )}
                       </div>
                       <div className="p-3">
                         <p className="font-semibold text-slate-900">{pr.name}</p>
                         {pr.description && <p className="mt-1 line-clamp-2 text-sm text-slate-500">{pr.description}</p>}
-                        <p className="xs-price mt-2 font-bold text-slate-900">{naira(pr.price)}</p>
+                        {pr.product_type && <p className="mt-0.5 text-xs text-slate-500">{pr.product_type}</p>}
+                        <p className="xs-price mt-2 font-bold text-slate-900">
+                          {was > 0 && <span className="mr-2 text-sm font-normal text-slate-400 line-through">{naira(was)}</span>}
+                          <span className={was > 0 ? 'xs-sale-price text-red-700' : ''}>{naira(pr.price)}</span>
+                        </p>
+                        {was > 0 && <div className="xs-sale-price text-[11px] font-semibold uppercase tracking-wide text-red-700">Save {naira(was - pr.price)}</div>}
                         {taxCfg.enabled && taxCfg.inclusive && pr.taxable && (
                           <p className="text-[11px] text-slate-400">incl. {taxCfg.label}</p>
                         )}
@@ -594,6 +654,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
           );})}
         </div>
       </section>
+      )}
 
       {canOrder && count > 0 && !open && !hideCartPill && (
         <button

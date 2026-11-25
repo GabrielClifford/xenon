@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 // Counts down to a date the owner picked (for flash sales, Black Friday, restocks). Starts empty so the server and browser agree.
-export default function Countdown({ ends, endedText }: { ends: string; endedText: string }) {
+export default function Countdown({ ends, endedText = '', compact = false, boxes = false, lead = false, label = '' }: { ends: string; endedText?: string; compact?: boolean; boxes?: boolean; lead?: boolean; label?: string }) {
   const target = ends ? new Date(ends.trim().replace(' ', 'T')).getTime() : NaN;
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
@@ -12,6 +12,18 @@ export default function Countdown({ ends, endedText }: { ends: string; endedText
     return () => clearInterval(t);
   }, []);
 
+  if (compact || boxes) {
+    if (!Number.isFinite(target) || now === null) return null;
+    const l = target - now;
+    if (l <= 0) return null;
+    const dd = Math.floor(l / 86400000); const hh = Math.floor((l % 86400000) / 3600000); const mm = Math.floor((l % 3600000) / 60000); const ss = Math.floor((l % 60000) / 1000);
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    if (boxes) {
+      const cell = (n: number, lab: string) => <span className="flex min-w-12 flex-col items-center bg-white/90 px-2 py-1.5 text-black"><span className="text-lg font-bold tabular-nums leading-none">{p2(n)}</span><span className="mt-0.5 text-[9px] font-semibold uppercase tracking-widest">{lab}</span></span>;
+      return <div className="mt-5">{label && <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.3em] opacity-90">{label}</span>}<span className="inline-flex gap-1.5" role="timer" aria-label="Time left">{dd > 0 && cell(dd, 'Days')}{cell(hh, 'Hrs')}{cell(mm, 'Min')}{cell(ss, 'Sec')}</span></div>;
+    }
+    return <>{lead && <span className="mx-3 opacity-50">|</span>}<span className="font-bold tabular-nums" role="timer" aria-label="Time left">{dd > 0 ? `${dd}D ` : ''}{p2(hh)}H {p2(mm)}M {p2(ss)}S</span></>;
+  }
   if (!Number.isFinite(target)) return <p className="mt-3 text-sm opacity-80">Set an end date in the editor.</p>;
   if (now === null) return <div className="mt-3 h-14" />;
   const left = target - now;

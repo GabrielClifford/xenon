@@ -36,7 +36,7 @@ async function Site({ params, searchParams }: { params: Promise<{ slug: string }
 
   return (
     <>
-      <Storefront theme={d.theme} info={d.info} products={d.products} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} />
+      <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} />
       <ConsentGate businessId={d.b.id} privacy={d.privacy} privacyHref={d.privacyHref} />
     </>
   );
