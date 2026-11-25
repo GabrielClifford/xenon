@@ -198,6 +198,19 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
   const payOpt = payOptions.find((o) => o.key === payKey) ?? payOptions[0];
   const count = lines.reduce((n, l) => n + l.qty, 0);
   const total = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
+
+  // the theme's header talks to the cart through window events
+  useEffect(() => {
+    const openCart = () => { setStep('cart'); setOpen(true); };
+    const onSearch = (e: Event) => setSearch(String((e as CustomEvent).detail ?? ''));
+    window.addEventListener('xenon:open-cart', openCart);
+    window.addEventListener('xenon:search', onSearch);
+    return () => { window.removeEventListener('xenon:open-cart', openCart); window.removeEventListener('xenon:search', onSearch); };
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('xenon:cart', { detail: { count, total } }));
+    if (count > 0) { setBump(true); const t = setTimeout(() => setBump(false), 450); return () => clearTimeout(t); }
+  }, [count, total]);
   const payable = Math.max(0, total - (discount?.amount ?? 0));
 
   // keep a copy of the cart once we know how to reach the customer, so the owner can follow up if they leave
@@ -310,19 +323,6 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
   if (products.length === 0) return null;
 
   const canOrder = !!shop && shop.checkout.accepting;
-
-  // the theme's header talks to the cart through window events
-  useEffect(() => {
-    const openCart = () => { setStep('cart'); setOpen(true); };
-    const onSearch = (e: Event) => setSearch(String((e as CustomEvent).detail ?? ''));
-    window.addEventListener('xenon:open-cart', openCart);
-    window.addEventListener('xenon:search', onSearch);
-    return () => { window.removeEventListener('xenon:open-cart', openCart); window.removeEventListener('xenon:search', onSearch); };
-  }, []);
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('xenon:cart', { detail: { count, total } }));
-    if (count > 0) { setBump(true); const t = setTimeout(() => setBump(false), 450); return () => clearTimeout(t); }
-  }, [count, total]);
   const minOrder = shop?.checkout.minOrder ?? 0;
   const belowMin = total < minOrder;
   const needSignIn = acc.enabled && acc.requireSignIn && account === null;
