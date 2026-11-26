@@ -23,9 +23,9 @@ const s = (v: unknown) => (typeof v === 'string' ? v : '');
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]).filter((it) => !(it && typeof it === 'object' && (it as Record<string, unknown>)._hide === '1') ) : []);
 
 export default function Storefront({
-  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', template, collections = [], children,
+  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', template, collections = [], wide = false, children,
 }: {
-  template?: PageId; collections?: StoreCollection[];
+  template?: PageId; collections?: StoreCollection[]; wide?: boolean;
   theme: ThemeData; info: StoreInfo; products: SiteProduct[]; shop?: Shop; pages?: PageLink[];
   policies?: { label: string; href: string }[]; storefronts?: { name: string; address: string }[]; trusted?: string[];
   preview?: boolean; mode?: 'home' | 'page'; children?: React.ReactNode;
@@ -551,13 +551,13 @@ export default function Storefront({
       )}
       {tplSecs.map((sec) => {
         if (sec.type === 'main') {
-          return wrap(sec, <main className={`xs-wrap py-12 ${tpl === 'page' ? 'max-w-3xl' : ''}`}>{children}</main>);
+          return wrap(sec, <main className={`xs-wrap py-12 ${tpl === 'page' && !wide ? 'max-w-3xl' : ''}`}>{children}</main>);
         }
         const n = render(sec);
         if (n) return wrap(sec, n);
         return preview && !['announcement', 'floatchat'].includes(sec.type) ? wrap(sec, <div className="xs-wrap my-4 border border-dashed py-6 text-center text-xs uppercase tracking-widest opacity-60" style={{ borderColor: 'var(--xs-muted)' }}>Empty section: fill it in on the left (it is hidden on your live store)</div>) : null;
       })}
-      {tpl !== 'home' && !tplSecs.some((z) => z.type === 'main') && <main className={`xs-wrap py-12 ${tpl === 'page' ? 'max-w-3xl' : ''}`}>{children}</main>}
+      {tpl !== 'home' && !tplSecs.some((z) => z.type === 'main') && <main className={`xs-wrap py-12 ${tpl === 'page' && !wide ? 'max-w-3xl' : ''}`}>{children}</main>}
       {/* the cart and checkout live here when the page has no products section (collection, product and info pages) */}
       {!(tpl === 'home' && tplSecs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} />}
     </div>

@@ -231,6 +231,10 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
       /* storage blocked */
     }
   }, [cart, shop, hydrated]);
+  // tell the cart page (and anything else listening) what is in the cart now
+  useEffect(() => {
+    if (hydrated) window.dispatchEvent(new CustomEvent('xenon:cart-changed', { detail: { cart } }));
+  }, [cart, hydrated]);
   const payOptions = useMemo(() => buildPayOptions(shop?.payments, !!shop?.bank), [shop?.payments, shop?.bank]);
   const payOpt = payOptions.find((o) => o.key === payKey) ?? payOptions[0];
   const count = lines.reduce((n, l) => n + l.qty, 0);
@@ -251,10 +255,22 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
       setCodeMsg('');
       if (d?.open !== false) { setStep('cart'); setOpen(true); }
     };
+    // the cart page changes quantities through this event
+    const onSetQty = (e: Event) => {
+      const d = (e as CustomEvent).detail as { id?: string; qty?: number } | undefined;
+      const p = poolRef.current.find((x) => x.id === d?.id);
+      if (!p) return;
+      const cap = Math.min(opt.maxQty, p.stock === null ? opt.maxQty : p.stock);
+      const q = Math.max(0, Math.min(Math.floor(Number(d?.qty) || 0), cap));
+      setCart((c) => { const n = { ...c }; if (q > 0) n[p.id] = q; else delete n[p.id]; return n; });
+      setDiscount(null);
+      setCodeMsg('');
+    };
+    window.addEventListener('xenon:setqty', onSetQty);
     window.addEventListener('xenon:open-cart', openCart);
     window.addEventListener('xenon:search', onSearch);
     window.addEventListener('xenon:add', onAdd);
-    return () => { window.removeEventListener('xenon:open-cart', openCart); window.removeEventListener('xenon:search', onSearch); window.removeEventListener('xenon:add', onAdd); };
+    return () => { window.removeEventListener('xenon:setqty', onSetQty); window.removeEventListener('xenon:open-cart', openCart); window.removeEventListener('xenon:search', onSearch); window.removeEventListener('xenon:add', onAdd); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opt.maxQty]);
   useEffect(() => {
@@ -689,6 +705,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
                   <p className="py-10 text-center text-sm text-slate-500">Your cart is empty.</p>
                 ) : (
                   <div className="divide-y divide-slate-100">
+                    {shop && <div className="pb-3 text-right"><Link href={`/b/${shop.slug}/cart`} onClick={() => setOpen(false)} className="text-sm font-medium underline">View full cart</Link></div>}
                     {lines.map(({ p, qty }) => (
                       <div key={p.id} className="flex items-center gap-3 py-3">
                         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
