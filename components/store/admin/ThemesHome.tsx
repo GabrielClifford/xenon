@@ -29,8 +29,8 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
     let rows = (data ?? []) as ThemeRow[];
     if (rows.length === 0) {
       // first visit: every store starts with a live copy of the Fresh theme
-      const t = freshTheme('prestige');
-      const { data: ins } = await supabase.from('store_themes').insert({ business_id: biz.id, name: 'Prestige', template: 'prestige', status: 'live', settings: t.settings, sections: t.sections, published_at: new Date().toISOString() }).select('id, name, template, status, scheduled_at, updated_at, settings, sections').single();
+      const t = freshTheme('blank');
+      const { data: ins } = await supabase.from('store_themes').insert({ business_id: biz.id, name: 'Blank', template: 'blank', status: 'live', settings: t.settings, sections: t.sections, published_at: new Date().toISOString() }).select('id, name, template, status, scheduled_at, updated_at, settings, sections').single();
       rows = ins ? [ins as ThemeRow] : [];
     }
     setThemes(rows);
@@ -122,7 +122,7 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
         </div>
         <div className="p-4">
           <p className="text-lg font-bold text-slate-900">{live?.name ?? 'Urban'}</p>
-          <p className="text-sm text-slate-500">{templateById(live?.template ?? 'prestige').blurb}</p>
+          <p className="text-sm text-slate-500">{templateById(live?.template ?? 'blank').blurb}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button className={btn} onClick={() => live && onEdit(live.id)}>Edit theme</button>
             <a className={btn2} href={`/b/${biz.slug}`} target="_blank" rel="noreferrer">View store <ExternalLink className="ml-1 inline h-3.5 w-3.5" /></a>

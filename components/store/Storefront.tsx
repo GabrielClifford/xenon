@@ -39,7 +39,6 @@ export default function Storefront({
   const colList = collections.filter((c) => c.ids.length > 0);
   const byId = new Map(products.map((p) => [p.id, p]));
   const resolveCol = (id: string): StoreCollection | null => (id === 'all' ? allCol : collections.find((c) => c.id === id) ?? null);
-  const firstCol = colList[0] ?? allCol;
   const prodsOf = (c: StoreCollection, limit: number) => c.ids.map((id) => byId.get(id)).filter((p): p is SiteProduct => !!p).slice(0, Math.max(1, limit || 8));
   const hrefOf = (c: StoreCollection) => collectionHref(info.slug, c);
   const sw = strokeWidth(theme.settings);
@@ -304,24 +303,23 @@ export default function Storefront({
         return <Ticker items={list} seconds={Number(x.seconds) || 5} bg={safeColor(x.bg, '')} color={safeColor(x.color, '')} />;
       }
       case 'collection': {
-        const c = (s(x.collection) && resolveCol(s(x.collection))) || firstCol;
+        const c = s(x.collection) ? resolveCol(s(x.collection)) : null;
+        if (!c) return null;
         return <CollectionRow products={prodsOf(c, Number(x.limit))} slug={info.slug} heading={s(x.heading) || c.title} button={s(x.button)} href={hrefOf(c)} portrait={x.portrait !== false} />;
       }
       case 'collectiontabs': {
         const raw = arr<{ collection: string; label: string }>(x.tabs).map((t) => ({ c: resolveCol(s(t.collection)), label: s(t.label) })).filter((t) => t.c);
-        const base = raw.length > 0 ? raw : (colList.length > 0 ? colList : [allCol]).slice(0, 4).map((c) => ({ c: c as StoreCollection | null, label: '' }));
-        const tabs: Tab[] = base.map((t) => ({ label: t.label || t.c!.title, href: hrefOf(t.c!), products: prodsOf(t.c!, Number(x.limit)) }));
+        const tabs: Tab[] = raw.map((t) => ({ label: t.label || t.c!.title, href: hrefOf(t.c!), products: prodsOf(t.c!, Number(x.limit)) }));
         return <CollectionTabs tabs={tabs} slug={info.slug} heading={s(x.heading)} button={s(x.button)} portrait={x.portrait !== false} />;
       }
       case 'collectionlist': {
         const raw = arr<{ collection: string; title: string; image: string; button: string }>(x.items).map((t) => ({ c: resolveCol(s(t.collection)), t })).filter((t) => t.c);
-        const tiles: Tile[] = raw.length > 0
-          ? raw.map(({ c, t }) => ({ title: s(t.title) || c!.title, image: safeHref(t.image, info.slug) || c!.image, href: hrefOf(c!), button: s(t.button) }))
-          : colList.slice(0, 4).map((c) => ({ title: c.title, image: c.image, href: hrefOf(c), button: 'Shop now' }));
+        const tiles: Tile[] = raw.map(({ c, t }) => ({ title: s(t.title) || c!.title, image: safeHref(t.image, info.slug) || c!.image, href: hrefOf(c!), button: s(t.button) }));
         return <CollectionTiles tiles={tiles} heading={s(x.heading)} columns={Number(x.columns) || 4} />;
       }
       case 'infotiles': {
         const list = arr<{ icon: string; title: string; text: string }>(x.items);
+        if (list.length === 0) return null;
         return (
           <section className="xs-wrap py-14">
             <div className="mx-auto mb-8 max-w-2xl text-center"><h2 className="xs-h2">{s(x.heading)}</h2>{s(x.text) && <p className="xs-muted mt-3">{s(x.text)}</p>}</div>
@@ -504,7 +502,7 @@ export default function Storefront({
         </div>
       )}
       {mode === 'home'
-        ? secs.map((sec) => { const n = render(sec); return n ? wrap(sec, n) : null; })
+        ? secs.map((sec) => { const n = render(sec); if (n) return wrap(sec, n); return preview && !['announcement', 'floatchat'].includes(sec.type) ? wrap(sec, <div className="xs-wrap my-4 border border-dashed py-6 text-center text-xs uppercase tracking-widest opacity-60" style={{ borderColor: 'var(--xs-muted)' }}>Empty section: fill it in on the left (it is hidden on your live store)</div>) : null; })
         : (
           <>
             {theme.sections.filter((x) => x.visible && (x.type === 'announcement' || x.type === 'header')).map((sec) => { const n = render(sec); return n ? <div key={sec.id}>{n}</div> : null; })}

@@ -68,18 +68,18 @@ export default function SectionForm({ sec, set, owner, collections = [] }: { sec
       <ListF label="Messages" items={items(x.items)} onChange={(v) => set('items', v)} blank={{ text: '', link: '' }} fields={[{ key: 'text', label: 'Message' }, { key: 'link', label: 'Link (optional)' }]} max={8} />
       <RangeF label="Seconds per message" min={2} max={15} value={Number(x.seconds ?? 5)} onChange={(v) => set('seconds', v)} />{C('bg', 'Background color')}{C('color', 'Text color')}</>;
     case 'collection': return <>
-      <SelectF label="Collection" value={sv(x.collection)} onChange={(v) => set('collection', v)} options={[['', 'My first collection'], ...colOpts]} />
+      <SelectF label="Collection" value={sv(x.collection)} onChange={(v) => set('collection', v)} options={[['', 'Choose a collection...'], ...colOpts]} />
       {colHint && <p className="-mt-2 mb-3 text-[11px] text-amber-700">{colHint}</p>}
       {T('heading', 'Heading', 'Leave empty to use the collection name.')}{T('button', '"Shop now" button label', 'Opens the page that lists every product of this collection. Leave empty to hide it.')}
       <RangeF label="Products shown" min={2} max={12} value={Number(x.limit ?? 8)} onChange={(v) => set('limit', v)} />{B('portrait', 'Tall product photos (3:4)')}</>;
     case 'collectiontabs': return <>{T('heading', 'Heading')}
       <ListF label="Tabs" items={items(x.tabs)} onChange={(v) => set('tabs', v)} blank={{ collection: 'all', label: '' }} fields={[{ key: 'collection', label: 'Collection', options: colOpts }, { key: 'label', label: 'Tab name (optional)' }]} max={6} />
-      <p className="-mt-1 mb-3 text-[11px] text-slate-500">Leave the tabs empty to use your first 4 collections automatically.</p>
+      <p className="-mt-1 mb-3 text-[11px] text-slate-500">Add a tab for each collection you want to show. With no tabs the section stays hidden.</p>
       {T('button', '"Shop now" button label')}<RangeF label="Products shown" min={2} max={12} value={Number(x.limit ?? 8)} onChange={(v) => set('limit', v)} />{B('portrait', 'Tall product photos (3:4)')}</>;
     case 'collectionlist': return <>{T('heading', 'Heading (optional)')}
       <Seg label="Tiles per row" value={String(x.columns ?? 4)} onChange={(v) => set('columns', Number(v))} options={[['2', '2'], ['3', '3'], ['4', '4']]} />
       <ListF label="Tiles" owner={owner} items={items(x.items)} onChange={(v) => set('items', v)} blank={{ collection: 'all', title: '', image: '', button: 'Shop now' }} fields={[{ key: 'collection', label: 'Collection', options: colOpts }, { key: 'image', label: 'Picture (optional)', image: true }, { key: 'title', label: 'Title (optional)' }, { key: 'button', label: 'Link text' }]} max={8} />
-      <p className="-mt-1 mb-3 text-[11px] text-slate-500">Leave the tiles empty to show your first 4 collections with their product photos.</p></>;
+      <p className="-mt-1 mb-3 text-[11px] text-slate-500">Add a tile for each collection. With no tiles the section stays hidden. No picture chosen = the collection's first product photo.</p></>;
     case 'infotiles': return <>{T('heading', 'Heading')}{A('text', 'Text under heading', 2)}
       <ListF label="Tiles" items={items(x.items)} onChange={(v) => set('items', v)} blank={{ icon: 'star', title: '', text: '' }} fields={[{ key: 'icon', label: 'Icon', options: [...TRUST_ICONS] }, { key: 'title', label: 'Title' }, { key: 'text', label: 'Text', area: true }]} max={8} /></>;
     case 'people': return <>{T('heading', 'Heading')}{T('subtitle', 'Small text under heading')}

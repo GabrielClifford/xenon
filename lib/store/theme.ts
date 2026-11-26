@@ -106,16 +106,11 @@ export const defaultSectionSettings: Record<SectionType, Record<string, unknown>
   countdown: { heading: 'Sale ends in', ends: '', endedText: 'This sale has ended', button: 'Shop the sale', link: '#products', bg: '', color: '' },
   floatchat: { whatsapp: '', message: 'Hi, I have a question.', showWhatsapp: true, tawkProperty: '', tawkWidget: '' },
   contact: { heading: 'Need help ordering?', text: 'Chat with us and we will help you place your order.', whatsapp: '', phone: '', button: 'Chat on WhatsApp' },
-  ticker: { items: [{ text: 'Extra 10% off automatically applied at checkout', link: '' }, { text: 'Order before 2pm for next day delivery', link: '' }, { text: 'Free shipping above ₦50,000', link: '' }], seconds: 5, bg: '', color: '' },
+  ticker: { items: [], seconds: 5, bg: '', color: '' },
   collection: { collection: '', heading: '', button: 'Shop now', limit: 8, portrait: true },
   collectiontabs: { heading: 'Find your deal', tabs: [], limit: 8, button: 'Shop now', portrait: true },
   collectionlist: { heading: '', items: [], columns: 4 },
-  infotiles: { heading: 'Why shop with us', text: '', items: [
-    { icon: 'sparkles', title: 'Quality you can feel', text: 'Every piece is checked before it ships.' },
-    { icon: 'ruler', title: 'Made to fit', text: 'Clear sizing so you order with confidence.' },
-    { icon: 'refresh', title: 'Easy exchanges', text: 'Wrong size? We will sort it out.' },
-    { icon: 'award', title: 'Genuine products', text: 'Original items from trusted makers.' },
-  ] },
+  infotiles: { heading: '', text: '', items: [] },
   people: { heading: 'Worn by icons', subtitle: '', items: [] },
   gallery: { heading: '', handle: '', link: '', items: [] },
   newsletter: { heading: 'Join the community', text: 'Be the first to hear about new drops and offers.', button: 'Subscribe', success: 'Thank you for subscribing!', bg: '', color: '' },
@@ -149,7 +144,7 @@ const common = (middle: Section[], head: Record<string, unknown> = {}, foot: Rec
 
 export const TEMPLATES: TemplateDef[] = [
   {
-    id: 'prestige', name: 'Prestige', blurb: 'Full online-shop look: sale countdown, rotating announcements, collection carousels with Shop now pages, deal tabs, people carousel, newsletter and a 4-column footer.', tags: ['fashion', 'clothes', 'clothing', 'streetwear', 'men', 'women', 'shoes', 'sneakers', 'wear', 'store', 'shop', 'sale', 'brand', 'cap', 'caps', 'durag', 'hat', 'hats', 'bags', 'accessories'],
+    id: 'blank', name: 'Blank', blurb: 'Starts empty: just a header and footer. You add every section yourself (banners, collections, tabs, people, photos...) from Add section.', tags: ['fashion', 'clothes', 'clothing', 'streetwear', 'men', 'women', 'shoes', 'sneakers', 'wear', 'store', 'shop', 'sale', 'brand', 'cap', 'caps', 'durag', 'hat', 'hats', 'bags', 'accessories'],
     settings: mk({
       colors: { text: '#111111', background: '#ffffff', card: '#ffffff', border: '#ededed', muted: '#6b6b6b', primary: '#111111', primaryText: '#ffffff', accent: '#111111', saleBg: '#991b1b', saleText: '#ffffff', soldBg: '#111111', soldText: '#ffffff', inputBg: '#ffffff', inputText: '#111111', inputBorder: '#d4d4d4', drawerBg: '#ffffff' },
       fonts: { body: 'Inter', subheading: 'Montserrat', heading: 'Montserrat', accent: 'Montserrat' },
@@ -159,23 +154,12 @@ export const TEMPLATES: TemplateDef[] = [
       cards: { radius: 0, border: 'none', columns: 4, mobileColumns: 2 },
       badges: { radius: 0, upper: true }, inputs: { radius: 0 }, popovers: { radius: 0 }, anim: { hover: 'zoom' },
     }),
+    // nothing but what the store needs to work; the owner adds everything else
     sections: () => [
-      newSection('announcement', { text: 'BLACK FRIDAY: UP TO 75% OFF', bg: '#7f1d1d', color: '#ffffff', link: '{store}/collections/all' }),
-      newSection('header', { center: true, wide: true, showMenu: true, sticky: true, links: [{ label: 'Shop all', href: '{store}/collections/all' }] }),
-      newSection('ticker'),
-      newSection('hero', { heading: 'Black Friday', sub: 'Up to 75% off. While stock lasts.', button: 'Shop the sale', link: '{store}/collections/all', height: 'large', overlay: 30, align: 'center', valign: 'center', outline: true, bg: '#1f1f1f' }),
-      newSection('collection', { heading: '', button: 'Shop now' }),
-      newSection('collectiontabs'),
-      newSection('infotiles'),
-      newSection('collection', { collection: 'all', heading: 'Bestsellers', button: 'Shop now' }),
-      newSection('people'),
-      newSection('collectionlist'),
-      newSection('imagetext', { heading: 'Our story', text: 'Tell customers who you are, how you started and why they can trust you.', imageSide: 'left' }),
-      newSection('gallery'),
-      newSection('trust'),
-      newSection('floatchat'),
-      newSection('footer', { layout: 'columns', newsletter: true, showSupport: true, payments: 'Visa, Mastercard, Verve, Bank Transfer', bg: '#111111', color: '#ffffff' }),
-    ].map((x) => (x.type === 'people' || x.type === 'gallery' ? { ...x, visible: false } : x)),
+      newSection('announcement', { text: '' }),
+      newSection('header', { center: true, wide: true, showMenu: true, sticky: true, links: [] }),
+      newSection('footer', { layout: 'classic', showSupport: true, payments: '' }),
+    ],
   },
   {
     id: 'urban', name: 'Urban', blurb: 'Minimal streetwear look: menu drawer, product rows you swipe, scrolling reviews and chat buttons.', tags: ['cap', 'caps', 'durag', 'streetwear', 'hat', 'hats', 'wear', 'sneakers', 'shoes', 'hair', 'clothes', 'fashion', 'men'],
@@ -363,8 +347,8 @@ function readSections(raw: unknown): Section[] {
 }
 
 export function readTheme(row: { settings?: unknown; sections?: unknown; template?: string } | null | undefined): ThemeData {
-  if (!row) return freshTheme('prestige');
-  const sectionsRaw = Array.isArray(row.sections) && row.sections.length > 0 ? row.sections : freshTheme(row.template ?? 'prestige').sections;
+  if (!row) return freshTheme('blank');
+  const sectionsRaw = Array.isArray(row.sections) && row.sections.length > 0 ? row.sections : freshTheme(row.template ?? 'blank').sections;
   return { settings: readSettings(row.settings), sections: readSections(sectionsRaw) };
 }
 
