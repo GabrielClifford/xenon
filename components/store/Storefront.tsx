@@ -19,7 +19,8 @@ export type PageLink = { title: string; handle: string };
 
 const ICONS = { truck: Truck, shield: ShieldCheck, phone: Phone, card: CreditCard, gift: Gift, clock: Clock, heart: Heart, star: Star, sparkles: Sparkles, leaf: Leaf, ruler: Ruler, refresh: RefreshCw, award: Award, package: Package, layers: Layers, sun: Sun } as const;
 const s = (v: unknown) => (typeof v === 'string' ? v : '');
-const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+// blocks the owner hid in the editor are left out
+const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]).filter((it) => !(it && typeof it === 'object' && (it as Record<string, unknown>)._hide === '1') ) : []);
 
 export default function Storefront({
   theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', template, collections = [], children,

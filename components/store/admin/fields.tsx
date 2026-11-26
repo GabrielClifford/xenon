@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ImagePlus, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Copy, Eye, EyeOff, GripVertical, ImagePlus, Plus, Trash2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { FONTS } from '@/lib/store/theme';
 
@@ -77,26 +77,56 @@ export function ImageF({ label, value, onChange, owner }: { label: string; value
 }
 
 export type ListField<T> = { key: keyof T & string; label: string; area?: boolean; options?: (string | [string, string])[]; image?: boolean };
-export function ListF<T extends Record<string, string>>({ label, items, onChange, blank, fields, max = 8, owner }: {
-  label: string; items: T[]; onChange: (v: T[]) => void; blank: T; fields: ListField<T>[]; max?: number; owner?: { userId: string; businessId: string };
+
+// Blocks: the items inside a section (slides, tiles, people...). Open one to edit it; drag, move, duplicate, hide or delete it.
+export function ListF<T extends Record<string, string>>({ label, noun = 'item', titleKey, items, onChange, blank, fields, max = 12, owner }: {
+  label: string; noun?: string; titleKey?: keyof T & string; items: T[]; onChange: (v: T[]) => void; blank: T; fields: ListField<T>[]; max?: number; owner?: { userId: string; businessId: string };
 }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const [drag, setDrag] = useState<number | null>(null);
+  const tk = titleKey ?? fields.find((f) => !f.image && !f.options)?.key ?? fields[0]?.key;
   const upd = (i: number, key: string, v: string) => onChange(items.map((x, j) => (j === i ? { ...x, [key]: v } : x)));
+  const swap = (i: number, j: number) => { if (j < 0 || j >= items.length) return; const a = [...items]; [a[i], a[j]] = [a[j], a[i]]; onChange(a); setOpen(open === i ? j : open === j ? i : open); };
+  const dropOn = (to: number) => { if (drag === null || drag === to) return; const a = [...items]; const [m] = a.splice(drag, 1); a.splice(to, 0, m); onChange(a); setOpen(null); };
+  const hidden = (it: T) => (it as Record<string, string>)._hide === '1';
   return (
     <div className="mb-3">
       <p className={lbl}>{label}</p>
-      {items.map((it, i) => (
-        <div key={i} className="mb-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          {fields.map((f) => f.options
-            ? <SelectF key={f.key} label={f.label} value={it[f.key] ?? ''} options={f.options.map((o) => (typeof o === 'string' ? [o, o] : o) as [string, string])} onChange={(v) => upd(i, f.key, v)} />
-            : f.image && owner
-              ? <ImageF key={f.key} label={f.label} value={it[f.key] ?? ''} owner={owner} onChange={(v) => upd(i, f.key, v)} />
-              : f.area
-                ? <AreaF key={f.key} label={f.label} rows={2} value={it[f.key] ?? ''} onChange={(v) => upd(i, f.key, v)} />
-                : <TextF key={f.key} label={f.label} value={it[f.key] ?? ''} onChange={(v) => upd(i, f.key, v)} />)}
-          <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="flex items-center gap-1 text-xs font-medium text-red-600"><Trash2 className="h-3.5 w-3.5" />Remove</button>
-        </div>
-      ))}
-      {items.length < max && <button onClick={() => onChange([...items, { ...blank }])} className="flex items-center gap-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-blue-600"><Plus className="h-4 w-4" />Add</button>}
+      {items.length === 0 && <p className="mb-2 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-500">No {noun}s yet.</p>}
+      {items.map((it, i) => {
+        const title = String(it[tk as string] ?? '').trim() || `${noun[0].toUpperCase()}${noun.slice(1)} ${i + 1}`;
+        const isOpen = open === i;
+        return (
+          <div key={i} draggable={!isOpen} onDragStart={() => setDrag(i)} onDragEnd={() => setDrag(null)} onDragOver={(e) => { if (drag !== null) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); dropOn(i); setDrag(null); }}
+            className={`mb-1.5 rounded-lg border bg-white ${isOpen ? 'border-blue-600' : 'border-slate-200'} ${drag === i ? 'opacity-40' : ''}`}>
+            <div className="flex items-center gap-0.5 px-1 py-0.5">
+              <GripVertical className="hidden h-4 w-4 shrink-0 cursor-grab text-slate-300 sm:block" aria-hidden />
+              <button onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen} className="flex min-w-0 flex-1 items-center gap-1 px-1 py-2 text-left text-sm font-medium text-slate-800">
+                <span className={`truncate ${hidden(it) ? 'text-slate-400 line-through' : ''}`}>{title}</span><ChevronDown className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition ${isOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <button onClick={() => swap(i, i - 1)} className="p-1.5 text-slate-500" aria-label={`Move ${noun} up`}><ArrowUp className="h-4 w-4" /></button>
+              <button onClick={() => swap(i, i + 1)} className="p-1.5 text-slate-500" aria-label={`Move ${noun} down`}><ArrowDown className="h-4 w-4" /></button>
+              {items.length < max && <button onClick={() => { const a = [...items]; a.splice(i + 1, 0, { ...it }); onChange(a); setOpen(i + 1); }} className="p-1.5 text-slate-500" aria-label={`Duplicate ${noun}`}><Copy className="h-4 w-4" /></button>}
+              <button onClick={() => upd(i, '_hide', hidden(it) ? '' : '1')} className="p-1.5 text-slate-500" aria-label={hidden(it) ? `Show ${noun}` : `Hide ${noun}`}>{hidden(it) ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+              <button onClick={() => { onChange(items.filter((_, j) => j !== i)); setOpen(null); }} className="p-1.5 text-red-500" aria-label={`Delete ${noun}`}><Trash2 className="h-4 w-4" /></button>
+            </div>
+            {isOpen && (
+              <div className="border-t border-slate-200 bg-slate-50 p-3">
+                {fields.map((f) => f.options
+                  ? <SelectF key={f.key} label={f.label} value={it[f.key] ?? ''} options={f.options.map((o) => (typeof o === 'string' ? [o, o] : o) as [string, string])} onChange={(v) => upd(i, f.key, v)} />
+                  : f.image && owner
+                    ? <ImageF key={f.key} label={f.label} value={it[f.key] ?? ''} owner={owner} onChange={(v) => upd(i, f.key, v)} />
+                    : f.area
+                      ? <AreaF key={f.key} label={f.label} rows={2} value={it[f.key] ?? ''} onChange={(v) => upd(i, f.key, v)} />
+                      : <TextF key={f.key} label={f.label} value={it[f.key] ?? ''} onChange={(v) => upd(i, f.key, v)} />)}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {items.length < max
+        ? <button onClick={() => { onChange([...items, { ...blank }]); setOpen(items.length); }} className="flex items-center gap-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-blue-600"><Plus className="h-4 w-4" />Add {noun}</button>
+        : <p className="text-[11px] text-slate-500">You can add up to {max} {noun}s.</p>}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, Copy, ExternalLink, MessageCircle, MoreHorizontal, Plus, Sparkles, X, AlertTriangle, Lock } from 'lucide-react';
+import { Check, Copy, ExternalLink, MessageCircle, MoreHorizontal, Plus, X, AlertTriangle, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { PageSkeleton } from '@/components/Skeleton';
-import { TEMPLATES, freshTheme, suggestTemplates, templateById } from '@/lib/store/theme';
+import { BASE_BLURB, freshTheme } from '@/lib/store/theme';
 import { readPrefs } from '@/lib/store/prefs';
 
 export type Biz = { id: string; slug: string; name: string; published: boolean; phone: string | null; bank_name: string | null; store_prefs: unknown };
@@ -19,7 +19,6 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState('');
   const [menu, setMenu] = useState<string | null>(null);
-  const [desc, setDesc] = useState('');
   const [health, setHealth] = useState<{ ok: boolean; text: string; fix?: 'details' | 'pages' | 'preferences' | 'products' }[]>([]);
   const prefs = readPrefs(biz.store_prefs);
   const url = typeof window !== 'undefined' ? `${window.location.origin}/b/${biz.slug}` : `/b/${biz.slug}`;
@@ -67,10 +66,10 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
     if (typeof r === 'string') setMsg(r);
     await load();
   }
-  const addTemplate = (id: string) => run('add' + id, async () => {
-    const t = freshTheme(id); const name = templateById(id).name;
-    const { error } = await supabase.from('store_themes').insert({ business_id: biz.id, name, template: id, status: 'draft', settings: t.settings, sections: t.sections });
-    return error ? error.message : `${name} added to your theme library. Publish it when you are ready.`;
+  const addTheme = () => run('add', async () => {
+    const t = freshTheme();
+    const { error } = await supabase.from('store_themes').insert({ business_id: biz.id, name: `Theme ${(themes?.length ?? 0) + 1}`, template: 'blank', status: 'draft', settings: t.settings, sections: t.sections });
+    return error ? error.message : 'New empty theme added to your library. Open it to build it, then publish when you are ready.';
   });
   const publish = (id: string) => run('pub' + id, async () => {
     const { error } = await supabase.rpc('xenon_store_publish_theme', { p_theme: id });
@@ -95,7 +94,6 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
     return error ? error.message : biz.published ? 'Store hidden from customers.' : 'Your store is live.';
   });
 
-  const suggested = useMemo(() => (desc.trim().length > 2 ? suggestTemplates(desc) : []), [desc]);
   const copy = (text: string) => navigator.clipboard?.writeText(text).then(() => setMsg('Copied.'));
 
   if (!themes) return <PageSkeleton />;
@@ -121,8 +119,8 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${biz.published ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>{biz.published ? 'Live' : 'Not published'}</span>
         </div>
         <div className="p-4">
-          <p className="text-lg font-bold text-slate-900">{live?.name ?? 'Urban'}</p>
-          <p className="text-sm text-slate-500">{templateById(live?.template ?? 'blank').blurb}</p>
+          <p className="text-lg font-bold text-slate-900">{live?.name ?? 'Theme'}</p>
+          <p className="text-sm text-slate-500">{BASE_BLURB}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button className={btn} onClick={() => live && onEdit(live.id)}>Edit theme</button>
             <a className={btn2} href={`/b/${biz.slug}`} target="_blank" rel="noreferrer">View store <ExternalLink className="ml-1 inline h-3.5 w-3.5" /></a>
@@ -131,12 +129,17 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
         </div>
       </section>
 
-      {/* drafts */}
-      {drafts.length > 0 && (
-        <section>
-          <h2 className="font-semibold text-slate-900">Theme library</h2>
-          <p className="text-sm text-slate-500">Drafts you can edit safely. Customers only see the current theme.</p>
-          <div className="mt-3 space-y-3">
+      {/* library */}
+      <section>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-900">Theme library</h2>
+            <p className="text-sm text-slate-500">Drafts you can edit safely. Customers only see the current theme.</p>
+          </div>
+          <button className={btn2} onClick={addTheme} disabled={!!busy}><Plus className="mr-1 inline h-4 w-4" />Add theme</button>
+        </div>
+        {drafts.length === 0 && <p className="mt-3 rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">No drafts yet. Add an empty theme to build a new look without touching your live store, or duplicate your current theme from its menu.</p>}
+        <div className="mt-3 space-y-3">
             {drafts.map((t) => (
               <div key={t.id} className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -162,39 +165,6 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
               </div>
             ))}
           </div>
-        </section>
-      )}
-
-      {/* explore */}
-      <section>
-        <h2 className="font-semibold text-slate-900">Explore more themes</h2>
-        <p className="text-sm text-slate-500">Real online shop designs. Adding one does not change your live store.</p>
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><Sparkles className="h-4 w-4 text-blue-600" /> What do you sell? We will suggest a theme</label>
-          <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="e.g. ankara dresses, phones, perfumes" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm" />
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {TEMPLATES.map((tp) => {
-            const best = suggested[0]?.score > 0 && suggested[0].id === tp.id;
-            const t = tp.settings.colors;
-            return (
-              <div key={tp.id} className={`overflow-hidden rounded-2xl border bg-white ${best ? 'border-blue-600 ring-2 ring-blue-600/20' : 'border-slate-200'}`}>
-                <div className="p-4" style={{ background: t.background }}>
-                  <div className="rounded-lg p-3" style={{ background: t.card, border: `1px solid ${t.border}` }}>
-                    <div className="h-2 w-16 rounded" style={{ background: t.text }} />
-                    <div className="mt-3 grid grid-cols-3 gap-2">{[0, 1, 2].map((i) => <div key={i} className="h-10 rounded" style={{ background: t.border }} />)}</div>
-                    <div className="mt-3 h-5 w-20 rounded" style={{ background: t.primary }} />
-                  </div>
-                </div>
-                <div className="p-4">
-                  <p className="font-semibold text-slate-900">{tp.name}{best && <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700">Best match</span>}</p>
-                  <p className="text-sm text-slate-500">{tp.blurb}</p>
-                  <button className={`${btn} mt-3 w-full`} onClick={() => addTemplate(tp.id)} disabled={!!busy}><Plus className="mr-1 inline h-4 w-4" />Add to library</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </section>
 
       {/* health */}

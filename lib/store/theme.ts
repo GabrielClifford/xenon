@@ -161,126 +161,28 @@ function deepMerge<T>(base: T, over: unknown): T {
 }
 const mk = (over: Record<string, unknown>): ThemeSettings => deepMerge(defaultSettings, over);
 
-type TemplateDef = { id: string; name: string; blurb: string; tags: string[]; settings: ThemeSettings; sections: () => Section[] };
+export const BASE_BLURB = 'Starts empty: header and footer only. You add every section yourself with Add section.';
 
-const common = (middle: Section[], head: Record<string, unknown> = {}, foot: Record<string, unknown> = {}, ann: Record<string, unknown> = {}): Section[] => [
-  newSection('announcement', ann), newSection('header', head), ...middle, newSection('footer', foot),
-];
+const BASE_SETTINGS: ThemeSettings = mk({
+    colors: { text: '#111111', background: '#ffffff', card: '#ffffff', border: '#ededed', muted: '#6b6b6b', primary: '#111111', primaryText: '#ffffff', accent: '#111111', saleBg: '#991b1b', saleText: '#ffffff', soldBg: '#111111', soldText: '#ffffff', inputBg: '#ffffff', inputText: '#111111', inputBorder: '#d4d4d4', drawerBg: '#ffffff' },
+    fonts: { body: 'Inter', subheading: 'Montserrat', heading: 'Montserrat', accent: 'Montserrat' },
+    h: { h1: t(60, 'tight', 'heading', 'tight', true), h2: t(26, 'tight', 'heading', 'loose', true), h4: t(20, 'tight', 'heading', 'loose', true), h5: t(12, 'loose', 'subheading', 'loose', true) },
+    page: { width: 'wide' },
+    buttons: { radius: 0, sRadius: 0, upper: true, border: 1 },
+    cards: { radius: 0, border: 'none', columns: 4, mobileColumns: 2 },
+    badges: { radius: 0, upper: true }, inputs: { radius: 0 }, popovers: { radius: 0 }, anim: { hover: 'zoom' },
+});
 
-export const TEMPLATES: TemplateDef[] = [
-  {
-    id: 'blank', name: 'Blank', blurb: 'Starts empty: just a header and footer. You add every section yourself (banners, collections, tabs, people, photos...) from Add section.', tags: ['fashion', 'clothes', 'clothing', 'streetwear', 'men', 'women', 'shoes', 'sneakers', 'wear', 'store', 'shop', 'sale', 'brand', 'cap', 'caps', 'durag', 'hat', 'hats', 'bags', 'accessories'],
-    settings: mk({
-      colors: { text: '#111111', background: '#ffffff', card: '#ffffff', border: '#ededed', muted: '#6b6b6b', primary: '#111111', primaryText: '#ffffff', accent: '#111111', saleBg: '#991b1b', saleText: '#ffffff', soldBg: '#111111', soldText: '#ffffff', inputBg: '#ffffff', inputText: '#111111', inputBorder: '#d4d4d4', drawerBg: '#ffffff' },
-      fonts: { body: 'Inter', subheading: 'Montserrat', heading: 'Montserrat', accent: 'Montserrat' },
-      h: { h1: t(60, 'tight', 'heading', 'tight', true), h2: t(26, 'tight', 'heading', 'loose', true), h4: t(20, 'tight', 'heading', 'loose', true), h5: t(12, 'loose', 'subheading', 'loose', true) },
-      page: { width: 'wide' },
-      buttons: { radius: 0, sRadius: 0, upper: true, border: 1 },
-      cards: { radius: 0, border: 'none', columns: 4, mobileColumns: 2 },
-      badges: { radius: 0, upper: true }, inputs: { radius: 0 }, popovers: { radius: 0 }, anim: { hover: 'zoom' },
-    }),
-    // nothing but what the store needs to work; the owner adds everything else
-    sections: () => [
+// every theme starts with just what a store needs to work; the owner adds everything else
+export function freshTheme(_template?: string): ThemeData {
+  return {
+    settings: JSON.parse(JSON.stringify(BASE_SETTINGS)),
+    sections: [
       newSection('announcement', { text: '' }),
       newSection('header', { center: true, wide: true, showMenu: true, sticky: true, links: [] }),
       newSection('footer', { layout: 'classic', showSupport: true, payments: '' }),
     ],
-  },
-  {
-    id: 'urban', name: 'Urban', blurb: 'Minimal streetwear look: menu drawer, product rows you swipe, scrolling reviews and chat buttons.', tags: ['cap', 'caps', 'durag', 'streetwear', 'hat', 'hats', 'wear', 'sneakers', 'shoes', 'hair', 'clothes', 'fashion', 'men'],
-    settings: mk({
-      colors: { text: '#171717', background: '#ffffff', card: '#ffffff', border: '#e5e5e5', muted: '#737373', primary: '#171717', primaryText: '#ffffff', accent: '#171717', saleBg: '#171717', saleText: '#ffffff', soldBg: '#171717', soldText: '#ffffff', inputBg: '#ffffff', inputText: '#171717', inputBorder: '#d4d4d4', drawerBg: '#ffffff' },
-      h: { h1: t(56, 'tight', 'heading'), h2: t(28, 'tight', 'heading', 'loose', true), h5: t(12, 'loose', 'subheading', 'loose', true), h6: t(11, 'loose', 'subheading', 'loose', true) },
-      page: { width: 'wide' },
-      buttons: { radius: 0, sRadius: 0, upper: true, border: 1 },
-      cards: { radius: 0, border: 'none', columns: 4 },
-      badges: { radius: 0, upper: true }, inputs: { radius: 0 }, popovers: { radius: 0 }, anim: { hover: 'zoom' },
-    }),
-    sections: () => common([
-      newSection('hero', { eyebrow: 'New Collection', heading: 'Timeless Essentials', sub: 'Premium everyday pieces, delivered to your door.', button: 'Shop now', height: 'large', overlay: 45, align: 'left', valign: 'bottom', outline: true, bg: '#171717' }),
-      newSection('products', { heading: 'Shop', layout: 'rows', portrait: true }),
-      newSection('testimonials', { style: 'marquee', subtitle: 'Real results. Real experiences' }),
-      newSection('marquee', { items: [{ text: 'Premium quality' }, { text: 'Fast delivery' }, { text: 'Pay on delivery' }, { text: 'Genuine products' }] }),
-      newSection('floatchat'),
-    ], { center: true, wide: true, showMenu: true, links: [{ label: 'Shop all', href: '#products' }] }, { showSupport: true, payments: 'Visa, Mastercard, Verve, Bank Transfer' }, { text: '' }),
-  },
-  {
-    id: 'fresh', name: 'Fresh', blurb: 'Clean and bright. Works for almost any shop.', tags: ['general', 'home', 'gadgets', 'electronics', 'books'],
-    settings: mk({}),
-    sections: () => common([
-      newSection('hero'), newSection('trust'), newSection('products'), newSection('testimonials'), newSection('contact'),
-    ]),
-  },
-  {
-    id: 'noir', name: 'Noir', blurb: 'Dark and premium, with gold accents.', tags: ['luxury', 'watch', 'perfume', 'jewelry', 'jewellery', 'shoes', 'sneakers', 'bags', 'men'],
-    settings: mk({
-      colors: { text: '#f5f5f4', background: '#0c0a09', card: '#1c1917', border: '#292524', muted: '#a8a29e', primary: '#d4af37', primaryText: '#0c0a09', accent: '#d4af37', saleBg: '#422006', saleText: '#fcd34d', soldBg: '#292524', soldText: '#e7e5e4', inputBg: '#1c1917', inputText: '#f5f5f4', inputBorder: '#44403c', drawerBg: '#1c1917' },
-      fonts: { body: 'Inter', subheading: 'Inter', heading: 'Playfair Display', accent: 'Playfair Display' },
-      h: { h1: t(58, 'tight', 'heading'), h5: t(12, 'loose', 'subheading', 'loose', true), h6: t(11, 'loose', 'subheading', 'loose', true) },
-      buttons: { radius: 2, sRadius: 2, upper: true },
-      cards: { radius: 2, columns: 4 },
-      badges: { radius: 2, upper: true },
-      inputs: { radius: 2 }, popovers: { radius: 4 },
-    }),
-    sections: () => common([
-      newSection('hero', { heading: 'The new collection', sub: 'Crafted to stand out.', button: 'Shop now', height: 'large', overlay: 45 }),
-      newSection('products', { heading: 'Featured pieces' }),
-      newSection('imagetext', { heading: 'Why shop with us', text: 'Every item is checked before it leaves our shop. Pay on delivery available.', imageSide: 'right' }),
-      newSection('faq'),
-      newSection('contact'),
-    ], { center: true }, {}, { bg: '#d4af37', color: '#0c0a09' }),
-  },
-  {
-    id: 'market', name: 'Market', blurb: 'Busy and bold, made for shops with lots of products.', tags: ['market', 'grocery', 'food', 'provisions', 'electronics', 'phones', 'many', 'general'],
-    settings: mk({
-      colors: { text: '#1c1917', background: '#fff7ed', card: '#ffffff', border: '#fed7aa', muted: '#78716c', primary: '#ea580c', primaryText: '#ffffff', accent: '#c2410c', saleBg: '#16a34a', saleText: '#ffffff', soldBg: '#e7e5e4', soldText: '#44403c', inputBg: '#ffffff', inputText: '#1c1917', inputBorder: '#fdba74', drawerBg: '#fffbf5' },
-      fonts: { body: 'Nunito', subheading: 'Nunito', heading: 'Poppins', accent: 'Poppins' },
-      h: { h1: t(46, 'tight', 'heading'), h2: t(32, 'tight', 'heading') },
-      page: { width: 'wide' },
-      buttons: { radius: 999, sRadius: 999 },
-      cards: { radius: 16, columns: 5, mobileColumns: 2 },
-      anim: { hover: 'scale' },
-      badges: { position: 'tr' },
-    }),
-    sections: () => common([
-      newSection('hero', { heading: 'Fresh deals every day', sub: 'Order now, pay on delivery.', button: 'See deals', height: 'small', overlay: 25, bg: '#ea580c' }),
-      newSection('products', { heading: 'Shop all' }),
-      newSection('trust'),
-      newSection('contact'),
-    ], { sticky: true }, {}, { bg: '#16a34a', color: '#ffffff', text: 'Order today. Pay on delivery.' }),
-  },
-  {
-    id: 'boutique', name: 'Boutique', blurb: 'Soft and elegant, great for fashion and beauty.', tags: ['fashion', 'clothes', 'dress', 'beauty', 'makeup', 'hair', 'skin', 'women', 'lace', 'ankara', 'fabric'],
-    settings: mk({
-      colors: { text: '#3b2a2f', background: '#fffafa', card: '#ffffff', border: '#f3dfe3', muted: '#8b7378', primary: '#9f1239', primaryText: '#ffffff', accent: '#9f1239', saleBg: '#ffe4e6', saleText: '#9f1239', soldBg: '#f5f0f0', soldText: '#3b2a2f', inputBg: '#ffffff', inputText: '#3b2a2f', inputBorder: '#ecd2d8', drawerBg: '#fffafa' },
-      fonts: { body: 'Lora', subheading: 'Lora', heading: 'Playfair Display', accent: 'Playfair Display' },
-      paragraph: { size: 15, lh: 'loose' },
-      h: { h1: t(54, 'tight', 'heading'), h2: t(38, 'tight', 'heading'), h5: t(13, 'loose', 'subheading', 'loose', true) },
-      buttons: { radius: 4, sRadius: 4, upper: true },
-      cards: { radius: 6, columns: 3, border: 'none' },
-      badges: { radius: 4 }, anim: { hover: 'zoom' },
-    }),
-    sections: () => common([
-      newSection('hero', { heading: 'Made to be worn', sub: 'New arrivals, made for you.', button: 'Shop the collection', align: 'left', height: 'large' }),
-      newSection('products', { heading: 'New arrivals' }),
-      newSection('imagetext', { heading: 'Our story', imageSide: 'left' }),
-      newSection('testimonials'),
-    ], {}, {}, { bg: '#9f1239', color: '#ffffff', text: 'Free delivery on orders over ₦50,000' }),
-  },
-];
-
-export const templateById = (id: string) => TEMPLATES.find((x) => x.id === id) ?? TEMPLATES[0];
-
-export function freshTheme(templateId: string): ThemeData {
-  const tpl = templateById(templateId);
-  return { settings: JSON.parse(JSON.stringify(tpl.settings)), sections: tpl.sections() };
-}
-
-// "Describe your products or brand" -> the templates that fit best (simple keyword match, no AI)
-export function suggestTemplates(text: string): { id: string; score: number }[] {
-  const words = text.toLowerCase().split(/[^a-z]+/).filter(Boolean);
-  return TEMPLATES.map((tp) => ({ id: tp.id, score: tp.tags.reduce((n, tag) => n + (words.some((w) => w.length > 2 && (w.startsWith(tag) || tag.startsWith(w))) ? 1 : 0), 0) }))
-    .sort((a, b) => b.score - a.score);
+  };
 }
 
 // ---------- reading from the database ----------
