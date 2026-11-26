@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { PageSkeleton } from '@/components/Skeleton';
-import BusinessForm from '@/components/BusinessForm';
+import CreateStore from '@/components/store/admin/CreateStore';
 import ThemesHome, { type Biz } from '@/components/store/admin/ThemesHome';
 import ThemeEditor from '@/components/store/admin/ThemeEditor';
 import PagesTab from '@/components/store/admin/PagesTab';
@@ -25,26 +25,9 @@ export default function OnlineStorePanel({ user }: { user: User }) {
   }, [supabase, user.id]);
   useEffect(() => { load(); }, [load]);
 
-  // first run: wait for the owner to create the store in the form below
-  useEffect(() => {
-    if (biz !== null) return;
-    const t = setInterval(load, 2500);
-    return () => clearInterval(t);
-  }, [biz, load]);
-
   if (biz === undefined) return <PageSkeleton />;
 
-  if (biz === null) {
-    return (
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-2xl font-bold">Set up your Online Store</h1>
-          <p className="mt-1 text-sm text-slate-500">Tell us about your shop first. Then you can pick a theme, add pages and start selling.</p>
-        </div>
-        <BusinessForm user={user} />
-      </div>
-    );
-  }
+  if (biz === null) return <CreateStore user={user} onCreated={load} />;
 
   if (editing) return <ThemeEditor themeId={editing} businessId={biz.id} onBack={() => setEditing(null)} />;
 
