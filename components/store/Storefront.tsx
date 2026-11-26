@@ -7,7 +7,7 @@ import { Instagram, Facebook, Youtube } from '@/components/store/SocialIcons';
 import SiteProducts, { type Shop, type SiteProduct } from '@/components/SiteProducts';
 import FloatChat from '@/components/store/FloatChat';
 import Countdown from '@/components/store/Countdown';
-import { CollectionRow, CollectionTabs, CollectionTiles, Gallery, NewsletterForm, PeopleRail, Ticker, type Person, type Tab, type Tile } from '@/components/store/Blocks';
+import { CollectionRow, CollectionTabs, CollectionTiles, Gallery, NewsletterForm, PeopleRail, Slideshow, Ticker, type Person, type Slide, type Tab, type Tile } from '@/components/store/Blocks';
 import type { PageId } from '@/lib/store/theme';
 import { allCollection, collectionHref, productHref, type StoreCollection } from '@/lib/store/collections';
 import { fontsHref, safeColor, safeHref, strokeWidth, themeCss, type Section, type ThemeData } from '@/lib/store/theme';
@@ -169,6 +169,14 @@ export default function Storefront({
       }
       case 'products':
         return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} />;
+      case 'slideshow': {
+        const slides: Slide[] = arr<Record<string, string>>(x.slides).map((sl) => {
+          const l = link(sl.link);
+          return { image: safeHref(sl.image, info.slug), eyebrow: s(sl.eyebrow), heading: s(sl.heading), sub: s(sl.sub), button: s(sl.button), href: l.href, external: !!l.external };
+        }).filter((sl) => sl.image || sl.heading);
+        if (slides.length === 0) return null;
+        return <Slideshow slides={slides} height={{ small: 280, medium: 420, large: 580 }[s(x.height) as 'small'] ?? 420} autoplay={x.autoplay !== false} seconds={Math.min(12, Number(x.seconds) || 5)} arrows={x.arrows !== false} dots={x.dots !== false} align={x.align === 'left' ? 'left' : 'center'} overlay={Math.max(0, Math.min(80, Number(x.overlay ?? 35)))} textColor={safeColor(x.textColor, '#ffffff')} bg={safeColor(x.bg, '')} outline={x.outline === true} />;
+      }
       case 'custom': {
         const blocks = arr<Record<string, string>>(x.blocks).filter((b) => (['divider', 'spacer'].includes(b.type) ? true : b.type === 'image' ? !!safeHref(b.image, info.slug) : b.type === 'button' ? !!s(b.label) : !!s(b.text)));
         if (blocks.filter((b) => !['divider', 'spacer'].includes(b.type)).length === 0) return null;
@@ -347,7 +355,7 @@ export default function Storefront({
       case 'main': return null;
       case 'ticker': {
         const list = arr<{ text: string; link: string }>(x.items).filter((it) => s(it.text)).map((it) => ({ text: s(it.text), href: s(it.link) ? link(it.link).href : '' }));
-        return <Ticker items={list} seconds={Number(x.seconds) || 5} bg={safeColor(x.bg, '')} color={safeColor(x.color, '')} />;
+        return <Ticker items={list} seconds={Math.min(12, Number(x.seconds) || 5)} bg={safeColor(x.bg, '')} color={safeColor(x.color, '')} />;
       }
       case 'collection': {
         const c = s(x.collection) ? resolveCol(s(x.collection)) : null;

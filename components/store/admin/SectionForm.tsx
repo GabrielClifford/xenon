@@ -52,6 +52,16 @@ function SectionFields({ sec, set, owner, collections = [] }: { sec: Section; se
       <SelectF label="Layout" value={(sv(x.layout) || 'grid') as 'grid'} onChange={(v) => set('layout', v)} options={[['grid', 'Grid'], ['rows', 'Swipeable rows by category']]} />
       {B('portrait', 'Tall product photos (3:4)')}{B('showTrack', 'Show "Track my order" link')}
       <p className="text-xs text-slate-500">Products, search, cart and checkout come from your Products page. Colors and card style come from Theme settings.</p></>;
+    case 'slideshow': return <>
+      <ListF label="Slides" noun="slide" titleKey="heading" items={items(x.slides)} onChange={(v) => set('slides', v)} blank={{ image: '', eyebrow: '', heading: '', sub: '', button: '', link: '' }} owner={owner} fields={[{ key: 'image', label: 'Image', image: true }, { key: 'eyebrow', label: 'Small text above heading (optional)' }, { key: 'heading', label: 'Heading' }, { key: 'sub', label: 'Subheading' }, { key: 'button', label: 'Button label' }, { key: 'link', label: 'Button link' }]} max={8} />
+      <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint} Slides with no image and no heading stay hidden.</p>
+      <SelectF label="Height" value={(sv(x.height) || 'medium') as 'small'} onChange={(v) => set('height', v)} options={[['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']]} />
+      <SelectF label="Text alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['center', 'Center'], ['left', 'Left']]} />
+      {B('autoplay', 'Change slides automatically')}
+      <RangeF label="Seconds per slide" min={3} max={12} unit="s" value={Number(x.seconds ?? 5)} onChange={(v) => set('seconds', v)} />
+      {B('arrows', 'Show arrows')}{B('dots', 'Show dots')}{B('outline', 'Outline button with arrow')}
+      <RangeF label="Image darkening" min={0} max={80} unit="%" value={Number(x.overlay ?? 35)} onChange={(v) => set('overlay', v)} />
+      {C('bg', 'Background color (when a slide has no image)')}{C('textColor', 'Text color')}</>;
     case 'custom': return <>
       <Seg label="Layout" value={(sv(x.columns) || '1') as '1'} onChange={(v) => set('columns', v)} options={[['1', 'Stacked'], ['2', '2 columns'], ['3', '3 columns']]} />
       <Seg label="Alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['left', 'Left'], ['center', 'Center'], ['right', 'Right']]} />

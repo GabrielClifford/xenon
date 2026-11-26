@@ -240,3 +240,60 @@ export function NewsletterForm({ slug, button, success, preview, dark }: { slug:
     </div>
   );
 }
+
+export type Slide = { image: string; eyebrow: string; heading: string; sub: string; button: string; href: string; external: boolean };
+// a banner that moves through several slides: arrows, dots, swipe, and automatic change that pauses when touched or hovered
+export function Slideshow({ slides, height, autoplay, seconds, arrows, dots, align, overlay, textColor, bg, outline }: {
+  slides: Slide[]; height: number; autoplay: boolean; seconds: number; arrows: boolean; dots: boolean; align: 'left' | 'center'; overlay: number; textColor: string; bg: string; outline: boolean;
+}) {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [calm, setCalm] = useState(false); // people who asked their device for less motion get no automatic change
+  const touch = useRef<number | null>(null);
+  const n = slides.length;
+  const cur = Math.min(i, Math.max(0, n - 1));
+  const go = (k: number) => setI(((k % n) + n) % n);
+  useEffect(() => { setCalm(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true); }, []);
+  useEffect(() => {
+    if (!autoplay || calm || paused || n < 2) return;
+    const t = setInterval(() => setI((x) => (x + 1) % n), Math.max(3, seconds) * 1000);
+    return () => clearInterval(t);
+  }, [autoplay, calm, paused, n, seconds]);
+  if (n === 0) return null;
+  const left = align === 'left';
+  return (
+    <section
+      className="relative overflow-hidden" style={{ background: bg || 'var(--xs-primary)', color: textColor || '#fff' }}
+      aria-roledescription="carousel" aria-label="Slideshow"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}
+      onTouchStart={(e) => { touch.current = e.touches[0].clientX; setPaused(true); }}
+      onTouchEnd={(e) => { const s0 = touch.current; touch.current = null; setPaused(false); if (s0 === null || n < 2) return; const dx = e.changedTouches[0].clientX - s0; if (Math.abs(dx) > 50) go(cur + (dx < 0 ? 1 : -1)); }}
+    >
+      <div className="grid" aria-live={autoplay && !paused ? 'off' : 'polite'}>
+        {slides.map((sl, k) => (
+          <div key={k} role="group" aria-roledescription="slide" aria-label={`${k + 1} of ${n}`} aria-hidden={k !== cur} className="relative flex items-center transition-opacity duration-700" style={{ gridArea: '1 / 1', minHeight: height, opacity: k === cur ? 1 : 0, visibility: k === cur ? 'visible' : 'hidden' }}>
+            {sl.image && /* eslint-disable-next-line @next/next/no-img-element */ <img src={sl.image} alt="" className="absolute inset-0 h-full w-full object-cover" loading={k === 0 ? 'eager' : 'lazy'} />}
+            <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${overlay / 100})` }} />
+            <div className={`xs-wrap relative w-full py-12 ${arrows && n > 1 ? 'px-12' : ''} ${left ? 'text-left' : 'text-center'}`}>
+              {sl.eyebrow && <span className="xs-sub mb-3 block text-xs font-semibold uppercase tracking-[0.3em] opacity-80">{sl.eyebrow}</span>}
+              {sl.heading && <h2 className="xs-h1">{sl.heading}</h2>}
+              {sl.sub && <p className={`mt-3 max-w-xl text-lg opacity-90 ${left ? '' : 'mx-auto'}`}>{sl.sub}</p>}
+              {sl.button && <div className="mt-6"><L href={sl.href} external={sl.external} className={outline ? 'xs-btn-outline' : 'xs-btn'}><span>{sl.button}</span>{outline && <ArrowRight className="h-4 w-4" />}</L></div>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {arrows && n > 1 && (
+        <>
+          <button type="button" onClick={() => go(cur - 1)} aria-label="Previous slide" className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/35 p-2 text-white hover:bg-black/55"><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => go(cur + 1)} aria-label="Next slide" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/35 p-2 text-white hover:bg-black/55"><ChevronRight className="h-5 w-5" /></button>
+        </>
+      )}
+      {dots && n > 1 && (
+        <div className="absolute inset-x-0 bottom-3 flex justify-center gap-2">
+          {slides.map((_, k) => <button key={k} type="button" onClick={() => go(k)} aria-label={`Go to slide ${k + 1}`} aria-current={k === cur} className="h-2 w-2 rounded-full" style={{ background: '#fff', opacity: k === cur ? 1 : 0.45 }} />)}
+        </div>
+      )}
+    </section>
+  );
+}
