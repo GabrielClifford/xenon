@@ -136,7 +136,7 @@ export const defaultSectionSettings: Record<SectionType, Record<string, unknown>
   people: { heading: 'Worn by icons', subtitle: '', items: [] },
   gallery: { heading: '', handle: '', link: '', items: [] },
   newsletter: { heading: 'Join the community', text: 'Be the first to hear about new drops and offers.', button: 'Subscribe', success: 'Thank you for subscribing!', bg: '', color: '' },
-  footer: { layout: 'classic', aboutHeading: 'About', shopHeading: 'Shop', supportHeading: 'Customer support', newsletter: false, newsHeading: 'Join the community', newsText: 'Be the first to hear about new drops and offers.', text: '', showPolicies: true, showPages: true, showStorefronts: true, instagram: '', facebook: '', tiktok: '', x: '', youtube: '', whatsapp: '', payments: '', showSupport: false, bg: '', color: '' },
+  footer: { layout: 'classic', aboutHeading: 'About', shopHeading: 'Shop', supportHeading: 'Customer support', newsletter: false, newsHeading: 'Join the community', newsText: 'Be the first to hear about new drops and offers.', text: '', showPolicies: true, showPages: true, showStorefronts: true, instagram: '', facebook: '', tiktok: '', x: '', youtube: '', whatsapp: '', phone: '', payments: '', showSupport: false, bg: '', color: '' },
 };
 
 let counter = 0;

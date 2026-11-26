@@ -93,7 +93,7 @@ export default function SectionForm({ sec, set, owner, collections = [] }: { sec
     case 'footer': return <>
       <Seg label="Layout" value={(sv(x.layout) || 'classic') as 'classic'} onChange={(v) => set('layout', v)} options={[['classic', 'Simple'], ['columns', '4 columns']]} />
       {x.layout === 'columns' && <>{T('aboutHeading', 'About column title')}{T('shopHeading', 'Shop column title', 'Lists your collections.')}{T('supportHeading', 'Support column title', 'Lists your pages and policies.')}{B('newsletter', 'Newsletter box in the 4th column')}{T('newsHeading', 'Newsletter title')}{T('newsText', 'Newsletter text')}</>}
-      {A('text', 'About text', 3, 'Leave empty to use your business description.')}
+      {A('text', 'About text', 3, 'Shown only if you write something here.')}{T('phone', 'Contact phone', 'Shown only if you add it.')}{T('whatsapp', 'WhatsApp number', 'Adds a WhatsApp icon. Leave empty to hide it.')}
       {B('showPages', 'Show your pages (About, Contact...)')}{B('showPolicies', 'Show policy links')}{B('showStorefronts', 'Show store addresses')}
       {T('payments', 'Payment methods to show', 'Separate with commas, like Visa, Mastercard, Verve, Bank Transfer, Pay on delivery')}{T('instagram', 'Instagram link')}{T('facebook', 'Facebook link')}{T('tiktok', 'TikTok link')}{T('youtube', 'YouTube link')}{T('x', 'X (Twitter) link')}{C('bg', 'Background color')}{C('color', 'Text color')}</>;
   }

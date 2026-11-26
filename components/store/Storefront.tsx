@@ -363,11 +363,11 @@ export default function Storefront({
       }
       case 'footer': {
         const bg = safeColor(x.bg, 'transparent'); const col = safeColor(x.color, '');
-        const wa = s(x.whatsapp).replace(/\D/g, '') || (info.phone ?? '').replace(/\D/g, '');
+        const wa = s(x.whatsapp).replace(/\D/g, '');
         const waNum = wa.startsWith('0') ? `234${wa.slice(1)}` : wa;
         const social: [string, string, IconType][] = ([['Instagram', s(x.instagram), Instagram], ['Facebook', s(x.facebook), Facebook], ['TikTok', s(x.tiktok), Music2], ['YouTube', s(x.youtube), Youtube], ['X', s(x.x), X]] as [string, string, IconType][])
           .filter((p) => safeHref(p[1], info.slug));
-        if (waNum && x.whatsapp !== undefined) social.unshift(['WhatsApp', `https://wa.me/${waNum}`, MessageCircle]);
+        if (waNum) social.unshift(['WhatsApp', `https://wa.me/${waNum}`, MessageCircle]);
         const pay = s(x.payments).split(/[,\n]+/).map((z) => z.trim()).filter(Boolean).slice(0, 10);
         const support = x.showSupport === true ? pages : [];
         if (x.layout === 'columns') {
@@ -382,7 +382,7 @@ export default function Storefront({
           return (
             <footer className="mt-8 py-12 text-sm" style={{ background: bg, color: col || undefined, borderTop: '1px solid var(--xs-border)' }}>
               <div className="xs-wrap grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-                <div><p className={head}>{s(x.aboutHeading) || 'About'}</p>{(s(x.text) || info.about) && <p className="max-w-xs leading-relaxed opacity-80">{s(x.text) || info.about}</p>}{socialRow}</div>
+                <div><p className={head}>{s(x.aboutHeading) || 'About'}</p>{s(x.text) && <p className="max-w-xs leading-relaxed opacity-80">{s(x.text)}</p>}{socialRow}</div>
                 <div><p className={head}>{s(x.shopHeading) || 'Shop'}</p>
                   <ul className="space-y-2 opacity-90">
                     <li><Link href={hrefOf(allCol)} className="hover:underline">Shop all</Link></li>
@@ -399,7 +399,7 @@ export default function Storefront({
                   {x.newsletter === true ? (
                     <><p className={head}>{s(x.newsHeading) || 'Join the community'}</p>{s(x.newsText) && <p className="mb-4 opacity-80">{s(x.newsText)}</p>}<NewsletterForm slug={info.slug} button="" success="Thank you for subscribing!" preview={preview} dark /></>
                   ) : (
-                    <><p className={head}>Contact</p>{info.phone && <p className="opacity-80">{info.phone}</p>}</>
+                    <><p className={head}>Contact</p>{s(x.phone) && <p className="opacity-80">{s(x.phone)}</p>}</>
                   )}
                 </div>
               </div>
@@ -415,7 +415,7 @@ export default function Storefront({
         return (
           <footer className="mt-8 border-t py-10 text-sm" style={{ borderColor: 'var(--xs-border)', background: bg, color: col || undefined }}>
             <div className="xs-wrap grid gap-8 sm:grid-cols-3">
-              <div><p className="xs-h4 xs-accent">{info.name}</p>{(s(x.text) || info.about) && <p className="xs-muted mt-2 max-w-xs">{s(x.text) || info.about}</p>}</div>
+              <div><p className="xs-h4 xs-accent">{info.name}</p>{s(x.text) && <p className="xs-muted mt-2 max-w-xs">{s(x.text)}</p>}</div>
               <div className="space-y-1">
                 {x.showPages !== false && pages.map((p) => <p key={p.handle}><Link href={`/b/${info.slug}/pages/${p.handle}`} className="hover:underline">{p.title}</Link></p>)}
                 {x.showPolicies !== false && policies.map((p) => <p key={p.href}><Link href={p.href} className="hover:underline">{p.label}</Link></p>)}
@@ -423,7 +423,7 @@ export default function Storefront({
               </div>
               <div className="space-y-1">
                 {x.showStorefronts !== false && storefronts.map((st, i) => <p key={i}><span className="font-semibold">{st.name}</span><br /><span className="xs-muted">{st.address}</span></p>)}
-                {info.phone && <p className="xs-muted">{info.phone}</p>}
+                {s(x.phone) && <p className="xs-muted">{s(x.phone)}</p>}
               </div>
             </div>
             {social.length > 0 && (
