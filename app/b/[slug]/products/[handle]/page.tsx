@@ -49,7 +49,7 @@ async function View({ params }: P) {
   const related = pool.filter((x): x is SiteProduct => !!x).slice(0, 8);
   return (
     <>
-      <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} mode="page" wide>
+      <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} template="product">
         <ProductDetail p={p} slug={slug} canOrder={d.shop.checkout.accepting} collections={mine.map((c) => ({ title: c.title, href: collectionHref(slug, c) }))} related={related} />
       </Storefront>
       <ConsentGate businessId={d.b.id} privacy={d.privacy} privacyHref={d.privacyHref} />

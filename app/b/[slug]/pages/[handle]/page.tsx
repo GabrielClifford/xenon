@@ -38,7 +38,7 @@ async function PageView({ params }: P) {
   const ctx = { slug, trusted: d.prefs.trusted };
   const wa = (d.info.phone ?? '').replace(/\D/g, '');
   return (
-    <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} mode="page">
+    <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} template="page">
       <h1 className="xs-h1 mb-6">{pg.title}</h1>
       <Markdown text={pg.body} ctx={ctx} />
       {pg.template === 'contact' && (

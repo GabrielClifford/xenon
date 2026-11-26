@@ -46,7 +46,7 @@ async function View({ params }: P) {
   const others = [d.allCollection, ...d.collections.filter((x) => x.ids.length > 0)].map((x) => ({ id: x.id, title: x.title, href: collectionHref(slug, x) }));
   return (
     <>
-      <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} mode="page" wide>
+      <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} template="collection">
         <CollectionView title={c.title} products={products} slug={slug} others={others} current={c.id} />
       </Storefront>
       <ConsentGate businessId={d.b.id} privacy={d.privacy} privacyHref={d.privacyHref} />

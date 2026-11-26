@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Storefront, { type PageLink } from '@/components/store/Storefront';
-import { readTheme, sampleProducts, type ThemeData } from '@/lib/store/theme';
+import { readTheme, sampleProducts, type PageId, type ThemeData } from '@/lib/store/theme';
+import CollectionView from '@/components/store/CollectionView';
+import ProductDetail from '@/components/store/ProductDetail';
 import type { SiteProduct } from '@/components/SiteProducts';
 import { buildCollections, type StoreCollection } from '@/lib/store/collections';
 
@@ -15,6 +17,7 @@ export default function StorePreview() {
   const [products, setProducts] = useState<SiteProduct[]>([]);
   const [pages, setPages] = useState<PageLink[]>([]);
   const [collections, setCollections] = useState<StoreCollection[]>([]);
+  const [tpl, setTpl] = useState<PageId>('home');
 
   useEffect(() => {
     (async () => {
@@ -43,8 +46,11 @@ export default function StorePreview() {
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      const d = e.data as { xenon?: string; theme?: ThemeData; focus?: string };
-      if (d?.xenon === 'theme' && d.theme) setTheme(readTheme({ settings: d.theme.settings, sections: d.theme.sections }));
+      const d = e.data as { xenon?: string; theme?: ThemeData; focus?: string; template?: PageId };
+      if (d?.xenon === 'theme' && d.theme) {
+        if (d.template) setTpl(['home', 'collection', 'product', 'page'].includes(d.template) ? d.template : 'home');
+        setTheme(readTheme({ settings: d.theme.settings, sections: d.theme.sections }));
+      }
       if (d?.xenon === 'focus' && d.focus) document.querySelector(`[data-sid="${CSS.escape(d.focus)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
     window.addEventListener('message', onMsg);
@@ -53,5 +59,10 @@ export default function StorePreview() {
   }, []);
 
   if (!theme || !info) return <div className="p-6"><div className="h-40 animate-pulse rounded-2xl bg-slate-100" /></div>;
-  return <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} preview />;
+  const sample = products.slice(0, 8);
+  const main = tpl === 'collection' ? <CollectionView title="Collection name" products={sample} slug={info.slug} others={[]} current="" />
+    : tpl === 'product' && products[0] ? <ProductDetail p={products[0]} slug={info.slug} canOrder collections={[]} related={products.slice(1, 5)} />
+    : tpl === 'page' ? <article className="prose max-w-none"><h1 className="xs-h2">Page title</h1><p className="mt-4">This is where the text of your pages (About us, Delivery, Contact...) appears.</p></article>
+    : null;
+  return <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} template={tpl} preview>{main}</Storefront>;
 }

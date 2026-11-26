@@ -36,16 +36,37 @@ export type ThemeSettings = {
 export type SectionType =
   | 'announcement' | 'header' | 'hero' | 'products' | 'richtext' | 'imagetext'
   | 'trust' | 'testimonials' | 'faq' | 'contact' | 'marquee' | 'floatchat' | 'countdown' | 'footer'
-  | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
+  | 'main' | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
 
-export type Section = { id: string; type: SectionType; visible: boolean; s: Record<string, unknown> };
+// Where a section lives. header and footer are groups shared by every page; the others are page templates.
+export type PageId = 'header' | 'home' | 'collection' | 'product' | 'page' | 'footer';
+export const PAGE_ORDER: PageId[] = ['header', 'home', 'collection', 'product', 'page', 'footer'];
+export const TEMPLATE_PAGES: { id: PageId; label: string }[] = [
+  { id: 'home', label: 'Home page' }, { id: 'collection', label: 'Collection page' }, { id: 'product', label: 'Product page' }, { id: 'page', label: 'Info pages' },
+];
+export type Section = { id: string; type: SectionType; page: PageId; visible: boolean; s: Record<string, unknown> };
 export type ThemeData = { settings: ThemeSettings; sections: Section[] };
 
 export const FIXED_TOP: SectionType[] = ['announcement', 'header'];
 export const FIXED_BOTTOM: SectionType[] = ['footer'];
 export const ADDABLE: SectionType[] = ['hero', 'ticker', 'collection', 'collectiontabs', 'collectionlist', 'infotiles', 'people', 'gallery', 'newsletter', 'countdown', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
-export const SINGLE: SectionType[] = ['announcement', 'header', 'footer', 'products', 'floatchat', 'ticker'];
+export const SINGLE: SectionType[] = ['announcement', 'header', 'footer', 'products', 'floatchat', 'ticker', 'main'];
+// what the owner may add to each group (the page body accepts everything in ADDABLE)
+export const GROUP_ADDABLE: Record<'header' | 'footer', SectionType[]> = {
+  header: ['ticker', 'countdown', 'marquee', 'richtext'],
+  footer: ['newsletter', 'trust', 'marquee', 'gallery', 'richtext', 'floatchat'],
+};
+export const SECTION_HINTS: Partial<Record<SectionType, string>> = {
+  hero: 'Big banner with a picture, text, button and optional countdown', ticker: 'Thin strip of messages that rotate with arrows', collection: 'Products of one collection in a row, with a Shop now button',
+  collectiontabs: 'Tabs that switch between collections (Find your deal)', collectionlist: 'Picture tiles that open your collections', infotiles: 'Heading with icon tiles',
+  people: 'Photos of people who wear your products', gallery: 'Photo strip, like Instagram', newsletter: 'Email sign-up box', countdown: 'Sale countdown with a button', marquee: 'Scrolling line of text',
+  richtext: 'Heading and text', imagetext: 'Picture next to text', trust: 'Icons with short promises (delivery, secure payment...)', testimonials: 'Customer reviews', faq: 'Questions and answers',
+  contact: 'Chat with us box', floatchat: 'WhatsApp or Tawk chat button', products: 'All products in a grid',
+};
+export const sectionLabel = (s: { type: SectionType; page: PageId }) =>
+  s.type === 'main' ? (s.page === 'collection' ? 'Collection products' : s.page === 'product' ? 'Product details' : 'Page content') : SECTION_LABELS[s.type];
 export const SECTION_LABELS: Record<SectionType, string> = {
+  main: 'Main content',
   announcement: 'Announcement bar', header: 'Header', hero: 'Hero banner', products: 'Products',
   richtext: 'Rich text', imagetext: 'Image with text', trust: 'Trust badges', testimonials: 'Customer reviews',
   faq: 'FAQ', contact: 'Contact / WhatsApp', marquee: 'Scrolling text strip', floatchat: 'Chat buttons (WhatsApp / Live chat)', countdown: 'Sale countdown', footer: 'Footer',
@@ -83,6 +104,7 @@ export const defaultSettings: ThemeSettings = {
 };
 
 export const defaultSectionSettings: Record<SectionType, Record<string, unknown>> = {
+  main: {},
   announcement: { text: 'Free delivery on orders over ₦50,000', link: '', bg: '', color: '', ends: '' },
   header: { logoText: '', logoImage: '', links: [{ label: 'Shop', href: '#products' }], showSearch: true, showCart: true, showAccount: true, showMenu: false, sticky: true, center: false, wide: false },
   hero: { image: '', heading: 'Browse our latest products', sub: 'Quality you can trust, delivered to your door.', button: 'Shop all', link: '#products', height: 'medium', overlay: 35, align: 'center', valign: 'center', eyebrow: '', outline: false, textColor: '#ffffff', bg: '', ends: '', endsLabel: 'Ends in' },
@@ -122,8 +144,11 @@ export function newId(prefix = 's') {
   counter += 1;
   return `${prefix}${Date.now().toString(36)}${counter}${Math.random().toString(36).slice(2, 5)}`;
 }
-export function newSection(type: SectionType, s: Record<string, unknown> = {}): Section {
-  return { id: newId(), type, visible: true, s: { ...JSON.parse(JSON.stringify(defaultSectionSettings[type])), ...s } };
+export function defaultPage(type: SectionType): PageId {
+  return type === 'announcement' || type === 'header' ? 'header' : type === 'footer' ? 'footer' : 'home';
+}
+export function newSection(type: SectionType, s: Record<string, unknown> = {}, page?: PageId): Section {
+  return { id: newId(), type, page: page ?? defaultPage(type), visible: true, s: { ...JSON.parse(JSON.stringify(defaultSectionSettings[type])), ...s } };
 }
 
 // ---------- templates (ready-made starting points) ----------
@@ -312,6 +337,8 @@ function readSettings(raw: unknown): ThemeSettings {
   };
 }
 
+const GROUP_PAGES: PageId[] = ['header', 'home', 'collection', 'product', 'page', 'footer'];
+
 function readSections(raw: unknown): Section[] {
   const types = Object.keys(defaultSectionSettings) as SectionType[];
   const list: Section[] = [];
@@ -320,7 +347,11 @@ function readSections(raw: unknown): Section[] {
     for (const x of raw as Record<string, unknown>[]) {
       if (!x || typeof x !== 'object' || !types.includes(x.type as SectionType)) continue;
       const type = x.type as SectionType;
-      if (SINGLE.includes(type) && list.some((s) => s.type === type)) continue;
+      let page: PageId = GROUP_PAGES.includes(x.page as PageId) ? (x.page as PageId) : defaultPage(type);
+      if (type === 'announcement' || type === 'header') page = 'header';
+      else if (type === 'footer') page = 'footer';
+      else if (type === 'main' && !['collection', 'product', 'page'].includes(page)) continue;
+      if (SINGLE.includes(type) && list.some((s) => s.type === type && (type !== 'main' || s.page === page))) continue;
       let id = typeof x.id === 'string' && /^[a-z0-9]{1,40}$/i.test(x.id) ? x.id : newId();
       if (seen.has(id)) id = newId();
       seen.add(id);
@@ -335,15 +366,18 @@ function readSections(raw: unknown): Section[] {
         else if (typeof bv === 'number') s[k] = num(gv, 0, 100, bv);
         else s[k] = typeof gv === 'string' ? gv.slice(0, 3000) : bv;
       }
-      list.push({ id, type, visible: x.visible !== false, s });
+      list.push({ id, type, page, visible: type === 'main' ? true : x.visible !== false, s });
     }
   }
-  // the fixed parts always exist (the cart works without a products section: collections and pages carry their own products)
-  const head = list.find((s) => s.type === 'header') ?? newSection('header');
-  const ann = list.find((s) => s.type === 'announcement') ?? newSection('announcement');
-  const foot = list.find((s) => s.type === 'footer') ?? newSection('footer');
-  const middle = list.filter((s) => !['header', 'announcement', 'footer'].includes(s.type));
-  return [ann, head, ...middle, foot];
+  // the parts every store needs always exist
+  if (!list.some((s) => s.type === 'announcement')) list.unshift(newSection('announcement'));
+  if (!list.some((s) => s.type === 'header')) list.splice(1, 0, newSection('header'));
+  if (!list.some((s) => s.type === 'footer')) list.push(newSection('footer'));
+  for (const pg of ['collection', 'product', 'page'] as PageId[]) {
+    if (!list.some((s) => s.type === 'main' && s.page === pg)) list.push(newSection('main', {}, pg));
+  }
+  // one list, always in the same order: header group, each page, footer group
+  return PAGE_ORDER.flatMap((pg) => list.filter((s) => s.page === pg));
 }
 
 export function readTheme(row: { settings?: unknown; sections?: unknown; template?: string } | null | undefined): ThemeData {

@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowUp, Eye, EyeOff, History, Monitor, Plus, Redo2, Smartphone, Trash2, Undo2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Copy, Eye, EyeOff, GripVertical, History, Lock, Monitor, Redo2, Smartphone, Trash2, Undo2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { PageSkeleton } from '@/components/Skeleton';
-import { ADDABLE, SINGLE, SECTION_LABELS, newSection, readTheme, type Section, type SectionType, type ThemeData, type ThemeSettings } from '@/lib/store/theme';
+import { ADDABLE, GROUP_ADDABLE, PAGE_ORDER, SINGLE, TEMPLATE_PAGES, newId, newSection, readTheme, sectionLabel, type PageId, type Section, type SectionType, type ThemeData, type ThemeSettings } from '@/lib/store/theme';
+import AddSection from './AddSection';
 import SectionForm from './SectionForm';
 import SettingsPanel from './SettingsPanel';
 import { inp } from './fields';
@@ -25,6 +26,8 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [sel, setSel] = useState<string | null>(null);
+  const [tpl, setTpl] = useState<PageId>('home');
+  const [drag, setDrag] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [cols, setCols] = useState<{ id: string; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
@@ -48,7 +51,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
     })();
   }, [supabase, themeId, businessId]);
 
-  const post = useCallback((t: ThemeData) => { frame.current?.contentWindow?.postMessage({ xenon: 'theme', theme: t }, window.location.origin); }, []);
+  const post = useCallback((t: ThemeData) => { frame.current?.contentWindow?.postMessage({ xenon: 'theme', theme: t, template: tpl }, window.location.origin); }, [tpl]);
   useEffect(() => { if (data && ready.current) post(data); }, [data, post]);
   useEffect(() => {
     const on = (e: MessageEvent) => {
@@ -97,38 +100,73 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
   if (!data) return <PageSkeleton />;
   const secs = data.sections;
   const idx = (id: string) => secs.findIndex((s) => s.id === id);
-  const middle = secs.filter((s) => !['announcement', 'header', 'footer'].includes(s.type));
-  const fixedTop = secs.filter((s) => s.type === 'announcement' || s.type === 'header');
-  const footer = secs.find((s) => s.type === 'footer');
   const current = secs.find((s) => s.id === sel) ?? null;
+  const rebuild = (d: ThemeData, pg: PageId, list: Section[]) => { d.sections = PAGE_ORDER.flatMap((p) => (p === pg ? list : d.sections.filter((x) => x.page === p))); };
+  const inGroup = (d: ThemeData, pg: PageId) => d.sections.filter((x) => x.page === pg);
 
   const move = (id: string, dir: -1 | 1) => change((d) => {
-    const mids = d.sections.filter((s) => !['announcement', 'header', 'footer'].includes(s.type));
-    const i = mids.findIndex((s) => s.id === id); const j = i + dir;
-    if (j < 0 || j >= mids.length) return;
-    [mids[i], mids[j]] = [mids[j], mids[i]];
-    d.sections = [...d.sections.filter((s) => s.type === 'announcement' || s.type === 'header'), ...mids, ...d.sections.filter((s) => s.type === 'footer')];
+    const s = d.sections.find((x) => x.id === id); if (!s) return;
+    const g = inGroup(d, s.page); const i = g.findIndex((x) => x.id === id); const j = i + dir;
+    if (j < 0 || j >= g.length) return;
+    [g[i], g[j]] = [g[j], g[i]]; rebuild(d, s.page, g);
   });
-  const toggle = (id: string) => change((d) => { const s = d.sections[idx(id)]; if (s) s.visible = !s.visible; });
+  const moveTo = (dragId: string, targetId: string) => change((d) => {
+    const a = d.sections.find((x) => x.id === dragId); const b = d.sections.find((x) => x.id === targetId);
+    if (!a || !b || a.page !== b.page || a.id === b.id) return;
+    const g = inGroup(d, a.page).filter((x) => x.id !== a.id);
+    g.splice(g.findIndex((x) => x.id === b.id), 0, a); rebuild(d, a.page, g);
+  });
+  const toggle = (id: string) => change((d) => { const s = d.sections[idx(id)]; if (s && s.type !== 'main') s.visible = !s.visible; });
   const remove = (id: string) => { change((d) => { d.sections = d.sections.filter((s) => s.id !== id); }); if (sel === id) setSel(null); };
-  const add = (type: SectionType) => {
-    const s = newSection(type);
-    change((d) => { const f = d.sections.findIndex((x) => x.type === 'footer'); d.sections.splice(f < 0 ? d.sections.length : f, 0, s); });
+  const duplicate = (id: string) => {
+    const copyId = newId();
+    change((d) => {
+      const i = d.sections.findIndex((x) => x.id === id); const src = d.sections[i];
+      if (!src || SINGLE.includes(src.type)) return;
+      d.sections.splice(i + 1, 0, { ...clone(src), id: copyId });
+    });
+    setSel(copyId);
+  };
+  const add = (type: SectionType, pg: PageId) => {
+    const s = newSection(type, {}, pg);
+    change((d) => {
+      const g = inGroup(d, pg);
+      const at = pg === 'footer' ? g.findIndex((x) => x.type === 'footer') : g.length;
+      g.splice(at < 0 ? g.length : at, 0, s); rebuild(d, pg, g);
+    });
     setSel(s.id);
     setTimeout(() => frame.current?.contentWindow?.postMessage({ xenon: 'focus', focus: s.id }, window.location.origin), 300);
   };
-  const addable = ADDABLE.filter((t) => !SINGLE.includes(t) || !secs.some((s) => s.type === t));
+  const addableFor = (pg: PageId): SectionType[] => (pg === 'header' ? GROUP_ADDABLE.header : pg === 'footer' ? GROUP_ADDABLE.footer : ADDABLE).filter((t) => !SINGLE.includes(t) || !secs.some((s) => s.type === t));
+  const pick = (id: string) => { setSel(id); frame.current?.contentWindow?.postMessage({ xenon: 'focus', focus: id }, window.location.origin); };
 
-  const row = (s: Section, canMove: boolean, canRemove: boolean) => (
-    <div key={s.id} className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 ${sel === s.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white'}`}>
-      <button className="flex-1 truncate px-1 py-1.5 text-left text-sm font-medium text-slate-800" onClick={() => { setSel(s.id); frame.current?.contentWindow?.postMessage({ xenon: 'focus', focus: s.id }, window.location.origin); }}>
-        <span className={s.visible ? '' : 'text-slate-400 line-through'}>{SECTION_LABELS[s.type]}</span>
-      </button>
-      {canMove && <><button onClick={() => move(s.id, -1)} className="p-1.5 text-slate-500" aria-label="Move up"><ArrowUp className="h-4 w-4" /></button><button onClick={() => move(s.id, 1)} className="p-1.5 text-slate-500" aria-label="Move down"><ArrowDown className="h-4 w-4" /></button></>}
-      <button onClick={() => toggle(s.id)} className="p-1.5 text-slate-500" aria-label={s.visible ? 'Hide section' : 'Show section'}>{s.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}</button>
-      {canRemove && <button onClick={() => remove(s.id)} className="p-1.5 text-red-500" aria-label="Delete section"><Trash2 className="h-4 w-4" /></button>}
+  const row = (s: Section) => {
+    const locked = ['announcement', 'header', 'footer', 'main'].includes(s.type);
+    return (
+      <div key={s.id} draggable onDragStart={() => setDrag(s.id)} onDragEnd={() => setDrag(null)} onDragOver={(e) => { if (drag) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); if (drag) moveTo(drag, s.id); setDrag(null); }}
+        className={`flex items-center gap-0.5 rounded-lg border px-1 py-1 ${sel === s.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white'} ${drag === s.id ? 'opacity-40' : ''}`}>
+        <GripVertical className="hidden h-4 w-4 shrink-0 cursor-grab text-slate-300 sm:block" aria-hidden />
+        <button className="flex-1 truncate px-1 py-1.5 text-left text-sm font-medium text-slate-800" onClick={() => pick(s.id)}>
+          <span className={s.visible ? '' : 'text-slate-400 line-through'}>{sectionLabel(s)}</span>
+        </button>
+        <button onClick={() => move(s.id, -1)} className="p-1.5 text-slate-500" aria-label="Move up"><ArrowUp className="h-4 w-4" /></button>
+        <button onClick={() => move(s.id, 1)} className="p-1.5 text-slate-500" aria-label="Move down"><ArrowDown className="h-4 w-4" /></button>
+        {!SINGLE.includes(s.type) && <button onClick={() => duplicate(s.id)} className="p-1.5 text-slate-500" aria-label="Duplicate section"><Copy className="h-4 w-4" /></button>}
+        {s.type !== 'main' && <button onClick={() => toggle(s.id)} className="p-1.5 text-slate-500" aria-label={s.visible ? 'Hide section' : 'Show section'}>{s.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}</button>}
+        {locked ? <span className="p-1.5 text-slate-300" title="Needed by your store, it can be hidden or moved but not deleted"><Lock className="h-4 w-4" /></span>
+          : <button onClick={() => remove(s.id)} className="p-1.5 text-red-500" aria-label="Delete section"><Trash2 className="h-4 w-4" /></button>}
+      </div>
+    );
+  };
+  const group = (pg: PageId, title: string, hint?: string) => (
+    <div key={pg} className="space-y-1.5">
+      <p className="pt-3 text-xs font-bold uppercase tracking-wide text-slate-500">{title}</p>
+      {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
+      {secs.filter((s) => s.page === pg).map(row)}
+      <AddSection key={`${pg}-add`} types={addableFor(pg)} onPick={(t) => add(t, pg)} />
     </div>
   );
+  const changeTpl = (v: PageId) => { setTpl(v); setSel(null); };
 
   return (
     <div className="-mx-1 flex h-[calc(100vh-7rem)] min-h-[560px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -171,26 +209,20 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
               </div>
             )}
             {tab === 'sections' && !current && (
-              <div className="space-y-2 p-4">
-                {fixedTop.map((s) => row(s, false, false))}
-                <p className="pt-2 text-xs font-bold uppercase text-slate-500">Home page</p>
-                {middle.map((s) => row(s, true, true))}
-                {addable.length > 0 && (
-                  <label className="block pt-1">
-                    <span className="sr-only">Add section</span>
-                    <div className="flex items-center gap-2"><Plus className="h-4 w-4 text-blue-600" />
-                      <select className={inp} value="" onChange={(e) => e.target.value && add(e.target.value as SectionType)}>
-                        <option value="">Add section...</option>{addable.map((t) => <option key={t} value={t}>{SECTION_LABELS[t]}</option>)}
-                      </select></div>
-                  </label>
-                )}
-                <div className="pt-2">{footer && row(footer, false, false)}</div>
+              <div className="p-4">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Page you are editing</span>
+                  <select className={inp} value={tpl} onChange={(e) => changeTpl(e.target.value as PageId)}>{TEMPLATE_PAGES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select>
+                </label>
+                {group('header', 'Header', 'Shown at the top of every page')}
+                {group(tpl, TEMPLATE_PAGES.find((p) => p.id === tpl)?.label ?? 'Page', tpl === 'home' ? 'Add the sections of your home page. It starts empty.' : 'The locked part fills itself in. Add sections above or below it, drag to reorder.')}
+                {group('footer', 'Footer', 'Shown at the bottom of every page')}
               </div>
             )}
             {tab === 'sections' && current && (
               <div className="p-4">
                 <button onClick={() => setSel(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-blue-600"><ArrowLeft className="h-4 w-4" />All sections</button>
-                <p className="mb-3 text-base font-bold text-slate-900">{SECTION_LABELS[current.type]}</p>
+                <p className="mb-3 text-base font-bold text-slate-900">{sectionLabel(current)}</p>
                 <SectionForm sec={current} collections={cols} owner={{ userId, businessId }} set={(k, v) => change((d) => { const s = d.sections.find((x) => x.id === current.id); if (s) s.s[k] = v; })} />
               </div>
             )}

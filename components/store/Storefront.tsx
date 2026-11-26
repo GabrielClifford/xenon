@@ -8,6 +8,7 @@ import SiteProducts, { type Shop, type SiteProduct } from '@/components/SiteProd
 import FloatChat from '@/components/store/FloatChat';
 import Countdown from '@/components/store/Countdown';
 import { CollectionRow, CollectionTabs, CollectionTiles, Gallery, NewsletterForm, PeopleRail, Ticker, type Person, type Tab, type Tile } from '@/components/store/Blocks';
+import type { PageId } from '@/lib/store/theme';
 import { allCollection, collectionHref, productHref, type StoreCollection } from '@/lib/store/collections';
 import { fontsHref, safeColor, safeHref, strokeWidth, themeCss, type Section, type ThemeData } from '@/lib/store/theme';
 import { Markdown, linkFor, type LinkCtx } from '@/lib/store/markdown';
@@ -21,9 +22,9 @@ const s = (v: unknown) => (typeof v === 'string' ? v : '');
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
 export default function Storefront({
-  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', wide = false, collections = [], children,
+  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', template, collections = [], children,
 }: {
-  wide?: boolean; collections?: StoreCollection[];
+  template?: PageId; collections?: StoreCollection[];
   theme: ThemeData; info: StoreInfo; products: SiteProduct[]; shop?: Shop; pages?: PageLink[];
   policies?: { label: string; href: string }[]; storefronts?: { name: string; address: string }[]; trusted?: string[];
   preview?: boolean; mode?: 'home' | 'page'; children?: React.ReactNode;
@@ -66,7 +67,7 @@ export default function Storefront({
   };
 
   const wrap = (sec: Section, node: React.ReactNode) => (
-    <div key={sec.id} data-sid={sec.id} onClickCapture={preview ? (e) => { e.preventDefault(); e.stopPropagation(); window.parent.postMessage({ xenon: 'select', id: sec.id }, window.location.origin); } : undefined} className={preview ? 'cursor-pointer hover:outline hover:outline-2 hover:outline-blue-500' : ''}>
+    <div key={sec.id} data-sid={sec.id} onClickCapture={preview ? (e) => { e.preventDefault(); e.stopPropagation(); window.parent.postMessage({ xenon: 'select', id: sec.id }, window.location.origin); } : undefined} className={preview ? 'cursor-pointer hover:outline hover:outline-2 hover:outline-blue-500' : 'contents'}>
       {node}
     </div>
   );
@@ -298,6 +299,7 @@ export default function Storefront({
           </section>
         );
       }
+      case 'main': return null;
       case 'ticker': {
         const list = arr<{ text: string; link: string }>(x.items).filter((it) => s(it.text)).map((it) => ({ text: s(it.text), href: s(it.link) ? link(it.link).href : '' }));
         return <Ticker items={list} seconds={Number(x.seconds) || 5} bg={safeColor(x.bg, '')} color={safeColor(x.color, '')} />;
@@ -446,11 +448,12 @@ export default function Storefront({
     }
   };
 
-  const secs = theme.sections.filter((sec) => sec.visible);
+  const tpl: PageId = template ?? (mode === 'home' ? 'home' : 'page');
+  // header group + this page + footer group; the chat button follows the customer on every page
+  const tplSecs = theme.sections.filter((sec) => sec.visible && (sec.page === 'header' || sec.page === 'footer' || sec.page === tpl || sec.type === 'floatchat'));
   const headerLinks = arr<{ label: string; href: string }>(hdr?.s.links);
   const results = q.trim() ? products.filter((p) => `${p.name} ${p.category ?? ''} ${p.product_type ?? ''} ${p.vendor ?? ''} ${(p.tags ?? []).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase())).slice(0, 12) : [];
   const closeSearch = () => { setSearchOpen(false); };
-  const floatSec = theme.sections.find((z) => z.type === 'floatchat' && z.visible);
   return (
     <div className="xs-store">
       <style dangerouslySetInnerHTML={{ __html: themeCss(theme.settings) }} />
@@ -501,18 +504,17 @@ export default function Storefront({
           </div>
         </div>
       )}
-      {mode === 'home'
-        ? secs.map((sec) => { const n = render(sec); if (n) return wrap(sec, n); return preview && !['announcement', 'floatchat'].includes(sec.type) ? wrap(sec, <div className="xs-wrap my-4 border border-dashed py-6 text-center text-xs uppercase tracking-widest opacity-60" style={{ borderColor: 'var(--xs-muted)' }}>Empty section: fill it in on the left (it is hidden on your live store)</div>) : null; })
-        : (
-          <>
-            {theme.sections.filter((x) => x.visible && (x.type === 'announcement' || x.type === 'header')).map((sec) => { const n = render(sec); return n ? <div key={sec.id}>{n}</div> : null; })}
-            <main className={`xs-wrap py-12 ${wide ? '' : 'max-w-3xl'}`}>{children}</main>
-            {theme.sections.filter((x) => x.type === 'footer').map((sec) => <div key={sec.id}>{render(sec)}</div>)}
-            {floatSec && render(floatSec)}
-          </>
-        )}
+      {tplSecs.map((sec) => {
+        if (sec.type === 'main') {
+          return wrap(sec, <main className={`xs-wrap py-12 ${tpl === 'page' ? 'max-w-3xl' : ''}`}>{children}</main>);
+        }
+        const n = render(sec);
+        if (n) return wrap(sec, n);
+        return preview && !['announcement', 'floatchat'].includes(sec.type) ? wrap(sec, <div className="xs-wrap my-4 border border-dashed py-6 text-center text-xs uppercase tracking-widest opacity-60" style={{ borderColor: 'var(--xs-muted)' }}>Empty section: fill it in on the left (it is hidden on your live store)</div>) : null;
+      })}
+      {tpl !== 'home' && !tplSecs.some((z) => z.type === 'main') && <main className={`xs-wrap py-12 ${tpl === 'page' ? 'max-w-3xl' : ''}`}>{children}</main>}
       {/* the cart and checkout live here when the page has no products section (collection, product and info pages) */}
-      {!(mode === 'home' && secs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} />}
+      {!(tpl === 'home' && tplSecs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} />}
     </div>
   );
 }

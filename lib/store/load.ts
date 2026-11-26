@@ -1,5 +1,5 @@
 import { anon, readPrefs } from '@/lib/store/access';
-import { readTheme, newSection } from '@/lib/store/theme';
+import { readTheme } from '@/lib/store/theme';
 import { readOptions } from '@/lib/checkout';
 import { readAccounts } from '@/lib/accounts';
 import { readTax } from '@/lib/tax';
@@ -47,13 +47,6 @@ export async function loadStore(slug: string, withProducts: boolean) {
   const collections = withProducts ? await loadCollections(supabase, b.id, products) : [];
 
   const theme = readTheme(row);
-  if (!row) {
-    // stores created before themes existed: show their own name and tagline in the banner
-    const hero = theme.sections.find((x) => x.type === 'hero');
-    if (hero) { hero.s.heading = b.name; hero.s.sub = b.tagline ?? hero.s.sub; }
-    if (!theme.sections.some((x) => x.type === 'contact')) theme.sections.splice(theme.sections.length - 1, 0, newSection('contact'));
-  }
-
   const privacy = readPrivacy(b.privacy_options);
   const privacyHref = isPublished(readPolicies(b.policies), 'privacy') ? `/b/${b.slug}/policies/privacy` : undefined;
   const policies = [
