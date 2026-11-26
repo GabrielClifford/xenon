@@ -1,15 +1,8 @@
 import { anon, readPrefs } from '@/lib/store/access';
 import { readTheme } from '@/lib/store/theme';
-import { readOptions } from '@/lib/checkout';
-import { readAccounts } from '@/lib/accounts';
-import { readTax } from '@/lib/tax';
-import { readShipping } from '@/lib/shipping';
-import { applyLocations, formatAddress, readLocations } from '@/lib/locations';
-import { publishedLinks, readPolicies } from '@/lib/policies';
-import { readPayments } from '@/lib/paymentMethods';
-import { readPrivacy } from '@/lib/privacy';
-import { isPublished } from '@/lib/policies';
-import type { Shop, SiteProduct } from '@/components/SiteProducts';
+import { readPolicies, isPublished } from '@/lib/policies';
+import { buildShop } from '@/lib/store/shop';
+import type { SiteProduct } from '@/components/SiteProducts';
 import { allCollection, buildCollections, type StoreCollection } from '@/lib/store/collections';
 
 export const PRODUCT_COLS = 'id, name, description, price, category, photo_url, stock, taxable, handle, compare_at_price, vendor, product_type, tags, created_at';
@@ -47,26 +40,8 @@ export async function loadStore(slug: string, withProducts: boolean) {
   const collections = withProducts ? await loadCollections(supabase, b.id, products) : [];
 
   const theme = readTheme(row);
-  const privacy = readPrivacy(b.privacy_options);
+  const { shop, policies, storefronts, privacy } = buildShop(b);
   const privacyHref = isPublished(readPolicies(b.policies), 'privacy') ? `/b/${b.slug}/policies/privacy` : undefined;
-  const policies = [
-    ...publishedLinks(b.policies, b.slug),
-    ...(privacy.requestsPage && readPolicies(b.policies).showLinks ? [{ label: 'Privacy requests', href: `/b/${b.slug}/privacy-request` }] : []),
-  ];
-  const locs = readLocations(b.locations_options);
-  const storefronts = locs.filter((l) => l.active && l.storefront).map((l) => ({ name: l.name, address: formatAddress(l.address) }));
-
-  const shop: Shop = {
-    businessId: b.id, slug: b.slug,
-    accounts: readAccounts(b.accounts_options), tax: readTax(b.tax_options), policies,
-    payments: readPayments(b.payments_options),
-    shipping: applyLocations(readShipping(b.shipping_options), locs),
-    bank: b.bank_name && b.account_number ? { bank_name: b.bank_name, account_number: b.account_number, account_name: b.account_name ?? '' } : null,
-    checkout: {
-      requireAddress: b.checkout_require_address ?? false, showNote: b.checkout_show_note ?? true, accepting: b.checkout_accepting ?? true,
-      minOrder: Number(b.checkout_min_order ?? 0), thankYou: b.checkout_thank_you ?? null, options: readOptions(b.checkout_options),
-    },
-  };
 
   return {
     b, theme, shop, privacy, privacyHref, policies, storefronts,

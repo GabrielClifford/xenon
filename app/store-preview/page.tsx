@@ -8,6 +8,8 @@ import CollectionView from '@/components/store/CollectionView';
 import ProductDetail from '@/components/store/ProductDetail';
 import type { SiteProduct } from '@/components/SiteProducts';
 import { buildCollections, type StoreCollection } from '@/lib/store/collections';
+import { buildShop } from '@/lib/store/shop';
+import type { Shop } from '@/components/SiteProducts';
 
 // Shown inside the theme editor. The editor sends the theme being edited; nothing is saved from here.
 export default function StorePreview() {
@@ -18,13 +20,18 @@ export default function StorePreview() {
   const [pages, setPages] = useState<PageLink[]>([]);
   const [collections, setCollections] = useState<StoreCollection[]>([]);
   const [tpl, setTpl] = useState<PageId>('home');
+  const [shop, setShop] = useState<Shop | undefined>(undefined);
+  const [interact, setInteract] = useState(false);
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
-      const { data: b } = await supabase.from('businesses').select('id, name, slug, phone, about').eq('owner_id', auth.user.id).maybeSingle();
+      const { data: b } = await supabase.from('businesses').select('*').eq('owner_id', auth.user.id).maybeSingle();
       if (!b) return;
+      // test mode: the cart and checkout can be tried, but orders cannot be placed from the editor
+      try { const built = buildShop(b).shop; setShop({ ...built, checkout: { ...built.checkout, accepting: false } }); } catch { setShop(undefined); }
       setInfo({ name: b.name, slug: b.slug, phone: b.phone ?? undefined, about: b.about ?? '' });
       const cols = 'id, name, description, price, category, photo_url, stock, taxable, handle, compare_at_price, vendor, product_type, tags, created_at';
       const base = 'id, name, description, price, category, photo_url, stock, taxable';
@@ -46,7 +53,8 @@ export default function StorePreview() {
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      const d = e.data as { xenon?: string; theme?: ThemeData; focus?: string; template?: PageId };
+      const d = e.data as { xenon?: string; theme?: ThemeData; focus?: string; template?: PageId; interact?: boolean };
+      if (d?.xenon === 'mode') setInteract(d.interact === true);
       if (d?.xenon === 'theme' && d.theme) {
         if (d.template) setTpl(['home', 'collection', 'product', 'page'].includes(d.template) ? d.template : 'home');
         setTheme(readTheme({ settings: d.theme.settings, sections: d.theme.sections }));
@@ -58,11 +66,32 @@ export default function StorePreview() {
     return () => window.removeEventListener('message', onMsg);
   }, []);
 
+  // test mode: buttons and the cart work, but links stay inside the editor
+  useEffect(() => {
+    if (!interact) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.('a');
+      const href = a?.getAttribute('href') ?? '';
+      if (!a || !href || href.startsWith('#')) return;
+      e.preventDefault(); e.stopPropagation();
+      setNote('Links are turned off in the editor. Open your store to try them.');
+      clearTimeout(t); t = setTimeout(() => setNote(''), 3000);
+    };
+    document.addEventListener('click', onClick, true);
+    return () => { document.removeEventListener('click', onClick, true); clearTimeout(t); setNote(''); };
+  }, [interact]);
+
   if (!theme || !info) return <div className="p-6"><div className="h-40 animate-pulse rounded-2xl bg-slate-100" /></div>;
   const sample = products.slice(0, 8);
   const main = tpl === 'collection' ? <CollectionView title="Collection name" products={sample} slug={info.slug} others={[]} current="" />
     : tpl === 'product' && products[0] ? <ProductDetail p={products[0]} slug={info.slug} canOrder collections={[]} related={products.slice(1, 5)} />
     : tpl === 'page' ? <article className="prose max-w-none"><h1 className="xs-h2">Page title</h1><p className="mt-4">This is where the text of your pages (About us, Delivery, Contact...) appears.</p></article>
     : null;
-  return <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} template={tpl} preview>{main}</Storefront>;
+  return (
+    <>
+      <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} shop={interact ? shop : undefined} template={tpl} preview={!interact}>{main}</Storefront>
+      {interact && <div className="pointer-events-none fixed bottom-3 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg" role="status">{note || 'Test mode: try the cart. Orders cannot be placed here.'}</div>}
+    </>
+  );
 }

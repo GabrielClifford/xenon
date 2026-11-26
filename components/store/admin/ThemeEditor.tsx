@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowUp, Copy, Eye, EyeOff, GripVertical, History, Lock, Monitor, Redo2, Smartphone, Trash2, Undo2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Copy, Eye, EyeOff, GripVertical, History, Lock, Monitor, MousePointerClick, Redo2, Smartphone, Trash2, Undo2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { PageSkeleton } from '@/components/Skeleton';
 import { ADDABLE, GROUP_ADDABLE, PAGE_ORDER, SINGLE, TEMPLATE_PAGES, newId, newSection, readTheme, sectionLabel, type PageId, type Section, type SectionType, type ThemeData, type ThemeSettings } from '@/lib/store/theme';
@@ -25,6 +25,9 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
   const [tab, setTab] = useState<'sections' | 'settings' | 'versions'>('sections');
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [interact, setInteract] = useState(false);
+  const interactRef = useRef(false);
+  interactRef.current = interact;
   const [sel, setSel] = useState<string | null>(null);
   const [tpl, setTpl] = useState<PageId>('home');
   const [drag, setDrag] = useState<string | null>(null);
@@ -52,11 +55,12 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
   }, [supabase, themeId, businessId]);
 
   const post = useCallback((t: ThemeData) => { frame.current?.contentWindow?.postMessage({ xenon: 'theme', theme: t, template: tpl }, window.location.origin); }, [tpl]);
+  useEffect(() => { frame.current?.contentWindow?.postMessage({ xenon: 'mode', interact }, window.location.origin); }, [interact]);
   useEffect(() => { if (data && ready.current) post(data); }, [data, post]);
   useEffect(() => {
     const on = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      if (e.data?.xenon === 'ready') { ready.current = true; if (data) post(data); }
+      if (e.data?.xenon === 'ready') { ready.current = true; if (data) post(data); frame.current?.contentWindow?.postMessage({ xenon: 'mode', interact: interactRef.current }, window.location.origin); }
       if (e.data?.xenon === 'select' && typeof e.data.id === 'string') { setSel(e.data.id); setTab('sections'); setView('edit'); }
     };
     window.addEventListener('message', on);
@@ -177,6 +181,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
           <button onClick={undo} disabled={!past.length} className="rounded-lg p-2 disabled:opacity-30" aria-label="Undo"><Undo2 className="h-4 w-4" /></button>
           <button onClick={redo} disabled={!future.length} className="rounded-lg p-2 disabled:opacity-30" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
           <button onClick={() => setDevice('desktop')} className={`hidden rounded-lg p-2 sm:block ${device === 'desktop' ? 'bg-slate-200' : ''}`} aria-label="Computer view"><Monitor className="h-4 w-4" /></button>
+          <button onClick={() => setInteract((v) => !v)} aria-pressed={interact} title="Try the store: buttons and the cart work, and clicking no longer selects sections" className={`flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold ${interact ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}><MousePointerClick className="h-4 w-4" /><span className="hidden sm:inline">{interact ? 'Interact: on' : 'Interact'}</span></button>
           <button onClick={() => setDevice('mobile')} className={`hidden rounded-lg p-2 sm:block ${device === 'mobile' ? 'bg-slate-200' : ''}`} aria-label="Phone view"><Smartphone className="h-4 w-4" /></button>
           <button onClick={save} disabled={saving} className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500">{saving ? 'Saving...' : dirty ? 'Save' : 'Saved'}</button>
         </div>
