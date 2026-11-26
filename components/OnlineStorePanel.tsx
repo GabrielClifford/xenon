@@ -10,8 +10,8 @@ import ThemeEditor from '@/components/store/admin/ThemeEditor';
 import PagesTab from '@/components/store/admin/PagesTab';
 import PreferencesTab from '@/components/store/admin/PreferencesTab';
 
-type Tab = 'themes' | 'pages' | 'preferences' | 'details';
-const TABS: [Tab, string][] = [['themes', 'Themes'], ['pages', 'Pages'], ['preferences', 'Preferences'], ['details', 'Store details']];
+type Tab = 'themes' | 'pages' | 'preferences';
+const TABS: [Tab, string][] = [['themes', 'Themes'], ['pages', 'Pages'], ['preferences', 'Preferences']];
 
 export default function OnlineStorePanel({ user }: { user: User }) {
   const supabase = useMemo(() => createClient(), []);
@@ -60,7 +60,6 @@ export default function OnlineStorePanel({ user }: { user: User }) {
         {tab === 'themes' && <ThemesHome biz={biz} onEdit={setEditing} onBizChanged={load} goTab={setTab} />}
         {tab === 'pages' && <PagesTab biz={biz} />}
         {tab === 'preferences' && <PreferencesTab biz={biz} onSaved={load} />}
-        {tab === 'details' && <div className="max-w-3xl"><BusinessForm user={user} /></div>}
       </div>
     </div>
   );

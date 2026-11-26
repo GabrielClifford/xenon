@@ -13,13 +13,13 @@ type ThemeRow = { id: string; name: string; template: string; status: 'live' | '
 const btn = 'rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500';
 const btn2 = 'rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 
-export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: Biz; onEdit: (id: string) => void; onBizChanged: () => void; goTab: (t: 'pages' | 'preferences' | 'details') => void }) {
+export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: Biz; onEdit: (id: string) => void; onBizChanged: () => void; goTab: (t: 'pages' | 'preferences') => void }) {
   const supabase = useMemo(() => createClient(), []);
   const [themes, setThemes] = useState<ThemeRow[] | null>(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState('');
   const [menu, setMenu] = useState<string | null>(null);
-  const [health, setHealth] = useState<{ ok: boolean; text: string; fix?: 'details' | 'pages' | 'preferences' | 'products' }[]>([]);
+  const [health, setHealth] = useState<{ ok: boolean; text: string; fix?: 'pages' | 'preferences' | 'products' }[]>([]);
   const prefs = readPrefs(biz.store_prefs);
   const url = typeof window !== 'undefined' ? `${window.location.origin}/b/${biz.slug}` : `/b/${biz.slug}`;
 
@@ -45,10 +45,10 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
       const live = themes?.find((t) => t.status === 'live');
       const hero = (live?.sections as { type: string; s: { image?: string } }[] | undefined)?.find((s) => s.type === 'hero');
       setHealth([
-        { ok: biz.published, text: biz.published ? 'Your store is live' : 'Your store is not published yet, customers cannot see it', fix: 'details' },
+        { ok: biz.published, text: biz.published ? 'Your store is live' : 'Your store is not published yet, customers cannot see it' },
         { ok: (products ?? 0) > 0, text: (products ?? 0) > 0 ? `${products} product${products === 1 ? '' : 's'} on sale` : 'Add at least one product so customers can buy', fix: 'products' },
-        { ok: !!biz.phone, text: biz.phone ? 'Phone / WhatsApp number added' : 'Add a phone number so customers can chat with you on WhatsApp', fix: 'details' },
-        { ok: !!biz.bank_name, text: biz.bank_name ? 'Bank details added for transfers' : 'Add your bank details so customers can pay by transfer', fix: 'details' },
+        { ok: !!biz.phone, text: biz.phone ? 'Phone / WhatsApp number added' : 'Add a phone number so customers can chat with you on WhatsApp' },
+        { ok: !!biz.bank_name, text: biz.bank_name ? 'Bank details added for transfers' : 'Add your bank details so customers can pay by transfer' },
         { ok: !!hero?.s?.image, text: hero?.s?.image ? 'Banner image added' : 'Add a banner image in the theme editor: stores with pictures sell more' },
         { ok: !!prefs.seoTitle, text: prefs.seoTitle ? 'Search title set' : 'Set a search title so Google shows your store properly', fix: 'preferences' },
         { ok: (pages ?? 0) > 0, text: (pages ?? 0) > 0 ? 'You have pages like About or Contact' : 'Add an About or Contact page: customers trust shops they can read about', fix: 'pages' },
@@ -175,7 +175,7 @@ export default function ThemesHome({ biz, onEdit, onBizChanged, goTab }: { biz: 
           {health.map((h, i) => (
             <li key={i} className="flex items-start gap-2 text-sm">
               {h.ok ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-600" /> : <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}
-              <span className={h.ok ? 'text-slate-600' : 'text-slate-900'}>{h.text}{!h.ok && h.fix && h.fix !== 'products' && <button className="ml-2 font-semibold text-blue-600 underline" onClick={() => goTab(h.fix as 'pages' | 'preferences' | 'details')}>Fix</button>}</span>
+              <span className={h.ok ? 'text-slate-600' : 'text-slate-900'}>{h.text}{!h.ok && h.fix && h.fix !== 'products' && <button className="ml-2 font-semibold text-blue-600 underline" onClick={() => goTab(h.fix as 'pages' | 'preferences')}>Fix</button>}</span>
             </li>
           ))}
         </ul>
