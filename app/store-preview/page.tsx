@@ -23,6 +23,7 @@ export default function StorePreview() {
   const [shop, setShop] = useState<Shop | undefined>(undefined);
   const [interact, setInteract] = useState(false);
   const [note, setNote] = useState('');
+  const [hint, setHint] = useState(false); // the test-mode message, shown for a few seconds
 
   useEffect(() => {
     (async () => {
@@ -70,6 +71,8 @@ export default function StorePreview() {
   useEffect(() => {
     if (!interact) return;
     let t: ReturnType<typeof setTimeout> | undefined;
+    setHint(true);
+    const h = setTimeout(() => setHint(false), 4000);
     const onClick = (e: MouseEvent) => {
       const a = (e.target as HTMLElement | null)?.closest?.('a');
       const href = a?.getAttribute('href') ?? '';
@@ -79,7 +82,7 @@ export default function StorePreview() {
       clearTimeout(t); t = setTimeout(() => setNote(''), 3000);
     };
     document.addEventListener('click', onClick, true);
-    return () => { document.removeEventListener('click', onClick, true); clearTimeout(t); setNote(''); };
+    return () => { document.removeEventListener('click', onClick, true); clearTimeout(t); clearTimeout(h); setNote(''); setHint(false); };
   }, [interact]);
 
   if (!theme || !info) return <div className="p-6"><div className="h-40 animate-pulse rounded-2xl bg-slate-100" /></div>;
@@ -91,7 +94,7 @@ export default function StorePreview() {
   return (
     <>
       <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} shop={interact ? shop : undefined} template={tpl} preview={!interact}>{main}</Storefront>
-      {interact && <div className="pointer-events-none fixed bottom-3 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg" role="status">{note || 'Test mode: try the cart. Orders cannot be placed here.'}</div>}
+      {interact && <div className={`pointer-events-none fixed bottom-3 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg transition-opacity duration-500 ${note || hint ? 'opacity-100' : 'opacity-0'}`} role="status" aria-live="polite">{note || 'Test mode: try the cart. Orders cannot be placed here.'}</div>}
     </>
   );
 }
