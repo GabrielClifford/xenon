@@ -268,6 +268,11 @@ function readSections(raw: unknown): Section[] {
         else if (typeof bv === 'number') s[k] = num(gv, 0, 100, bv);
         else s[k] = typeof gv === 'string' ? gv.slice(0, 3000) : bv;
       }
+      // section style settings shared by every section (Shopify's section padding, colors and width)
+      for (const k of ['_pt', '_pb']) s[k] = given[k] === '' || given[k] == null ? '' : String(Math.round(num(given[k], 0, 200, 0)));
+      s._bg = safeColor(given._bg, ''); s._color = safeColor(given._color, '');
+      s._width = oneOf(given._width, ['', 'narrow', 'full'] as const, '');
+      s._hm = given._hm === true; s._hd = given._hd === true;
       list.push({ id, type, page, visible: type === 'main' ? true : x.visible !== false, s });
     }
   }
@@ -368,6 +373,8 @@ export function themeCss(s: ThemeSettings): string {
     `.xs-store .xs-badge.xs-sale{background:${c.saleBg}!important;color:${c.saleText}!important}`,
     `.xs-store .xs-sale-price{color:${c.saleBg}!important}`,
     `.xs-store .xs-pname{text-transform:uppercase;letter-spacing:.04em;font-size:13px;font-weight:600}`,
+    `.xs-store .xs-secnarrow .xs-wrap{max-width:48rem}.xs-store .xs-secfull .xs-wrap{max-width:none}`,
+    `@media(max-width:767px){.xs-store .xs-hm{display:none!important}}@media(min-width:768px){.xs-store .xs-hd{display:none!important}}`,
     `.xs-store .xs-hscroll{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}.xs-store .xs-hscroll::-webkit-scrollbar{display:none}.xs-store .xs-hscroll>*{scroll-snap-align:start;flex:0 0 auto}`,
     `.xs-store .bg-blue-600,.xs-store .hover\\:bg-blue-700:hover{background:var(--xs-primary)!important;color:var(--xs-primary-text)!important}`,
     `.xs-store .text-blue-600,.xs-store .text-blue-700,.xs-store .text-blue-900{color:var(--xs-accent)!important}`,

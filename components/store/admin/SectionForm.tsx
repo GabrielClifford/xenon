@@ -11,7 +11,7 @@ const items = (v: unknown): Item[] => (Array.isArray(v) ? (v as Item[]) : []);
 
 export type ColOpt = { id: string; title: string };
 
-export default function SectionForm({ sec, set, owner, collections = [] }: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[] }) {
+function SectionFields({ sec, set, owner, collections = [] }: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[] }) {
   const x = sec.s;
   const T = (key: string, label: string, hint?: string) => <TextF label={label} value={sv(x[key])} onChange={(v) => set(key, v)} hint={hint} />;
   const A = (key: string, label: string, rows = 4, hint?: string) => <AreaF label={label} rows={rows} value={sv(x[key])} onChange={(v) => set(key, v)} hint={hint} />;
@@ -97,4 +97,33 @@ export default function SectionForm({ sec, set, owner, collections = [] }: { sec
       {B('showPages', 'Show your pages (About, Contact...)')}{B('showPolicies', 'Show policy links')}{B('showStorefronts', 'Show store addresses')}
       {T('payments', 'Payment methods to show', 'Separate with commas, like Visa, Mastercard, Verve, Bank Transfer, Pay on delivery')}{T('instagram', 'Instagram link')}{T('facebook', 'Facebook link')}{T('tiktok', 'TikTok link')}{T('youtube', 'YouTube link')}{T('x', 'X (Twitter) link')}{C('bg', 'Background color')}{C('color', 'Text color')}</>;
   }
+}
+
+// Section style: the same few settings on every section, like Shopify's section padding and color settings
+export default function SectionForm(props: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[] }) {
+  const { sec, set } = props;
+  const x = sec.s;
+  const styleable = sec.type !== 'header' && sec.type !== 'floatchat';
+  const n = (k: string) => (sv(x[k]) === '' ? 0 : Number(x[k]));
+  const touched = ['_pt', '_pb', '_bg', '_color', '_width'].some((k) => sv(x[k]) !== '') || x._hm === true || x._hd === true;
+  return (
+    <>
+      <SectionFields {...props} />
+      {styleable && (
+        <details className="mt-5 rounded-lg border border-slate-200 p-3" open={touched}>
+          <summary className="cursor-pointer text-sm font-semibold text-slate-800">Section style</summary>
+          <div className="mt-3 space-y-3">
+            <RangeF label="Space above" value={n('_pt')} onChange={(v) => set('_pt', String(v))} min={0} max={160} unit="px" />
+            <RangeF label="Space below" value={n('_pb')} onChange={(v) => set('_pb', String(v))} min={0} max={160} unit="px" />
+            <Seg label="Width" value={(sv(x._width) || 'default') as 'default'} onChange={(v) => set('_width', v === 'default' ? '' : v)} options={[['default', 'Page'], ['narrow', 'Narrow'], ['full', 'Full width']] as [string, string][] as ['default' | 'narrow' | 'full', string][]} />
+            <ColorF label="Section background" value={sv(x._bg)} allowEmpty onChange={(v) => set('_bg', v)} />
+            <ColorF label="Section text color" value={sv(x._color)} allowEmpty onChange={(v) => set('_color', v)} />
+            <BoolF label="Hide on phones" value={x._hm === true} onChange={(v) => set('_hm', v)} />
+            <BoolF label="Hide on computers" value={x._hd === true} onChange={(v) => set('_hd', v)} />
+            {touched && <button type="button" className="text-xs font-semibold text-blue-600 hover:underline" onClick={() => { for (const k of ['_pt', '_pb', '_bg', '_color', '_width']) set(k, ''); set('_hm', false); set('_hd', false); }}>Reset section style</button>}
+          </div>
+        </details>
+      )}
+    </>
+  );
 }

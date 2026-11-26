@@ -67,9 +67,24 @@ export default function Storefront({
     return l.href.startsWith('/') ? <Link href={l.href} className={className}>{c}</Link> : <a href={l.href} className={className} {...(l.external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})}>{c}</a>;
   };
 
+  // the style settings every section has: padding, colors, width, hide on mobile or desktop
+  const styled = (sec: Section, node: React.ReactNode) => {
+    const x = sec.s;
+    if (sec.type === 'header' || sec.type === 'floatchat') return node;
+    const st: React.CSSProperties = {};
+    if (s(x._pt)) st.paddingTop = Number(x._pt);
+    if (s(x._pb)) st.paddingBottom = Number(x._pb);
+    const bg = safeColor(x._bg, ''); const col = safeColor(x._color, '');
+    if (bg) st.background = bg;
+    if (col) st.color = col;
+    const cls = [x._width === 'narrow' ? 'xs-secnarrow' : x._width === 'full' ? 'xs-secfull' : '', x._hm === true ? 'xs-hm' : '', x._hd === true ? 'xs-hd' : ''].filter(Boolean).join(' ');
+    if (!cls && Object.keys(st).length === 0) return node;
+    return <div className={cls || undefined} style={st}>{node}</div>;
+  };
+
   const wrap = (sec: Section, node: React.ReactNode) => (
     <div key={sec.id} data-sid={sec.id} onClickCapture={preview ? (e) => { e.preventDefault(); e.stopPropagation(); window.parent.postMessage({ xenon: 'select', id: sec.id }, window.location.origin); } : undefined} className={preview ? 'cursor-pointer hover:outline hover:outline-2 hover:outline-blue-500' : 'contents'}>
-      {node}
+      {styled(sec, node)}
     </div>
   );
 
