@@ -76,13 +76,18 @@ export function ImageF({ label, value, onChange, owner }: { label: string; value
   );
 }
 
+export type ListKind<T> = { label: string; blank: T; fields: ListField<T>[]; titleKey?: string };
 export type ListField<T> = { key: keyof T & string; label: string; area?: boolean; options?: (string | [string, string])[]; image?: boolean };
 
 // Blocks: the items inside a section (slides, tiles, people...). Open one to edit it; drag, move, duplicate, hide or delete it.
-export function ListF<T extends Record<string, string>>({ label, noun = 'item', titleKey, items, onChange, blank, fields, max = 12, owner }: {
-  label: string; noun?: string; titleKey?: keyof T & string; items: T[]; onChange: (v: T[]) => void; blank: T; fields: ListField<T>[]; max?: number; owner?: { userId: string; businessId: string };
+export function ListF<T extends Record<string, string>>({ label, noun = 'item', titleKey, items, onChange, blank, fields = [], max = 12, owner, kinds }: {
+  label: string; noun?: string; titleKey?: keyof T & string; items: T[]; onChange: (v: T[]) => void; blank?: T; fields?: ListField<T>[]; max?: number; owner?: { userId: string; businessId: string };
+  // mixed items: each item has a type, and each type has its own fields (Shopify-style blocks)
+  kinds?: Record<string, ListKind<T>>;
 }) {
   const [open, setOpen] = useState<number | null>(null);
+  const [pick, setPick] = useState(false);
+  const fieldsOf = (it: T): ListField<T>[] => (kinds ? kinds[it.type as string]?.fields ?? [] : fields);
   const [drag, setDrag] = useState<number | null>(null);
   const tk = titleKey ?? fields.find((f) => !f.image && !f.options)?.key ?? fields[0]?.key;
   const upd = (i: number, key: string, v: string) => onChange(items.map((x, j) => (j === i ? { ...x, [key]: v } : x)));
@@ -94,7 +99,9 @@ export function ListF<T extends Record<string, string>>({ label, noun = 'item', 
       <p className={lbl}>{label}</p>
       {items.length === 0 && <p className="mb-2 rounded-lg border border-dashed border-slate-300 p-3 text-xs text-slate-500">No {noun}s yet.</p>}
       {items.map((it, i) => {
-        const title = String(it[tk as string] ?? '').trim() || `${noun[0].toUpperCase()}${noun.slice(1)} ${i + 1}`;
+        const k = kinds?.[it.type as string];
+        const main = String(it[(k?.titleKey ?? tk) as string] ?? '').trim();
+        const title = kinds ? (k?.label ?? 'Block') + (main ? `: ${main.slice(0, 40)}` : '') : main || `${noun[0].toUpperCase()}${noun.slice(1)} ${i + 1}`;
         const isOpen = open === i;
         return (
           <div key={i} draggable={!isOpen} onDragStart={() => setDrag(i)} onDragEnd={() => setDrag(null)} onDragOver={(e) => { if (drag !== null) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); dropOn(i); setDrag(null); }}
@@ -112,7 +119,8 @@ export function ListF<T extends Record<string, string>>({ label, noun = 'item', 
             </div>
             {isOpen && (
               <div className="border-t border-slate-200 bg-slate-50 p-3">
-                {fields.map((f) => f.options
+                {fieldsOf(it).length === 0 && <p className="text-xs text-slate-500">Nothing to set for this block.</p>}
+                {fieldsOf(it).map((f) => f.options
                   ? <SelectF key={f.key} label={f.label} value={it[f.key] ?? ''} options={f.options.map((o) => (typeof o === 'string' ? [o, o] : o) as [string, string])} onChange={(v) => upd(i, f.key, v)} />
                   : f.image && owner
                     ? <ImageF key={f.key} label={f.label} value={it[f.key] ?? ''} owner={owner} onChange={(v) => upd(i, f.key, v)} />
@@ -124,7 +132,12 @@ export function ListF<T extends Record<string, string>>({ label, noun = 'item', 
           </div>
         );
       })}
-      {items.length < max
+      {items.length < max && kinds
+        ? <div>
+            <button onClick={() => setPick((v) => !v)} aria-expanded={pick} className="flex items-center gap-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-blue-600"><Plus className="h-4 w-4" />Add {noun}</button>
+            {pick && <div className="mt-1.5 grid grid-cols-2 gap-1.5 rounded-lg border border-slate-200 bg-white p-2">{Object.entries(kinds).map(([t, kd]) => <button key={t} onClick={() => { onChange([...items, { ...kd.blank, type: t } as T]); setOpen(items.length); setPick(false); }} className="rounded-md border border-slate-200 px-2 py-2 text-left text-sm hover:border-blue-600 hover:text-blue-600">{kd.label}</button>)}</div>}
+          </div>
+        : items.length < max && blank
         ? <button onClick={() => { onChange([...items, { ...blank }]); setOpen(items.length); }} className="flex items-center gap-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-blue-600"><Plus className="h-4 w-4" />Add {noun}</button>
         : <p className="text-[11px] text-slate-500">You can add up to {max} {noun}s.</p>}
     </div>

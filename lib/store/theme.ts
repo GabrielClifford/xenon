@@ -36,7 +36,7 @@ export type ThemeSettings = {
 export type SectionType =
   | 'announcement' | 'header' | 'hero' | 'products' | 'richtext' | 'imagetext'
   | 'trust' | 'testimonials' | 'faq' | 'contact' | 'marquee' | 'floatchat' | 'countdown' | 'footer'
-  | 'main' | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
+  | 'custom' | 'main' | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
 
 // Where a section lives. header and footer are groups shared by every page; the others are page templates.
 export type PageId = 'header' | 'home' | 'collection' | 'product' | 'page' | 'footer';
@@ -49,18 +49,18 @@ export type ThemeData = { settings: ThemeSettings; sections: Section[] };
 
 export const FIXED_TOP: SectionType[] = ['announcement', 'header'];
 export const FIXED_BOTTOM: SectionType[] = ['footer'];
-export const ADDABLE: SectionType[] = ['hero', 'ticker', 'collection', 'collectiontabs', 'collectionlist', 'infotiles', 'people', 'gallery', 'newsletter', 'countdown', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
+export const ADDABLE: SectionType[] = ['hero', 'ticker', 'collection', 'collectiontabs', 'collectionlist', 'infotiles', 'people', 'gallery', 'newsletter', 'countdown', 'custom', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
 export const SINGLE: SectionType[] = ['announcement', 'header', 'footer', 'products', 'floatchat', 'ticker', 'main'];
 // what the owner may add to each group (the page body accepts everything in ADDABLE)
 export const GROUP_ADDABLE: Record<'header' | 'footer', SectionType[]> = {
-  header: ['ticker', 'countdown', 'marquee', 'richtext'],
-  footer: ['newsletter', 'trust', 'marquee', 'gallery', 'richtext', 'floatchat'],
+  header: ['ticker', 'countdown', 'marquee', 'richtext', 'custom'],
+  footer: ['newsletter', 'trust', 'marquee', 'gallery', 'richtext', 'custom', 'floatchat'],
 };
 export const SECTION_HINTS: Partial<Record<SectionType, string>> = {
   hero: 'Big banner with a picture, text, button and optional countdown', ticker: 'Thin strip of messages that rotate with arrows', collection: 'Products of one collection in a row, with a Shop now button',
   collectiontabs: 'Tabs that switch between collections (Find your deal)', collectionlist: 'Picture tiles that open your collections', infotiles: 'Heading with icon tiles',
   people: 'Photos of people who wear your products', gallery: 'Photo strip, like Instagram', newsletter: 'Email sign-up box', countdown: 'Sale countdown with a button', marquee: 'Scrolling line of text',
-  richtext: 'Heading and text', imagetext: 'Picture next to text', trust: 'Icons with short promises (delivery, secure payment...)', testimonials: 'Customer reviews', faq: 'Questions and answers',
+  custom: 'Your own mix of headings, text, buttons and images, in any order', richtext: 'Heading and text', imagetext: 'Picture next to text', trust: 'Icons with short promises (delivery, secure payment...)', testimonials: 'Customer reviews', faq: 'Questions and answers',
   contact: 'Chat with us box', floatchat: 'WhatsApp or Tawk chat button', products: 'All products in a grid',
 };
 export const sectionLabel = (s: { type: SectionType; page: PageId }) =>
@@ -68,7 +68,7 @@ export const sectionLabel = (s: { type: SectionType; page: PageId }) =>
 export const SECTION_LABELS: Record<SectionType, string> = {
   main: 'Main content',
   announcement: 'Announcement bar', header: 'Header', hero: 'Hero banner', products: 'Products',
-  richtext: 'Rich text', imagetext: 'Image with text', trust: 'Trust badges', testimonials: 'Customer reviews',
+  custom: 'Custom blocks', richtext: 'Rich text', imagetext: 'Image with text', trust: 'Trust badges', testimonials: 'Customer reviews',
   faq: 'FAQ', contact: 'Contact / WhatsApp', marquee: 'Scrolling text strip', floatchat: 'Chat buttons (WhatsApp / Live chat)', countdown: 'Sale countdown', footer: 'Footer',
   ticker: 'Rotating announcements', collection: 'Collection carousel', collectiontabs: 'Collection tabs (Find your deal)', collectionlist: 'Collection tiles', infotiles: 'Heading with icon tiles', people: 'People carousel (ambassadors)', gallery: 'Photo strip (Instagram style)', newsletter: 'Newsletter sign-up',
 };
@@ -109,6 +109,7 @@ export const defaultSectionSettings: Record<SectionType, Record<string, unknown>
   header: { logoText: '', logoImage: '', links: [{ label: 'Shop', href: '#products' }], showSearch: true, showCart: true, showAccount: true, showMenu: false, sticky: true, center: false, wide: false },
   hero: { image: '', heading: 'Browse our latest products', sub: 'Quality you can trust, delivered to your door.', button: 'Shop all', link: '#products', height: 'medium', overlay: 35, align: 'center', valign: 'center', eyebrow: '', outline: false, textColor: '#ffffff', bg: '', ends: '', endsLabel: 'Ends in' },
   products: { heading: 'Products', showTrack: true, layout: 'grid', portrait: false },
+  custom: { align: 'center', columns: '1', blocks: [] },
   richtext: { heading: 'About our store', text: 'Tell customers who you are and why they can trust you.', align: 'center', button: '', link: '' },
   imagetext: { image: '', heading: 'Our story', text: 'Share what makes your products special.', button: '', link: '', imageSide: 'left' },
   trust: { items: [
@@ -241,6 +242,21 @@ function readSettings(raw: unknown): ThemeSettings {
 
 const GROUP_PAGES: PageId[] = ['header', 'home', 'collection', 'product', 'page', 'footer'];
 
+// mixed blocks inside a Custom blocks section: only known block types, text values only
+export const BLOCK_TYPES = ['heading', 'text', 'button', 'image', 'divider', 'spacer'] as const;
+export const MAX_BLOCKS = 20;
+function cleanBlocks(v: unknown): Record<string, string>[] {
+  if (!Array.isArray(v)) return [];
+  const out: Record<string, string>[] = [];
+  for (const b of v.slice(0, MAX_BLOCKS)) {
+    if (!b || typeof b !== 'object' || !(BLOCK_TYPES as readonly string[]).includes((b as Record<string, unknown>).type as string)) continue;
+    const o: Record<string, string> = {};
+    for (const [k, val] of Object.entries(b as Record<string, unknown>)) if (/^[a-z_]{1,20}$/i.test(k) && typeof val === 'string') o[k] = val.slice(0, 3000);
+    out.push(o);
+  }
+  return out;
+}
+
 function readSections(raw: unknown): Section[] {
   const types = Object.keys(defaultSectionSettings) as SectionType[];
   const list: Section[] = [];
@@ -263,7 +279,8 @@ function readSections(raw: unknown): Section[] {
       for (const k of Object.keys(base)) {
         const bv = base[k];
         const gv = given[k];
-        if (Array.isArray(bv)) s[k] = Array.isArray(gv) ? gv.slice(0, 12) : bv;
+        if (type === 'custom' && k === 'blocks') s[k] = cleanBlocks(gv);
+        else if (Array.isArray(bv)) s[k] = Array.isArray(gv) ? gv.slice(0, 12) : bv;
         else if (typeof bv === 'boolean') s[k] = typeof gv === 'boolean' ? gv : bv;
         else if (typeof bv === 'number') s[k] = num(gv, 0, 100, bv);
         else s[k] = typeof gv === 'string' ? gv.slice(0, 3000) : bv;

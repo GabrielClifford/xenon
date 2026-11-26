@@ -169,6 +169,35 @@ export default function Storefront({
       }
       case 'products':
         return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} />;
+      case 'custom': {
+        const blocks = arr<Record<string, string>>(x.blocks).filter((b) => (['divider', 'spacer'].includes(b.type) ? true : b.type === 'image' ? !!safeHref(b.image, info.slug) : b.type === 'button' ? !!s(b.label) : !!s(b.text)));
+        if (blocks.filter((b) => !['divider', 'spacer'].includes(b.type)).length === 0) return null;
+        const al = x.align === 'left' ? 'left' : x.align === 'right' ? 'right' : 'center';
+        const cols = x.columns === '3' ? 3 : x.columns === '2' ? 2 : 1;
+        const just = al === 'left' ? 'flex-start' : al === 'right' ? 'flex-end' : 'center';
+        const cell = (b: Record<string, string>, i: number) => {
+          switch (b.type) {
+            case 'heading': return <h2 key={i} className={b.size === 'small' ? 'xs-h4' : 'xs-h2'} style={b.size === 'large' ? { fontSize: 'clamp(2rem, 5vw, 3.25rem)', lineHeight: 1.1 } : undefined}>{s(b.text)}</h2>;
+            case 'text': return <div key={i} className="max-w-2xl" style={{ marginLeft: al === 'center' ? 'auto' : al === 'right' ? 'auto' : 0, marginRight: al === 'center' ? 'auto' : 0 }}><Markdown text={s(b.text)} ctx={ctx} /></div>;
+            case 'button': return <div key={i}><A href={b.link} className={b.style === 'outline' ? 'xs-btn-secondary' : 'xs-btn'}>{s(b.label)}</A></div>;
+            case 'image': {
+              const src = safeHref(b.image, info.slug);
+              // eslint-disable-next-line @next/next/no-img-element
+              const im = <img src={src} alt={s(b.alt)} className="h-auto max-w-full" style={{ width: b.width === 'full' ? '100%' : b.width === 'small' ? 240 : 480, borderRadius: theme.settings.cards.radius }} />;
+              return <div key={i} style={{ width: b.width === 'full' ? '100%' : undefined }}>{b.link ? <A href={b.link}>{im}</A> : im}</div>;
+            }
+            case 'divider': return <hr key={i} className="w-full border-0 border-t" style={{ borderColor: 'var(--xs-border)' }} />;
+            default: return <div key={i} aria-hidden style={{ height: Math.max(0, Math.min(200, Number(b.height) || 0)), width: '100%' }} />;
+          }
+        };
+        return (
+          <section className="xs-wrap py-12" style={{ textAlign: al }}>
+            {cols === 1
+              ? <div className="flex flex-col gap-5" style={{ alignItems: just }}>{blocks.map(cell)}</div>
+              : <div className={`grid gap-8 ${cols === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>{blocks.map((b, i) => <div key={i} className="flex flex-col gap-4" style={{ alignItems: just }}>{cell(b, i)}</div>)}</div>}
+          </section>
+        );
+      }
       case 'richtext':
         return (
           <section className="xs-wrap py-14" style={{ textAlign: x.align === 'left' ? 'left' : 'center' }}>

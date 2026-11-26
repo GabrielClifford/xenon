@@ -1,13 +1,23 @@
 'use client';
 
 import type { Section } from '@/lib/store/theme';
-import { TRUST_ICONS } from '@/lib/store/theme';
+import { MAX_BLOCKS, TRUST_ICONS } from '@/lib/store/theme';
+import type { ListKind } from './fields';
 import { AreaF, BoolF, ColorF, ImageF, ListF, RangeF, SelectF, Seg, TextF } from './fields';
 
 type Owner = { userId: string; businessId: string };
 const sv = (v: unknown) => (typeof v === 'string' ? v : '');
 type Item = Record<string, string>;
 const items = (v: unknown): Item[] => (Array.isArray(v) ? (v as Item[]) : []);
+
+const BLOCK_KINDS: Record<string, ListKind<Item>> = {
+  heading: { label: 'Heading', titleKey: 'text', blank: { type: 'heading', text: '', size: 'medium' }, fields: [{ key: 'text', label: 'Heading' }, { key: 'size', label: 'Size', options: [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']] }] },
+  text: { label: 'Text', titleKey: 'text', blank: { type: 'text', text: '' }, fields: [{ key: 'text', label: 'Text (you can use **bold**, *italic*, [links](https://...) and - lists)', area: true }] },
+  button: { label: 'Button', titleKey: 'label', blank: { type: 'button', label: '', link: '', style: 'solid' }, fields: [{ key: 'label', label: 'Button text' }, { key: 'link', label: 'Link' }, { key: 'style', label: 'Style', options: [['solid', 'Solid'], ['outline', 'Outline']] }] },
+  image: { label: 'Image', titleKey: 'alt', blank: { type: 'image', image: '', alt: '', link: '', width: 'medium' }, fields: [{ key: 'image', label: 'Image', image: true }, { key: 'alt', label: 'Describe the image (for screen readers)' }, { key: 'link', label: 'Link (optional)' }, { key: 'width', label: 'Width', options: [['small', 'Small'], ['medium', 'Medium'], ['full', 'Full width']] }] },
+  divider: { label: 'Divider line', blank: { type: 'divider' }, fields: [] },
+  spacer: { label: 'Space', titleKey: 'height', blank: { type: 'spacer', height: '40' }, fields: [{ key: 'height', label: 'Height in pixels (0 to 200)' }] },
+};
 
 export type ColOpt = { id: string; title: string };
 
@@ -42,6 +52,12 @@ function SectionFields({ sec, set, owner, collections = [] }: { sec: Section; se
       <SelectF label="Layout" value={(sv(x.layout) || 'grid') as 'grid'} onChange={(v) => set('layout', v)} options={[['grid', 'Grid'], ['rows', 'Swipeable rows by category']]} />
       {B('portrait', 'Tall product photos (3:4)')}{B('showTrack', 'Show "Track my order" link')}
       <p className="text-xs text-slate-500">Products, search, cart and checkout come from your Products page. Colors and card style come from Theme settings.</p></>;
+    case 'custom': return <>
+      <Seg label="Layout" value={(sv(x.columns) || '1') as '1'} onChange={(v) => set('columns', v)} options={[['1', 'Stacked'], ['2', '2 columns'], ['3', '3 columns']]} />
+      <Seg label="Alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['left', 'Left'], ['center', 'Center'], ['right', 'Right']]} />
+      <ListF label="Blocks" noun="block" items={items(x.blocks)} onChange={(v) => set('blocks', v)} kinds={BLOCK_KINDS} owner={owner} max={MAX_BLOCKS} />
+      <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint} Blocks show in this order, from top to bottom (or across, with columns).</p>
+    </>;
     case 'richtext': return <>{T('heading', 'Heading')}{A('text', 'Text', 6, 'You can use **bold**, *italic*, [links](https://...) and - lists.')}
       <SelectF label="Alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['center', 'Center'], ['left', 'Left']]} />{T('button', 'Button label')}{T('link', 'Button link')}</>;
     case 'imagetext': return <>{I('image', 'Image')}{T('heading', 'Heading')}{A('text', 'Text', 6)}
