@@ -33,6 +33,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
   const [drag, setDrag] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [cols, setCols] = useState<{ id: string; title: string }[]>([]);
+  const [prods, setProds] = useState<{ id: string; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const ready = useRef(false);
@@ -47,6 +48,8 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
       setUserId(u.user?.id ?? '');
       const { data: cr } = await supabase.from('collections').select('id, title').eq('business_id', businessId).order('title');
       setCols(((cr ?? []) as { id: string; title: string }[]).filter((c) => c.title));
+      const { data: pr } = await supabase.from('products').select('id, name').eq('business_id', businessId).order('name').limit(500);
+      setProds(((pr ?? []) as { id: string; name: string }[]).filter((p) => p.name).map((p) => ({ id: p.id, title: p.name })));
       if (!row) return setMsg('Theme not found.');
       const t = readTheme(row);
       setName(row.name); setData(t); setSaved(JSON.stringify(t));
@@ -228,7 +231,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
               <div className="p-4">
                 <button onClick={() => setSel(null)} className="mb-3 flex items-center gap-1 text-sm font-semibold text-blue-600"><ArrowLeft className="h-4 w-4" />All sections</button>
                 <p className="mb-3 text-base font-bold text-slate-900">{sectionLabel(current)}</p>
-                <SectionForm sec={current} collections={cols} owner={{ userId, businessId }} set={(k, v) => change((d) => { const s = d.sections.find((x) => x.id === current.id); if (s) s.s[k] = v; })} />
+                <SectionForm sec={current} collections={cols} productOpts={prods} owner={{ userId, businessId }} set={(k, v) => change((d) => { const s = d.sections.find((x) => x.id === current.id); if (s) s.s[k] = v; })} />
               </div>
             )}
           </div>

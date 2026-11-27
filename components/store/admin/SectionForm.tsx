@@ -21,7 +21,7 @@ const BLOCK_KINDS: Record<string, ListKind<Item>> = {
 
 export type ColOpt = { id: string; title: string };
 
-function SectionFields({ sec, set, owner, collections = [] }: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[] }) {
+function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[]; productOpts?: ColOpt[] }) {
   const x = sec.s;
   const T = (key: string, label: string, hint?: string) => <TextF label={label} value={sv(x[key])} onChange={(v) => set(key, v)} hint={hint} />;
   const A = (key: string, label: string, rows = 4, hint?: string) => <AreaF label={label} rows={rows} value={sv(x[key])} onChange={(v) => set(key, v)} hint={hint} />;
@@ -52,6 +52,16 @@ function SectionFields({ sec, set, owner, collections = [] }: { sec: Section; se
       <SelectF label="Layout" value={(sv(x.layout) || 'grid') as 'grid'} onChange={(v) => set('layout', v)} options={[['grid', 'Grid'], ['rows', 'Swipeable rows by category']]} />
       {B('portrait', 'Tall product photos (3:4)')}{B('showTrack', 'Show "Track my order" link')}
       <p className="text-xs text-slate-500">Products, search, cart and checkout come from your Products page. Colors and card style come from Theme settings.</p></>;
+    case 'featured': return <>
+      <SelectF label="Product" value={sv(x.product)} onChange={(v) => set('product', v)} options={[['', 'Choose a product...'], ...productOpts.map((p) => [p.id, p.title] as [string, string])]} />
+      {productOpts.length === 0 && <p className="-mt-2 mb-3 text-[11px] text-amber-700">You have no products yet. Add one under Products, then pick it here.</p>}
+      {T('heading', 'Heading (optional)')}{T('button', 'Button label')}{B('showDesc', 'Show a short description')}
+      <SelectF label="Picture position" value={x.imageRight === true ? 'right' : 'left'} onChange={(v) => set('imageRight', v === 'right')} options={[['left', 'Left'], ['right', 'Right']]} /></>;
+    case 'video': return <>
+      {T('url', 'Video link', 'Paste a YouTube or Vimeo link, or a direct https link to an .mp4 file.')}{T('heading', 'Heading (optional)')}{T('title', 'What the video is about (for screen readers)')}
+      {I('poster', 'Cover image (optional)')}
+      <SelectF label="Shape" value={(sv(x.ratio) || '16:9') as '16:9'} onChange={(v) => set('ratio', v)} options={[['16:9', 'Wide (16:9)'], ['4:3', 'Classic (4:3)'], ['1:1', 'Square'], ['9:16', 'Tall phone video (9:16)']]} />
+      {B('narrow', 'Make it narrower')}</>;
     case 'slideshow': return <>
       <ListF label="Slides" noun="slide" titleKey="heading" items={items(x.slides)} onChange={(v) => set('slides', v)} blank={{ image: '', eyebrow: '', heading: '', sub: '', button: '', link: '' }} owner={owner} fields={[{ key: 'image', label: 'Image', image: true }, { key: 'eyebrow', label: 'Small text above heading (optional)' }, { key: 'heading', label: 'Heading' }, { key: 'sub', label: 'Subheading' }, { key: 'button', label: 'Button label' }, { key: 'link', label: 'Button link' }]} max={8} />
       <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint} Slides with no image and no heading stay hidden.</p>
@@ -126,7 +136,7 @@ function SectionFields({ sec, set, owner, collections = [] }: { sec: Section; se
 }
 
 // Section style: the same few settings on every section, like Shopify's section padding and color settings
-export default function SectionForm(props: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[] }) {
+export default function SectionForm(props: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[]; productOpts?: ColOpt[] }) {
   const { sec, set } = props;
   const x = sec.s;
   const styleable = sec.type !== 'header' && sec.type !== 'floatchat';

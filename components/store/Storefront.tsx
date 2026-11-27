@@ -7,10 +7,11 @@ import { Instagram, Facebook, Youtube } from '@/components/store/SocialIcons';
 import SiteProducts, { type Shop, type SiteProduct } from '@/components/SiteProducts';
 import FloatChat from '@/components/store/FloatChat';
 import Countdown from '@/components/store/Countdown';
-import { CollectionRow, CollectionTabs, CollectionTiles, Gallery, NewsletterForm, PeopleRail, Slideshow, Ticker, type Person, type Slide, type Tab, type Tile } from '@/components/store/Blocks';
+import { CollectionRow, CollectionTabs, CollectionTiles, FeaturedProduct, Gallery, NewsletterForm, PeopleRail, Slideshow, Ticker, VideoBlock, type Person, type Slide, type Tab, type Tile } from '@/components/store/Blocks';
 import type { PageId } from '@/lib/store/theme';
 import { allCollection, collectionHref, productHref, type StoreCollection } from '@/lib/store/collections';
 import { fontsHref, safeColor, safeHref, strokeWidth, themeCss, type Section, type ThemeData } from '@/lib/store/theme';
+import { parseVideo } from '@/lib/store/video';
 import { Markdown, linkFor, type LinkCtx } from '@/lib/store/markdown';
 
 export type StoreInfo = { name: string; slug: string; phone?: string; about?: string; photoUrl?: string };
@@ -169,6 +170,16 @@ export default function Storefront({
       }
       case 'products':
         return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} />;
+      case 'featured': {
+        const p = products.find((z) => z.id === s(x.product));
+        if (!p) return null;
+        return <FeaturedProduct p={p} slug={info.slug} heading={s(x.heading)} button={s(x.button)} showDesc={x.showDesc !== false} imageRight={x.imageRight === true} />;
+      }
+      case 'video': {
+        const v = parseVideo(x.url);
+        if (!v) return null;
+        return <VideoBlock heading={s(x.heading)} video={v} title={s(x.title)} ratio={['16:9', '4:3', '1:1', '9:16'].includes(s(x.ratio)) ? s(x.ratio) : '16:9'} poster={safeHref(x.poster, info.slug)} narrow={x.narrow === true} />;
+      }
       case 'slideshow': {
         const slides: Slide[] = arr<Record<string, string>>(x.slides).map((sl) => {
           const l = link(sl.link);

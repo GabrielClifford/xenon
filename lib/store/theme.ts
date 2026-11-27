@@ -36,7 +36,7 @@ export type ThemeSettings = {
 export type SectionType =
   | 'announcement' | 'header' | 'hero' | 'products' | 'richtext' | 'imagetext'
   | 'trust' | 'testimonials' | 'faq' | 'contact' | 'marquee' | 'floatchat' | 'countdown' | 'footer'
-  | 'slideshow' | 'custom' | 'main' | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
+  | 'featured' | 'video' | 'slideshow' | 'custom' | 'main' | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
 
 // Where a section lives. header and footer are groups shared by every page; the others are page templates.
 export type PageId = 'header' | 'home' | 'collection' | 'product' | 'page' | 'footer';
@@ -49,7 +49,7 @@ export type ThemeData = { settings: ThemeSettings; sections: Section[] };
 
 export const FIXED_TOP: SectionType[] = ['announcement', 'header'];
 export const FIXED_BOTTOM: SectionType[] = ['footer'];
-export const ADDABLE: SectionType[] = ['hero', 'ticker', 'collection', 'collectiontabs', 'collectionlist', 'infotiles', 'people', 'gallery', 'newsletter', 'countdown', 'slideshow', 'custom', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
+export const ADDABLE: SectionType[] = ['hero', 'ticker', 'collection', 'collectiontabs', 'collectionlist', 'infotiles', 'people', 'gallery', 'newsletter', 'countdown', 'slideshow', 'featured', 'video', 'custom', 'richtext', 'imagetext', 'trust', 'testimonials', 'marquee', 'faq', 'contact', 'floatchat', 'products'];
 export const SINGLE: SectionType[] = ['announcement', 'header', 'footer', 'products', 'floatchat', 'ticker', 'main'];
 // what the owner may add to each group (the page body accepts everything in ADDABLE)
 export const GROUP_ADDABLE: Record<'header' | 'footer', SectionType[]> = {
@@ -60,7 +60,7 @@ export const SECTION_HINTS: Partial<Record<SectionType, string>> = {
   hero: 'Big banner with a picture, text, button and optional countdown', ticker: 'Thin strip of messages that rotate with arrows', collection: 'Products of one collection in a row, with a Shop now button',
   collectiontabs: 'Tabs that switch between collections (Find your deal)', collectionlist: 'Picture tiles that open your collections', infotiles: 'Heading with icon tiles',
   people: 'Photos of people who wear your products', gallery: 'Photo strip, like Instagram', newsletter: 'Email sign-up box', countdown: 'Sale countdown with a button', marquee: 'Scrolling line of text',
-  slideshow: 'Banner that moves through several slides, each with a picture, text and button', custom: 'Your own mix of headings, text, buttons and images, in any order', richtext: 'Heading and text', imagetext: 'Picture next to text', trust: 'Icons with short promises (delivery, secure payment...)', testimonials: 'Customer reviews', faq: 'Questions and answers',
+  featured: 'One product shown big, with its photo, price and Add to cart', video: 'A YouTube, Vimeo or video file that plays when tapped', slideshow: 'Banner that moves through several slides, each with a picture, text and button', custom: 'Your own mix of headings, text, buttons and images, in any order', richtext: 'Heading and text', imagetext: 'Picture next to text', trust: 'Icons with short promises (delivery, secure payment...)', testimonials: 'Customer reviews', faq: 'Questions and answers',
   contact: 'Chat with us box', floatchat: 'WhatsApp or Tawk chat button', products: 'All products in a grid',
 };
 export const sectionLabel = (s: { type: SectionType; page: PageId }) =>
@@ -68,7 +68,7 @@ export const sectionLabel = (s: { type: SectionType; page: PageId }) =>
 export const SECTION_LABELS: Record<SectionType, string> = {
   main: 'Main content',
   announcement: 'Announcement bar', header: 'Header', hero: 'Hero banner', products: 'Products',
-  slideshow: 'Slideshow', custom: 'Custom blocks', richtext: 'Rich text', imagetext: 'Image with text', trust: 'Trust badges', testimonials: 'Customer reviews',
+  featured: 'Featured product', video: 'Video', slideshow: 'Slideshow', custom: 'Custom blocks', richtext: 'Rich text', imagetext: 'Image with text', trust: 'Trust badges', testimonials: 'Customer reviews',
   faq: 'FAQ', contact: 'Contact / WhatsApp', marquee: 'Scrolling text strip', floatchat: 'Chat buttons (WhatsApp / Live chat)', countdown: 'Sale countdown', footer: 'Footer',
   ticker: 'Rotating announcements', collection: 'Collection carousel', collectiontabs: 'Collection tabs (Find your deal)', collectionlist: 'Collection tiles', infotiles: 'Heading with icon tiles', people: 'People carousel (ambassadors)', gallery: 'Photo strip (Instagram style)', newsletter: 'Newsletter sign-up',
 };
@@ -109,6 +109,8 @@ export const defaultSectionSettings: Record<SectionType, Record<string, unknown>
   header: { logoText: '', logoImage: '', links: [{ label: 'Shop', href: '#products' }], showSearch: true, showCart: true, showAccount: true, showMenu: false, sticky: true, center: false, wide: false },
   hero: { image: '', heading: 'Browse our latest products', sub: 'Quality you can trust, delivered to your door.', button: 'Shop all', link: '#products', height: 'medium', overlay: 35, align: 'center', valign: 'center', eyebrow: '', outline: false, textColor: '#ffffff', bg: '', ends: '', endsLabel: 'Ends in' },
   products: { heading: 'Products', showTrack: true, layout: 'grid', portrait: false },
+  featured: { product: '', heading: '', button: 'Add to cart', showDesc: true, imageRight: false },
+  video: { heading: '', url: '', title: '', ratio: '16:9', poster: '', narrow: false },
   slideshow: { height: 'medium', autoplay: true, seconds: 5, arrows: true, dots: true, align: 'center', overlay: 35, textColor: '#ffffff', bg: '', outline: false, slides: [] },
   custom: { align: 'center', columns: '1', blocks: [] },
   richtext: { heading: 'About our store', text: 'Tell customers who you are and why they can trust you.', align: 'center', button: '', link: '' },

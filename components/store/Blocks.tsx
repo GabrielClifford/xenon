@@ -297,3 +297,60 @@ export function Slideshow({ slides, height, autoplay, seconds, arrows, dots, ali
     </section>
   );
 }
+
+// one product shown big: photo, price, a short description and Add to cart
+export function FeaturedProduct({ p, slug, heading, button, showDesc, imageRight }: { p: SiteProduct; slug: string; heading: string; button: string; showDesc: boolean; imageRight: boolean }) {
+  const soldOut = p.stock !== null && p.stock <= 0;
+  const was = p.compare_at_price && p.compare_at_price > p.price ? p.compare_at_price : 0;
+  const href = productHref(slug, p);
+  const desc = (p.description ?? '').trim();
+  return (
+    <section className="xs-wrap py-12">
+      {heading && <h2 className="xs-h2 mb-6 text-center">{heading}</h2>}
+      <div className={`grid items-center gap-8 md:grid-cols-2 ${imageRight ? 'md:[&>*:first-child]:order-2' : ''}`}>
+        <Link href={href} className="block aspect-[4/5] overflow-hidden" style={{ background: 'var(--xs-border)' }} aria-label={p.name}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {p.photo_url && <img src={p.photo_url} alt={p.name} className="h-full w-full object-cover" />}
+        </Link>
+        <div>
+          {p.vendor && <p className="xs-muted text-xs uppercase tracking-widest">{p.vendor}</p>}
+          <h3 className="xs-h2 mt-1"><Link href={href} className="hover:underline">{p.name}</Link></h3>
+          <p className="mt-3 text-lg">
+            {was > 0 && <span className="xs-muted mr-2 line-through">{naira(was)}</span>}
+            <span className={`font-semibold ${was > 0 ? 'xs-sale-price' : ''}`}>{naira(p.price)}</span>
+          </p>
+          {was > 0 && <p className="xs-sale-price mt-1 text-xs font-bold uppercase tracking-wide">Save {naira(was - p.price)}</p>}
+          {showDesc && desc && <p className="xs-muted mt-4 max-w-md leading-relaxed">{desc.length > 260 ? `${desc.slice(0, 260).trimEnd()}...` : desc}</p>}
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <button type="button" disabled={soldOut} className="xs-btn disabled:opacity-40" onClick={() => window.dispatchEvent(new CustomEvent('xenon:add', { detail: { id: p.id } }))}>{soldOut ? 'Sold out' : button || 'Add to cart'}</button>
+            <Link href={href} className="text-sm underline">View full details</Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// a video that loads only when the visitor taps play, so the page stays fast
+export function VideoBlock({ heading, video, title, ratio, poster, narrow }: { heading: string; video: { kind: 'embed' | 'file'; src: string }; title: string; ratio: string; poster: string; narrow: boolean }) {
+  const [on, setOn] = useState(false);
+  const pad = ratio === '1:1' ? '100%' : ratio === '4:3' ? '75%' : ratio === '9:16' ? '177.78%' : '56.25%';
+  return (
+    <section className="xs-wrap py-12">
+      {heading && <h2 className="xs-h2 mb-6 text-center">{heading}</h2>}
+      <div className={`relative mx-auto w-full overflow-hidden ${narrow ? 'max-w-2xl' : ''}`} style={{ paddingBottom: ratio === '9:16' ? undefined : pad, aspectRatio: ratio === '9:16' ? '9 / 16' : undefined, maxWidth: ratio === '9:16' ? 360 : undefined, background: '#000' }}>
+        {on ? (
+          video.kind === 'file'
+            ? <video src={video.src} title={title} controls autoPlay playsInline className="absolute inset-0 h-full w-full" />
+            : <iframe src={video.src} title={title || 'Video'} className="absolute inset-0 h-full w-full border-0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+        ) : (
+          <button type="button" onClick={() => setOn(true)} aria-label={`Play video${title ? `: ${title}` : ''}`} className="absolute inset-0 flex h-full w-full items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {poster && <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />}
+            <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-black shadow-lg"><svg viewBox="0 0 24 24" className="ml-1 h-7 w-7" fill="currentColor" aria-hidden><path d="M8 5v14l11-7z" /></svg></span>
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
