@@ -24,9 +24,9 @@ const s = (v: unknown) => (typeof v === 'string' ? v : '');
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]).filter((it) => !(it && typeof it === 'object' && (it as Record<string, unknown>)._hide === '1') ) : []);
 
 export default function Storefront({
-  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', template, collections = [], wide = false, children,
+  theme, info, products, shop, pages = [], policies = [], storefronts = [], trusted = [], preview = false, mode = 'home', template, collections = [], wide = false, editor = false, engine = true, children,
 }: {
-  template?: PageId; collections?: StoreCollection[]; wide?: boolean;
+  template?: PageId | 'checkout'; collections?: StoreCollection[]; wide?: boolean; editor?: boolean; engine?: boolean;
   theme: ThemeData; info: StoreInfo; products: SiteProduct[]; shop?: Shop; pages?: PageLink[];
   policies?: { label: string; href: string }[]; storefronts?: { name: string; address: string }[]; trusted?: string[];
   preview?: boolean; mode?: 'home' | 'page'; children?: React.ReactNode;
@@ -169,7 +169,7 @@ export default function Storefront({
         );
       }
       case 'products':
-        return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} />;
+        return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} checkoutHref={checkoutHref} />;
       case 'multicolumn': {
         const cols: Col[] = arr<Record<string, string>>(x.cols).map((c) => {
           const l = link(c.link);
@@ -521,7 +521,9 @@ export default function Storefront({
     }
   };
 
-  const tpl: PageId = template ?? (mode === 'home' ? 'home' : 'page');
+  // the cart's Checkout button opens the checkout page (not inside the editor, which stays on its own page)
+  const checkoutHref = editor ? undefined : `/b/${info.slug}/checkout`;
+  const tpl = (template ?? (mode === 'home' ? 'home' : 'page')) as PageId; // 'checkout' has no sections of its own, only the header and footer
   // header group + this page + footer group; the chat button follows the customer on every page
   const tplSecs = theme.sections.filter((sec) => sec.visible && (sec.page === 'header' || sec.page === 'footer' || sec.page === tpl || sec.type === 'floatchat'));
   const headerLinks = arr<{ label: string; href: string }>(hdr?.s.links);
@@ -587,7 +589,7 @@ export default function Storefront({
       })}
       {tpl !== 'home' && !tplSecs.some((z) => z.type === 'main') && <main className={`xs-wrap py-12 ${tpl === 'page' && !wide ? 'max-w-3xl' : ''}`}>{children}</main>}
       {/* the cart and checkout live here when the page has no products section (collection, product and info pages) */}
-      {!(tpl === 'home' && tplSecs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} />}
+      {engine && !(tpl === 'home' && tplSecs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} checkoutHref={checkoutHref} />}
     </div>
   );
 }

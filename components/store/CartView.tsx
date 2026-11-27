@@ -10,7 +10,7 @@ const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
 
 // The cart page. The cart itself lives in the store's hidden cart engine (SiteProducts), which saves it on this device;
 // this page shows it and asks the engine to change it, so the drawer and this page always agree.
-export default function CartView({ products, slug, businessId, canOrder, minOrder, maxQty = 10, sample = false }: { products: SiteProduct[]; slug: string; businessId: string; canOrder: boolean; minOrder: number; maxQty?: number; sample?: boolean }) {
+export default function CartView({ products, slug, businessId, canOrder, minOrder, maxQty = 10, sample = false, checkoutHref }: { checkoutHref?: string; products: SiteProduct[]; slug: string; businessId: string; canOrder: boolean; minOrder: number; maxQty?: number; sample?: boolean }) {
   const [cart, setCart] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
@@ -89,7 +89,9 @@ export default function CartView({ products, slug, businessId, canOrder, minOrde
           <p className="xs-muted mt-3 text-xs">Delivery, discount codes and any tax are worked out at checkout.</p>
           {belowMin && <p className="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-900" role="status">The minimum order is {naira(minOrder)}. Add {naira(minOrder - subtotal)} more to check out.</p>}
           {!canOrder && <p className="mt-3 rounded bg-amber-50 p-2 text-xs text-amber-900" role="status">This store is not taking orders right now.</p>}
-          <button type="button" className="xs-btn mt-5 w-full disabled:opacity-50" disabled={belowMin || !canOrder} onClick={() => window.dispatchEvent(new Event('xenon:open-cart'))}>Checkout</button>
+          {checkoutHref && !belowMin && canOrder
+            ? <Link href={checkoutHref} className="xs-btn mt-5 block w-full text-center">Checkout</Link>
+            : <button type="button" className="xs-btn mt-5 w-full disabled:opacity-50" disabled={belowMin || !canOrder} onClick={() => window.dispatchEvent(new Event('xenon:open-cart'))}>Checkout</button>}
           <Link href={`/b/${slug}`} className="mt-3 block text-center text-sm underline opacity-80 hover:opacity-100">Continue shopping</Link>
         </aside>
       </div>

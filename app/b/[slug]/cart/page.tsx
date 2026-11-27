@@ -29,7 +29,7 @@ async function View({ params }: P) {
   return (
     <>
       <Storefront theme={d.theme} info={d.info} products={d.products} collections={d.collections} shop={d.shop} pages={d.pages} policies={d.policies} storefronts={d.storefronts} trusted={d.prefs.trusted} template="cart">
-        <CartView products={d.products} slug={slug} businessId={d.b.id} canOrder={d.shop.checkout.accepting} minOrder={d.shop.checkout.minOrder} />
+        <CartView products={d.products} slug={slug} businessId={d.b.id} checkoutHref={`/b/${slug}/checkout`} canOrder={d.shop.checkout.accepting} minOrder={d.shop.checkout.minOrder} />
       </Storefront>
       <ConsentGate businessId={d.b.id} privacy={d.privacy} privacyHref={d.privacyHref} />
     </>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { clearCheckoutSession, saveCheckout } from '@/lib/shop/saveCheckout';
@@ -97,21 +98,22 @@ const emptyForm = {
   first: '', last: '', name: '', phone: '', altPhone: '', email: '', company: '', address: '', address2: '', note: '',
 };
 
-export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false, layout = 'grid', portrait = false, hideCartPill = false, cartPool, hideGrid = false, flat = false }: { cartPool?: SiteProduct[]; hideGrid?: boolean; flat?: boolean; products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean; layout?: 'grid' | 'rows'; portrait?: boolean; hideCartPill?: boolean }) {
+export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false, layout = 'grid', portrait = false, hideCartPill = false, cartPool, hideGrid = false, flat = false, checkoutPage = false, checkoutHref }: { checkoutPage?: boolean; checkoutHref?: string; cartPool?: SiteProduct[]; hideGrid?: boolean; flat?: boolean; products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean; layout?: 'grid' | 'rows'; portrait?: boolean; hideCartPill?: boolean }) {
   const opt = shop?.checkout.options ?? defaultOptions;
   const acc = shop?.accounts ?? defaultAccounts;
   const taxCfg = shop?.tax ?? defaultTax;
   const sh = shop?.shipping ?? defaultShipping;
 
+  const router = useRouter();
   const [cart, setCart] = useState<Record<string, number>>({});
   const pool = cartPool && cartPool.length > 0 ? cartPool : products;
   const poolRef = useRef(pool);
   poolRef.current = pool;
   const [hydrated, setHydrated] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(checkoutPage); // the checkout page shows the checkout directly, with no drawer
   const [search, setSearch] = useState('');
   const [bump, setBump] = useState(false);
-  const [step, setStep] = useState<'cart' | 'details' | 'done' | 'track'>('cart');
+  const [step, setStep] = useState<'cart' | 'details' | 'done' | 'track'>(checkoutPage ? 'details' : 'cart');
   const [form, setForm] = useState(emptyForm);
   const [payKey, setPayKey] = useState('');
   const [busy, setBusy] = useState(false);
@@ -172,7 +174,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
           }
           if (Object.keys(next).length > 0) {
             setCart(next);
-            setStep('cart');
+            setStep(checkoutPage ? 'details' : 'cart');
             setOpen(true);
           }
         }
@@ -242,7 +244,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
 
   // the theme's header talks to the cart through window events
   useEffect(() => {
-    const openCart = () => { setStep('cart'); setOpen(true); };
+    const openCart = () => { if (checkoutPage) return; setStep('cart'); setOpen(true); };
     const onSearch = (e: Event) => setSearch(String((e as CustomEvent).detail ?? ''));
     // display-only cards (carousels, collection pages) add to the cart with this event
     const onAdd = (e: Event) => {
@@ -253,7 +255,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
       setCart((c) => ({ ...c, [p.id]: Math.max(1, Math.min((c[p.id] ?? 0) + Math.max(1, d?.qty ?? 1), cap)) }));
       setDiscount(null);
       setCodeMsg('');
-      if (d?.open !== false) { setStep('cart'); setOpen(true); }
+      if (d?.open !== false && !checkoutPage) { setStep('cart'); setOpen(true); }
     };
     // the cart page changes quantities through this event
     const onSetQty = (e: Event) => {
@@ -558,6 +560,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
   }
 
   function closeAll() {
+    if (checkoutPage) { router.push(step === 'done' || step === 'track' ? `/b/${shop?.slug ?? ''}` : `/b/${shop?.slug ?? ''}/cart`); return; }
     setOpen(false);
     if (step === 'done' || step === 'track') setStep('cart');
   }
@@ -685,18 +688,20 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
       )}
 
       {open && (
-        <div className="xs-modal fixed inset-0 z-[60] flex justify-end bg-black/40" onClick={closeAll}>
+        <div className={checkoutPage ? 'mx-auto w-full max-w-xl' : 'xs-modal fixed inset-0 z-[60] flex justify-end bg-black/40'} onClick={checkoutPage ? undefined : closeAll}>
           <div
-            className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl"
+            className={checkoutPage ? 'flex w-full flex-col rounded-xl border border-slate-200 bg-white text-slate-900' : 'flex h-full w-full max-w-md flex-col bg-white shadow-2xl'}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-slate-200 p-4">
               <h3 className="text-lg font-bold text-slate-900">
                 {step === 'cart' ? 'Your cart' : step === 'details' ? 'Checkout' : step === 'done' ? 'Order placed' : 'Track your order'}
               </h3>
-              <button onClick={closeAll} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Close">
-                <X className="h-5 w-5" />
-              </button>
+              {checkoutPage
+                ? <Link href={`/b/${shop?.slug ?? ''}${step === 'done' || step === 'track' ? '' : '/cart'}`} className="text-sm font-medium underline">{step === 'done' || step === 'track' ? 'Continue shopping' : 'Back to cart'}</Link>
+                : <button onClick={closeAll} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Close">
+                    <X className="h-5 w-5" />
+                  </button>}
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -733,7 +738,12 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
                 )
               )}
 
-              {step === 'details' && (
+              {checkoutPage && step === 'details' && lines.length === 0 && (
+                hydrated
+                  ? <div className="py-10 text-center"><p className="text-sm text-slate-500">Your cart is empty.</p><Link href={`/b/${shop?.slug ?? ''}`} className="mt-4 inline-block rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white">Continue shopping</Link></div>
+                  : <div className="h-40 animate-pulse rounded-xl bg-slate-100" aria-label="Loading your checkout" />
+              )}
+              {step === 'details' && !(checkoutPage && lines.length === 0) && (
                 <div className="space-y-4">
                   {acc.enabled &&
                     (account ? (
@@ -1128,7 +1138,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
                 )}
                 {step === 'cart' ? (
                   <button
-                    onClick={() => setStep('details')}
+                    onClick={() => { if (checkoutHref) { setOpen(false); router.push(checkoutHref); } else setStep('details'); }}
                     disabled={belowMin || needSignIn}
                     className="w-full rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-500"
                   >
@@ -1138,8 +1148,9 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        setStep('cart');
                         setError('');
+                        if (checkoutPage) router.push(`/b/${shop?.slug ?? ''}/cart`);
+                        else setStep('cart');
                       }}
                       className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-medium"
                     >
