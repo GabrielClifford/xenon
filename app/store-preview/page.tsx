@@ -7,7 +7,8 @@ import { readTheme, sampleProducts, type PageId, type ThemeData } from '@/lib/st
 import CollectionView from '@/components/store/CollectionView';
 import ProductDetail from '@/components/store/ProductDetail';
 import type { SiteProduct } from '@/components/SiteProducts';
-import { buildCollections, type StoreCollection } from '@/lib/store/collections';
+import { allCollection, buildCollections, collectionHref, type StoreCollection } from '@/lib/store/collections';
+import CartView from '@/components/store/CartView';
 import { buildShop } from '@/lib/store/shop';
 import type { Shop } from '@/components/SiteProducts';
 
@@ -19,7 +20,9 @@ export default function StorePreview() {
   const [products, setProducts] = useState<SiteProduct[]>([]);
   const [pages, setPages] = useState<PageLink[]>([]);
   const [collections, setCollections] = useState<StoreCollection[]>([]);
-  const [tpl, setTpl] = useState<PageId>('home');
+  // which page the preview shows; in Interact mode the store's own links change it
+  const [route, setRoute] = useState<{ tpl: PageId; handle: string }>({ tpl: 'home', handle: '' });
+  const tpl = route.tpl;
   const [shop, setShop] = useState<Shop | undefined>(undefined);
   const [interact, setInteract] = useState(false);
   const [note, setNote] = useState('');
@@ -57,7 +60,7 @@ export default function StorePreview() {
       const d = e.data as { xenon?: string; theme?: ThemeData; focus?: string; template?: PageId; interact?: boolean };
       if (d?.xenon === 'mode') setInteract(d.interact === true);
       if (d?.xenon === 'theme' && d.theme) {
-        if (d.template) setTpl(['home', 'collection', 'product', 'page'].includes(d.template) ? d.template : 'home');
+        if (d.template) { const t = ['home', 'collection', 'product', 'page'].includes(d.template) ? d.template : 'home'; setRoute((r) => (r.tpl === t ? r : { tpl: t, handle: '' })); }
         setTheme(readTheme({ settings: d.theme.settings, sections: d.theme.sections }));
       }
       if (d?.xenon === 'focus' && d.focus) document.querySelector(`[data-sid="${CSS.escape(d.focus)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -76,24 +79,46 @@ export default function StorePreview() {
     const onClick = (e: MouseEvent) => {
       const a = (e.target as HTMLElement | null)?.closest?.('a');
       const href = a?.getAttribute('href') ?? '';
-      if (!a || !href || href.startsWith('#')) return;
+      if (!a || !href || href.startsWith('#') || !info) return;
       e.preventDefault(); e.stopPropagation();
-      setNote('Links are turned off in the editor. Open your store to try them.');
+      // links inside this store switch the preview to that page (and the page selector follows)
+      const base = `/b/${info.slug}`;
+      const path = href.startsWith(base) ? href.slice(base.length).split(/[?#]/)[0].replace(/\/+$/, '') : href === '/' ? '' : null;
+      const m = path === null ? null : path.match(/^\/(collections|products|pages)\/([^/]+)$/);
+      const next: { tpl: PageId; handle: string } | null = path === '' ? { tpl: 'home', handle: '' }
+        : m?.[1] === 'collections' ? { tpl: 'collection', handle: decodeURIComponent(m[2]) }
+        : m?.[1] === 'products' ? { tpl: 'product', handle: decodeURIComponent(m[2]) }
+        : m?.[1] === 'pages' ? { tpl: 'page', handle: decodeURIComponent(m[2]) }
+        : path === '/cart' ? { tpl: 'page', handle: '__cart' } : null;
+      if (next) {
+        setRoute(next);
+        window.scrollTo({ top: 0 });
+        window.parent.postMessage({ xenon: 'page', template: next.tpl }, window.location.origin);
+        return;
+      }
+      setNote('That link goes outside your store, so it is turned off in the editor.');
       clearTimeout(t); t = setTimeout(() => setNote(''), 3000);
     };
     document.addEventListener('click', onClick, true);
     return () => { document.removeEventListener('click', onClick, true); clearTimeout(t); clearTimeout(h); setNote(''); setHint(false); };
-  }, [interact]);
+  }, [interact, info]);
 
   if (!theme || !info) return <div className="p-6"><div className="h-40 animate-pulse rounded-2xl bg-slate-100" /></div>;
   const sample = products.slice(0, 8);
-  const main = tpl === 'collection' ? <CollectionView title="Collection name" products={sample} slug={info.slug} others={[]} current="" />
-    : tpl === 'product' && products[0] ? <ProductDetail p={products[0]} slug={info.slug} canOrder collections={[]} related={products.slice(1, 5)} />
+  // in Interact mode a link to a real collection or product shows that one; otherwise a sample is shown
+  const all = allCollection(products);
+  const col = route.handle === 'all' ? all : collections.find((c) => c.handle === route.handle);
+  const colProducts = col ? products.filter((p) => col.ids.includes(p.id)) : sample;
+  const others = [all, ...collections.filter((x) => x.ids.length > 0)].map((x) => ({ id: x.id, title: x.title, href: collectionHref(info.slug, x) }));
+  const prod = products.find((p) => (p.handle || p.id) === route.handle) ?? products[0];
+  const main = tpl === 'collection' ? <CollectionView key={col?.id ?? 'sample'} title={col?.title ?? 'Collection name'} products={colProducts} slug={info.slug} others={col ? others : []} current={col?.id ?? ''} />
+    : tpl === 'product' && prod ? <ProductDetail key={prod.id} p={prod} slug={info.slug} canOrder collections={[]} related={products.filter((p) => p.id !== prod.id).slice(0, 4)} />
+    : tpl === 'page' && route.handle === '__cart' && interact && shop ? <CartView products={products} slug={info.slug} businessId={shop.businessId} canOrder={false} minOrder={0} />
     : tpl === 'page' ? <article className="prose max-w-none"><h1 className="xs-h2">Page title</h1><p className="mt-4">This is where the text of your pages (About us, Delivery, Contact...) appears.</p></article>
     : null;
   return (
     <>
-      <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} shop={interact ? shop : undefined} template={tpl} preview={!interact}>{main}</Storefront>
+      <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} shop={interact ? shop : undefined} template={tpl} wide={route.handle === '__cart'} preview={!interact}>{main}</Storefront>
       {interact && <div className={`pointer-events-none fixed bottom-3 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg transition-opacity duration-500 ${note || hint ? 'opacity-100' : 'opacity-0'}`} role="status" aria-live="polite">{note || 'Test mode: try the cart. Orders cannot be placed here.'}</div>}
     </>
   );
