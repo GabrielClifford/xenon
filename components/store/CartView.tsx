@@ -10,7 +10,7 @@ const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
 
 // The cart page. The cart itself lives in the store's hidden cart engine (SiteProducts), which saves it on this device;
 // this page shows it and asks the engine to change it, so the drawer and this page always agree.
-export default function CartView({ products, slug, businessId, canOrder, minOrder, maxQty = 10 }: { products: SiteProduct[]; slug: string; businessId: string; canOrder: boolean; minOrder: number; maxQty?: number }) {
+export default function CartView({ products, slug, businessId, canOrder, minOrder, maxQty = 10, sample = false }: { products: SiteProduct[]; slug: string; businessId: string; canOrder: boolean; minOrder: number; maxQty?: number; sample?: boolean }) {
   const [cart, setCart] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
@@ -23,7 +23,10 @@ export default function CartView({ products, slug, businessId, canOrder, minOrde
     return () => window.removeEventListener('xenon:cart-changed', on);
   }, [businessId]);
 
-  const lines = useMemo(() => (cart ? products.filter((p) => (cart[p.id] ?? 0) > 0 && (p.stock === null || p.stock > 0)).map((p) => ({ p, qty: cart[p.id] })) : []), [products, cart]);
+  const real = useMemo(() => (cart ? products.filter((p) => (cart[p.id] ?? 0) > 0 && (p.stock === null || p.stock > 0)).map((p) => ({ p, qty: cart[p.id] })) : []), [products, cart]);
+  // in the editor an empty cart shows two sample items, so the layout can be seen and styled
+  const showSample = sample && real.length === 0 && products.length > 0;
+  const lines = showSample ? products.slice(0, 2).map((p, i) => ({ p, qty: i + 1 })) : real;
   const subtotal = lines.reduce((n, l) => n + l.p.price * l.qty, 0);
   const saved = lines.reduce((n, l) => n + Math.max(0, (l.p.compare_at_price ?? 0) - l.p.price) * l.qty, 0);
   const setQty = (id: string, qty: number) => window.dispatchEvent(new CustomEvent('xenon:setqty', { detail: { id, qty } }));
@@ -46,6 +49,7 @@ export default function CartView({ products, slug, businessId, canOrder, minOrde
   return (
     <div>
       <h1 className="xs-h2">Your cart</h1>
+      {showSample && <p className="xs-muted mt-1 text-xs">Sample items, shown only in the editor.</p>}
       <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_22rem]">
         <ul className="divide-y" style={{ borderColor: 'var(--xs-border)' }}>
           {lines.map(({ p, qty }) => (

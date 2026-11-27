@@ -60,7 +60,7 @@ export default function StorePreview() {
       const d = e.data as { xenon?: string; theme?: ThemeData; focus?: string; template?: PageId; interact?: boolean };
       if (d?.xenon === 'mode') setInteract(d.interact === true);
       if (d?.xenon === 'theme' && d.theme) {
-        if (d.template) { const t = ['home', 'collection', 'product', 'page'].includes(d.template) ? d.template : 'home'; setRoute((r) => (r.tpl === t ? r : { tpl: t, handle: '' })); }
+        if (d.template) { const t = ['home', 'collection', 'product', 'cart', 'page'].includes(d.template) ? d.template : 'home'; setRoute((r) => (r.tpl === t ? r : { tpl: t, handle: '' })); }
         setTheme(readTheme({ settings: d.theme.settings, sections: d.theme.sections }));
       }
       if (d?.xenon === 'focus' && d.focus) document.querySelector(`[data-sid="${CSS.escape(d.focus)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -89,7 +89,7 @@ export default function StorePreview() {
         : m?.[1] === 'collections' ? { tpl: 'collection', handle: decodeURIComponent(m[2]) }
         : m?.[1] === 'products' ? { tpl: 'product', handle: decodeURIComponent(m[2]) }
         : m?.[1] === 'pages' ? { tpl: 'page', handle: decodeURIComponent(m[2]) }
-        : path === '/cart' ? { tpl: 'page', handle: '__cart' } : null;
+        : path === '/cart' ? { tpl: 'cart', handle: '' } : null;
       if (next) {
         setRoute(next);
         window.scrollTo({ top: 0 });
@@ -113,12 +113,12 @@ export default function StorePreview() {
   const prod = products.find((p) => (p.handle || p.id) === route.handle) ?? products[0];
   const main = tpl === 'collection' ? <CollectionView key={col?.id ?? 'sample'} title={col?.title ?? 'Collection name'} products={colProducts} slug={info.slug} others={col ? others : []} current={col?.id ?? ''} />
     : tpl === 'product' && prod ? <ProductDetail key={prod.id} p={prod} slug={info.slug} canOrder collections={[]} related={products.filter((p) => p.id !== prod.id).slice(0, 4)} />
-    : tpl === 'page' && route.handle === '__cart' && interact && shop ? <CartView products={products} slug={info.slug} businessId={shop.businessId} canOrder={false} minOrder={0} />
+    : tpl === 'cart' && shop ? <CartView products={products} slug={info.slug} businessId={shop.businessId} canOrder={false} minOrder={0} sample />
     : tpl === 'page' ? <article className="prose max-w-none"><h1 className="xs-h2">Page title</h1><p className="mt-4">This is where the text of your pages (About us, Delivery, Contact...) appears.</p></article>
     : null;
   return (
     <>
-      <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} shop={interact ? shop : undefined} template={tpl} wide={route.handle === '__cart'} preview={!interact}>{main}</Storefront>
+      <Storefront theme={theme} info={info} products={products} collections={collections} pages={pages} shop={interact ? shop : undefined} template={tpl} preview={!interact}>{main}</Storefront>
       {interact && <div className={`pointer-events-none fixed bottom-3 left-1/2 z-[80] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-lg transition-opacity duration-500 ${note || hint ? 'opacity-100' : 'opacity-0'}`} role="status" aria-live="polite">{note || 'Test mode: try the cart. Orders cannot be placed here.'}</div>}
     </>
   );

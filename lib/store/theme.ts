@@ -39,10 +39,10 @@ export type SectionType =
   | 'multicolumn' | 'featured' | 'video' | 'slideshow' | 'custom' | 'main' | 'ticker' | 'collection' | 'collectiontabs' | 'collectionlist' | 'infotiles' | 'people' | 'gallery' | 'newsletter';
 
 // Where a section lives. header and footer are groups shared by every page; the others are page templates.
-export type PageId = 'header' | 'home' | 'collection' | 'product' | 'page' | 'footer';
-export const PAGE_ORDER: PageId[] = ['header', 'home', 'collection', 'product', 'page', 'footer'];
+export type PageId = 'header' | 'home' | 'collection' | 'product' | 'cart' | 'page' | 'footer';
+export const PAGE_ORDER: PageId[] = ['header', 'home', 'collection', 'product', 'cart', 'page', 'footer'];
 export const TEMPLATE_PAGES: { id: PageId; label: string }[] = [
-  { id: 'home', label: 'Home page' }, { id: 'collection', label: 'Collection page' }, { id: 'product', label: 'Product page' }, { id: 'page', label: 'Info pages' },
+  { id: 'home', label: 'Home page' }, { id: 'collection', label: 'Collection page' }, { id: 'product', label: 'Product page' }, { id: 'cart', label: 'Cart page' }, { id: 'page', label: 'Info pages' },
 ];
 export type Section = { id: string; type: SectionType; page: PageId; visible: boolean; s: Record<string, unknown> };
 export type ThemeData = { settings: ThemeSettings; sections: Section[] };
@@ -64,7 +64,7 @@ export const SECTION_HINTS: Partial<Record<SectionType, string>> = {
   contact: 'Chat with us box', floatchat: 'WhatsApp or Tawk chat button', products: 'All products in a grid',
 };
 export const sectionLabel = (s: { type: SectionType; page: PageId }) =>
-  s.type === 'main' ? (s.page === 'collection' ? 'Collection products' : s.page === 'product' ? 'Product details' : 'Page content') : SECTION_LABELS[s.type];
+  s.type === 'main' ? (s.page === 'collection' ? 'Collection products' : s.page === 'product' ? 'Product details' : s.page === 'cart' ? 'Cart items' : 'Page content') : SECTION_LABELS[s.type];
 export const SECTION_LABELS: Record<SectionType, string> = {
   main: 'Main content',
   announcement: 'Announcement bar', header: 'Header', hero: 'Hero banner', products: 'Products',
@@ -244,7 +244,7 @@ function readSettings(raw: unknown): ThemeSettings {
   };
 }
 
-const GROUP_PAGES: PageId[] = ['header', 'home', 'collection', 'product', 'page', 'footer'];
+const GROUP_PAGES: PageId[] = ['header', 'home', 'collection', 'product', 'cart', 'page', 'footer'];
 
 // mixed blocks inside a Custom blocks section: only known block types, text values only
 export const BLOCK_TYPES = ['heading', 'text', 'button', 'image', 'divider', 'spacer'] as const;
@@ -272,7 +272,7 @@ function readSections(raw: unknown): Section[] {
       let page: PageId = GROUP_PAGES.includes(x.page as PageId) ? (x.page as PageId) : defaultPage(type);
       if (type === 'announcement' || type === 'header') page = 'header';
       else if (type === 'footer') page = 'footer';
-      else if (type === 'main' && !['collection', 'product', 'page'].includes(page)) continue;
+      else if (type === 'main' && !['collection', 'product', 'cart', 'page'].includes(page)) continue;
       if (SINGLE.includes(type) && list.some((s) => s.type === type && (type !== 'main' || s.page === page))) continue;
       let id = typeof x.id === 'string' && /^[a-z0-9]{1,40}$/i.test(x.id) ? x.id : newId();
       if (seen.has(id)) id = newId();
@@ -301,7 +301,7 @@ function readSections(raw: unknown): Section[] {
   if (!list.some((s) => s.type === 'announcement')) list.unshift(newSection('announcement'));
   if (!list.some((s) => s.type === 'header')) list.splice(1, 0, newSection('header'));
   if (!list.some((s) => s.type === 'footer')) list.push(newSection('footer'));
-  for (const pg of ['collection', 'product', 'page'] as PageId[]) {
+  for (const pg of ['collection', 'product', 'cart', 'page'] as PageId[]) {
     if (!list.some((s) => s.type === 'main' && s.page === pg)) list.push(newSection('main', {}, pg));
   }
   // one list, always in the same order: header group, each page, footer group

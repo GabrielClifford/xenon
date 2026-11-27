@@ -64,7 +64,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
     const on = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
       if (e.data?.xenon === 'ready') { ready.current = true; if (data) post(data); frame.current?.contentWindow?.postMessage({ xenon: 'mode', interact: interactRef.current }, window.location.origin); }
-      if (e.data?.xenon === 'page' && ['home', 'collection', 'product', 'page'].includes(e.data.template)) { setTpl(e.data.template as PageId); setSel(null); }
+      if (e.data?.xenon === 'page' && ['home', 'collection', 'product', 'cart', 'page'].includes(e.data.template)) { setTpl(e.data.template as PageId); setSel(null); }
       if (e.data?.xenon === 'select' && typeof e.data.id === 'string') { setSel(e.data.id); setTab('sections'); setView('edit'); }
     };
     window.addEventListener('message', on);

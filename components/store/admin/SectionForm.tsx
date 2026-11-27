@@ -107,7 +107,7 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
       {B('showWhatsapp', 'Show WhatsApp button')}{T('whatsapp', 'WhatsApp number', 'Leave empty to use your business phone.')}{T('message', 'Message customers start with')}
       <p className="mb-2 mt-4 text-xs font-bold uppercase text-slate-500">Live chat (optional, free with Tawk.to)</p>
       {T('tawkProperty', 'Tawk property ID', 'From your Tawk chat link: tawk.to/chat/PROPERTY_ID/WIDGET_ID')}{T('tawkWidget', 'Tawk widget ID')}</>;
-    case 'main': return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">This part fills itself in with your {sec.page === 'collection' ? 'collection products, search and sorting' : sec.page === 'product' ? 'product photo, price and Add to cart' : 'page text'}. You can drag it up or down to put other sections above or below it.</p>;
+    case 'main': return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">This part fills itself in with your {sec.page === 'collection' ? 'collection products, search and sorting' : sec.page === 'product' ? 'product photo, price and Add to cart' : sec.page === 'cart' ? 'items in the cart, quantities and the Checkout button' : 'page text'}. You can drag it up or down to put other sections above or below it.</p>;
     case 'ticker': return <>
       <p className="mb-3 text-xs text-slate-500">A thin strip under the header. Messages rotate by themselves and customers can use the arrows.</p>
       <ListF label="Messages" noun="message" items={items(x.items)} onChange={(v) => set('items', v)} blank={{ text: '', link: '' }} fields={[{ key: 'text', label: 'Message' }, { key: 'link', label: 'Link (optional)' }]} max={8} />
