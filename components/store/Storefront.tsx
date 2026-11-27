@@ -75,6 +75,9 @@ export default function Storefront({
     const st: React.CSSProperties = {};
     if (s(x._pt)) st.paddingTop = Number(x._pt);
     if (s(x._pb)) st.paddingBottom = Number(x._pb);
+    // a color scheme from Theme settings re-colors everything inside the section
+    const sc = x._scheme ? theme.settings.schemes[Number(x._scheme) - 1] : undefined;
+    if (sc) Object.assign(st, { '--xs-bg': sc.background, '--xs-card': sc.background, '--xs-text': sc.text, '--xs-muted': `color-mix(in srgb, ${sc.text} 60%, ${sc.background})`, '--xs-primary': sc.primary, '--xs-primary-text': sc.primaryText, '--xs-border': sc.border, background: sc.background, color: sc.text });
     const bg = safeColor(x._bg, ''); const col = safeColor(x._color, '');
     if (bg) st.background = bg;
     if (col) st.color = col;
@@ -169,7 +172,7 @@ export default function Storefront({
         );
       }
       case 'products':
-        return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} checkoutHref={checkoutHref} />;
+        return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} checkoutHref={checkoutHref} cartHref={cartHref} />;
       case 'multicolumn': {
         const cols: Col[] = arr<Record<string, string>>(x.cols).map((c) => {
           const l = link(c.link);
@@ -219,7 +222,7 @@ export default function Storefront({
           }
         };
         return (
-          <section className="xs-wrap py-12" style={{ textAlign: al }}>
+          <section className="xs-wrap py-[var(--xs-sec-y,3rem)]" style={{ textAlign: al }}>
             {cols === 1
               ? <div className="flex flex-col gap-5" style={{ alignItems: just }}>{blocks.map(cell)}</div>
               : <div className={`grid gap-8 ${cols === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>{blocks.map((b, i) => <div key={i} className="flex flex-col gap-4" style={{ alignItems: just }}>{cell(b, i)}</div>)}</div>}
@@ -228,7 +231,7 @@ export default function Storefront({
       }
       case 'richtext':
         return (
-          <section className="xs-wrap py-14" style={{ textAlign: x.align === 'left' ? 'left' : 'center' }}>
+          <section className="xs-wrap py-[var(--xs-sec-y,3rem)]" style={{ textAlign: x.align === 'left' ? 'left' : 'center' }}>
             {s(x.heading) && <h2 className="xs-h2">{s(x.heading)}</h2>}
             <div className={`mt-4 max-w-2xl ${x.align === 'left' ? '' : 'mx-auto'}`}><Markdown text={s(x.text)} ctx={ctx} /></div>
             {s(x.button) && <div className="mt-6"><A href={x.link} className="xs-btn">{s(x.button)}</A></div>}
@@ -237,7 +240,7 @@ export default function Storefront({
       case 'imagetext': {
         const img = safeHref(x.image, info.slug);
         return (
-          <section className="xs-wrap py-14">
+          <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
             <div className={`grid items-center gap-8 md:grid-cols-2 ${x.imageSide === 'right' ? 'md:[&>*:first-child]:order-2' : ''}`}>
               <div className="aspect-[4/3] overflow-hidden" style={{ background: 'var(--xs-border)', borderRadius: theme.settings.cards.radius }}>
                 {img && /* eslint-disable-next-line @next/next/no-img-element */ <img src={img} alt="" className="h-full w-full object-cover" />}
@@ -290,7 +293,7 @@ export default function Storefront({
         );
         if (x.style === 'marquee' && list.length > 0) {
           return (
-            <section className="overflow-hidden py-14" aria-label="Customer reviews">
+            <section className="overflow-hidden py-[var(--xs-sec-y,3rem)]" aria-label="Customer reviews">
               <style dangerouslySetInnerHTML={{ __html: '@keyframes xs-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}.xs-track{display:flex;width:max-content;animation:xs-scroll 70s linear infinite}.xs-track:hover{animation-play-state:paused}@media(prefers-reduced-motion:reduce){.xs-track{animation:none}}' }} />
               {head}
               <div className="xs-track mt-8">
@@ -300,7 +303,7 @@ export default function Storefront({
           );
         }
         return (
-          <section className="xs-wrap py-14">
+          <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
             {head}
             <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{list.map((it, i) => card(it, i))}</div>
           </section>
@@ -345,7 +348,7 @@ export default function Storefront({
       }
       case 'faq':
         return (
-          <section className="xs-wrap max-w-3xl py-14">
+          <section className="xs-wrap max-w-3xl py-[var(--xs-sec-y,3rem)]">
             <h2 className="xs-h2 text-center">{s(x.heading)}</h2>
             <div className="mt-6 divide-y" style={{ borderColor: 'var(--xs-border)' }}>
               {arr<{ q: string; a: string }>(x.items).map((it, i) => (
@@ -362,7 +365,7 @@ export default function Storefront({
         const waNum = wa.startsWith('0') ? `234${wa.slice(1)}` : wa;
         const phone = s(x.phone) || info.phone || '';
         return (
-          <section className="xs-wrap py-14 text-center">
+          <section className="xs-wrap py-[var(--xs-sec-y,3rem)] text-center">
             <h2 className="xs-h2">{s(x.heading)}</h2>
             <p className="xs-muted mx-auto mt-2 max-w-xl">{s(x.text)}</p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
@@ -396,7 +399,7 @@ export default function Storefront({
         const list = arr<{ icon: string; title: string; text: string }>(x.items);
         if (list.length === 0) return null;
         return (
-          <section className="xs-wrap py-14">
+          <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
             <div className="mx-auto mb-8 max-w-2xl text-center"><h2 className="xs-h2">{s(x.heading)}</h2>{s(x.text) && <p className="xs-muted mt-3">{s(x.text)}</p>}</div>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {list.map((it, i) => {
@@ -424,7 +427,7 @@ export default function Storefront({
       case 'newsletter': {
         const bg = safeColor(x.bg, 'var(--xs-card)'); const col = safeColor(x.color, '');
         return (
-          <section className="py-14 text-center" style={{ background: bg, color: col || undefined }}>
+          <section className="py-[var(--xs-sec-y,3rem)] text-center" style={{ background: bg, color: col || undefined }}>
             <div className="xs-wrap mx-auto max-w-xl">
               <h2 className="xs-h2">{s(x.heading)}</h2>
               {s(x.text) && <p className="mt-3 opacity-80">{s(x.text)}</p>}
@@ -523,6 +526,8 @@ export default function Storefront({
 
   // the cart's Checkout button opens the checkout page (not inside the editor, which stays on its own page)
   const checkoutHref = editor ? undefined : `/b/${info.slug}/checkout`;
+  // Theme settings > Cart: "Page" sends the cart button to the cart page instead of opening the drawer
+  const cartHref = !editor && theme.settings.cart.type === 'page' ? `/b/${info.slug}/cart` : undefined;
   const tpl = (template ?? (mode === 'home' ? 'home' : 'page')) as PageId; // 'checkout' has no sections of its own, only the header and footer
   // header group + this page + footer group; the chat button follows the customer on every page
   const tplSecs = theme.sections.filter((sec) => sec.visible && (sec.page === 'header' || sec.page === 'footer' || sec.page === tpl || sec.type === 'floatchat'));
@@ -589,7 +594,7 @@ export default function Storefront({
       })}
       {tpl !== 'home' && !tplSecs.some((z) => z.type === 'main') && <main className={`xs-wrap py-12 ${tpl === 'page' && !wide ? 'max-w-3xl' : ''}`}>{children}</main>}
       {/* the cart and checkout live here when the page has no products section (collection, product and info pages) */}
-      {engine && !(tpl === 'home' && tplSecs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} checkoutHref={checkoutHref} />}
+      {engine && !(tpl === 'home' && tplSecs.some((z) => z.type === 'products')) && <SiteProducts products={[]} cartPool={products} shop={shop} hideGrid hideCartPill={cartInHeader} checkoutHref={checkoutHref} cartHref={cartHref} />}
     </div>
   );
 }

@@ -149,7 +149,7 @@ export default function SectionForm(props: { sec: Section; set: (key: string, va
   const x = sec.s;
   const styleable = sec.type !== 'header' && sec.type !== 'floatchat';
   const n = (k: string) => (sv(x[k]) === '' ? 0 : Number(x[k]));
-  const touched = ['_pt', '_pb', '_bg', '_color', '_width'].some((k) => sv(x[k]) !== '') || x._hm === true || x._hd === true;
+  const touched = ['_pt', '_pb', '_bg', '_color', '_width', '_scheme'].some((k) => sv(x[k]) !== '') || x._hm === true || x._hd === true;
   return (
     <>
       <SectionFields {...props} />
@@ -160,11 +160,12 @@ export default function SectionForm(props: { sec: Section; set: (key: string, va
             <RangeF label="Space above" value={n('_pt')} onChange={(v) => set('_pt', String(v))} min={0} max={160} unit="px" />
             <RangeF label="Space below" value={n('_pb')} onChange={(v) => set('_pb', String(v))} min={0} max={160} unit="px" />
             <Seg label="Width" value={(sv(x._width) || 'default') as 'default'} onChange={(v) => set('_width', v === 'default' ? '' : v)} options={[['default', 'Page'], ['narrow', 'Narrow'], ['full', 'Full width']] as [string, string][] as ['default' | 'narrow' | 'full', string][]} />
+            <SelectF label="Color scheme" value={sv(x._scheme)} onChange={(v) => set('_scheme', v)} options={[['', 'Theme colors'], ['1', 'Scheme 1'], ['2', 'Scheme 2'], ['3', 'Scheme 3']]} />
             <ColorF label="Section background" value={sv(x._bg)} allowEmpty onChange={(v) => set('_bg', v)} />
             <ColorF label="Section text color" value={sv(x._color)} allowEmpty onChange={(v) => set('_color', v)} />
             <BoolF label="Hide on phones" value={x._hm === true} onChange={(v) => set('_hm', v)} />
             <BoolF label="Hide on computers" value={x._hd === true} onChange={(v) => set('_hd', v)} />
-            {touched && <button type="button" className="text-xs font-semibold text-blue-600 hover:underline" onClick={() => { for (const k of ['_pt', '_pb', '_bg', '_color', '_width']) set(k, ''); set('_hm', false); set('_hd', false); }}>Reset section style</button>}
+            {touched && <button type="button" className="text-xs font-semibold text-blue-600 hover:underline" onClick={() => { for (const k of ['_pt', '_pb', '_bg', '_color', '_width', '_scheme']) set(k, ''); set('_hm', false); set('_hd', false); }}>Reset section style</button>}
           </div>
         </details>
       )}

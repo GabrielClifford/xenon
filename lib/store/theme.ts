@@ -11,6 +11,9 @@ export type FontRole = 'body' | 'subheading' | 'heading' | 'accent';
 export type Preset = { font: FontRole; size: number; lh: Tri; ls: Tri; upper: boolean };
 export type HKey = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
+export type Scheme = { background: string; text: string; primary: string; primaryText: string; border: string };
+export const SCHEME_LABELS = ['Scheme 1', 'Scheme 2', 'Scheme 3'] as const;
+
 export type ThemeSettings = {
   colors: {
     text: string; background: string; card: string; border: string; muted: string;
@@ -21,7 +24,10 @@ export type ThemeSettings = {
   fonts: Record<FontRole, string>;
   paragraph: { size: number; lh: Tri };
   h: Record<HKey, Preset>;
-  page: { width: 'narrow' | 'normal' | 'wide' };
+  page: { width: 'narrow' | 'normal' | 'wide'; spacing: 'compact' | 'normal' | 'spacious' };
+  // three named color schemes; any section can use one (Section style > Color scheme)
+  schemes: Scheme[];
+  cart: { type: 'drawer' | 'page' };
   anim: { hover: 'none' | 'lift' | 'scale' | 'zoom'; cartBump: boolean };
   badges: { position: 'tl' | 'tr' | 'bl'; radius: number; upper: boolean };
   buttons: { radius: number; border: number; upper: boolean; font: 'body' | 'accent'; sRadius: number; sBorder: number; pill: number };
@@ -91,7 +97,13 @@ export const defaultSettings: ThemeSettings = {
     h1: t(52, 'tight', 'heading'), h2: t(40, 'tight', 'heading'), h3: t(30, 'normal', 'heading'),
     h4: t(22, 'tight', 'heading'), h5: t(14, 'loose', 'subheading'), h6: t(12, 'loose', 'subheading'),
   },
-  page: { width: 'normal' },
+  page: { width: 'normal', spacing: 'normal' },
+  schemes: [
+    { background: '#ffffff', text: '#111111', primary: '#111111', primaryText: '#ffffff', border: '#ededed' },
+    { background: '#f5f5f2', text: '#111111', primary: '#111111', primaryText: '#ffffff', border: '#e1e1dc' },
+    { background: '#111111', text: '#ffffff', primary: '#ffffff', primaryText: '#111111', border: '#333333' },
+  ],
+  cart: { type: 'drawer' },
   anim: { hover: 'lift', cartBump: true },
   badges: { position: 'tl', radius: 100, upper: false },
   buttons: { radius: 12, border: 0, upper: false, font: 'body', sRadius: 12, sBorder: 1, pill: 40 },
@@ -231,7 +243,12 @@ function readSettings(raw: unknown): ThemeSettings {
   return {
     colors, fonts, h,
     paragraph: { size: num(r.paragraph?.size, 10, 20, d.paragraph.size), lh: oneOf(r.paragraph?.lh, ['tight', 'normal', 'loose'] as const, d.paragraph.lh) },
-    page: { width: oneOf(r.page?.width, ['narrow', 'normal', 'wide'] as const, d.page.width) },
+    page: { width: oneOf(r.page?.width, ['narrow', 'normal', 'wide'] as const, d.page.width), spacing: oneOf(r.page?.spacing, ['compact', 'normal', 'spacious'] as const, d.page.spacing) },
+    schemes: d.schemes.map((ds, i) => {
+      const sc = (Array.isArray(r.schemes) ? r.schemes[i] : undefined) as Partial<Scheme> | undefined;
+      return { background: safeColor(sc?.background, ds.background), text: safeColor(sc?.text, ds.text), primary: safeColor(sc?.primary, ds.primary), primaryText: safeColor(sc?.primaryText, ds.primaryText), border: safeColor(sc?.border, ds.border) };
+    }),
+    cart: { type: oneOf(r.cart?.type, ['drawer', 'page'] as const, d.cart.type) },
     anim: { hover: oneOf(r.anim?.hover, ['none', 'lift', 'scale', 'zoom'] as const, d.anim.hover), cartBump: bool(r.anim?.cartBump, d.anim.cartBump) },
     badges: { position: oneOf(r.badges?.position, ['tl', 'tr', 'bl'] as const, d.badges.position), radius: num(r.badges?.radius, 0, 100, d.badges.radius), upper: bool(r.badges?.upper, d.badges.upper) },
     buttons: { radius: num(r.buttons?.radius, 0, 60, d.buttons.radius), border: num(r.buttons?.border, 0, 6, d.buttons.border), upper: bool(r.buttons?.upper, d.buttons.upper), font: oneOf(r.buttons?.font, ['body', 'accent'] as const, d.buttons.font), sRadius: num(r.buttons?.sRadius, 0, 60, d.buttons.sRadius), sBorder: num(r.buttons?.sBorder, 0, 6, d.buttons.sBorder), pill: num(r.buttons?.pill, 0, 60, d.buttons.pill) },
@@ -293,6 +310,7 @@ function readSections(raw: unknown): Section[] {
       for (const k of ['_pt', '_pb']) s[k] = given[k] === '' || given[k] == null ? '' : String(Math.round(num(given[k], 0, 200, 0)));
       s._bg = safeColor(given._bg, ''); s._color = safeColor(given._color, '');
       s._width = oneOf(given._width, ['', 'narrow', 'full'] as const, '');
+      s._scheme = oneOf(given._scheme, ['', '1', '2', '3'] as const, '');
       s._hm = given._hm === true; s._hd = given._hd === true;
       list.push({ id, type, page, visible: type === 'main' ? true : x.visible !== false, s });
     }
@@ -330,6 +348,7 @@ export function sanitizeCss(css: string): string {
 const LH: Record<Tri, number> = { tight: 1.15, normal: 1.4, loose: 1.7 };
 const LS: Record<Tri, string> = { tight: '-0.02em', normal: '0', loose: '0.06em' };
 const WIDTH = { narrow: '960px', normal: '1152px', wide: '1360px' };
+const SPACING = { compact: '2rem', normal: '3rem', spacious: '4.5rem' };
 const STROKE = { thin: 1.4, default: 2, heavy: 2.6 };
 export const strokeWidth = (s: ThemeSettings) => STROKE[s.icons.stroke];
 
@@ -357,7 +376,7 @@ export function themeCss(s: ThemeSettings): string {
   const badgePos = s.badges.position === 'tr' ? 'top:8px;right:8px;left:auto;bottom:auto' : s.badges.position === 'bl' ? 'bottom:8px;left:8px;top:auto;right:auto' : 'top:8px;left:8px;bottom:auto;right:auto';
 
   const rules = [
-    `.xs-store{--xs-text:${c.text};--xs-bg:${c.background};--xs-card:${c.card};--xs-border:${c.border};--xs-muted:${c.muted};--xs-primary:${c.primary};--xs-primary-text:${c.primaryText};--xs-accent:${c.accent};--xs-width:${WIDTH[s.page.width]};--xs-cols-m:${s.cards.mobileColumns};--xs-cols-d:${s.cards.columns};`
+    `.xs-store{--xs-text:${c.text};--xs-bg:${c.background};--xs-card:${c.card};--xs-border:${c.border};--xs-muted:${c.muted};--xs-primary:${c.primary};--xs-primary-text:${c.primaryText};--xs-accent:${c.accent};--xs-width:${WIDTH[s.page.width]};--xs-sec-y:${SPACING[s.page.spacing]};--xs-cols-m:${s.cards.mobileColumns};--xs-cols-d:${s.cards.columns};`
       + `font-family:${role('body')};font-size:${s.paragraph.size}px;line-height:${LH[s.paragraph.lh]};color:var(--xs-text);background:var(--xs-bg);min-height:100vh}`,
     `.xs-store *{box-sizing:border-box}`,
     `.xs-store .xs-wrap{max-width:var(--xs-width);margin:0 auto;padding-left:20px;padding-right:20px}`,

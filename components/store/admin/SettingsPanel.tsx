@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import type { FontRole, HKey, ThemeSettings } from '@/lib/store/theme';
+import { SCHEME_LABELS, type FontRole, type HKey, type ThemeSettings } from '@/lib/store/theme';
 import { BoolF, ColorF, FontF, Field, RangeF, Seg, inp } from './fields';
 
 type Upd = (fn: (s: ThemeSettings) => void) => void;
@@ -48,7 +48,26 @@ export default function SettingsPanel({ s, upd }: { s: ThemeSettings; upd: Upd }
           </details>
         ))}
       </>)}
-      {g('Layout', <Seg label="Page width" value={s.page.width} options={[['narrow', 'Narrow'], ['normal', 'Normal'], ['wide', 'Wide']]} onChange={(v) => upd((d) => { d.page.width = v; })} />)}
+      {g('Color schemes', <>
+        <p className="mb-3 text-xs text-slate-500">Three ready palettes. In any section, open Section style and pick a Color scheme to re-color that whole section, for example a dark band between two light ones.</p>
+        {s.schemes.map((sc, i) => (
+          <details key={i} className="mb-2 rounded-lg border border-slate-200 p-3">
+            <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold"><span className="inline-block h-4 w-8 rounded border border-slate-300" style={{ background: sc.background }} /> {SCHEME_LABELS[i]}</summary>
+            <div className="mt-3">
+              <ColorF label="Background" value={sc.background} onChange={(v) => upd((d) => { d.schemes[i].background = v; })} />
+              <ColorF label="Text" value={sc.text} onChange={(v) => upd((d) => { d.schemes[i].text = v; })} />
+              <ColorF label="Buttons" value={sc.primary} onChange={(v) => upd((d) => { d.schemes[i].primary = v; })} />
+              <ColorF label="Text on buttons" value={sc.primaryText} onChange={(v) => upd((d) => { d.schemes[i].primaryText = v; })} />
+              <ColorF label="Borders" value={sc.border} onChange={(v) => upd((d) => { d.schemes[i].border = v; })} />
+            </div>
+          </details>
+        ))}</>)}
+      {g('Layout', <>
+        <Seg label="Page width" value={s.page.width} options={[['narrow', 'Narrow'], ['normal', 'Normal'], ['wide', 'Wide']]} onChange={(v) => upd((d) => { d.page.width = v; })} />
+        <Seg label="Space between sections" value={s.page.spacing} options={[['compact', 'Compact'], ['normal', 'Normal'], ['spacious', 'Spacious']]} onChange={(v) => upd((d) => { d.page.spacing = v; })} /></>)}
+      {g('Cart', <>
+        <Seg label="When a customer opens the cart" value={s.cart.type} options={[['drawer', 'Slide-out drawer'], ['page', 'Cart page']]} onChange={(v) => upd((d) => { d.cart.type = v; })} />
+        <p className="text-xs text-slate-500">Drawer: the cart slides in over the page. Cart page: the cart button goes to your cart page, and adding a product shows a short "added to your cart" note with a View cart link. The editor always uses the drawer, so you can test the cart there.</p></>)}
       {g('Animations', <>
         <Seg label="Product card hover" value={s.anim.hover} options={[['none', 'None'], ['lift', 'Lift'], ['scale', 'Scale'], ['zoom', 'Zoom']]} onChange={(v) => upd((d) => { d.anim.hover = v; })} />
         <BoolF label="Cart button bounces when you add an item" value={s.anim.cartBump} onChange={(v) => upd((d) => { d.anim.cartBump = v; })} /></>)}

@@ -98,13 +98,15 @@ const emptyForm = {
   first: '', last: '', name: '', phone: '', altPhone: '', email: '', company: '', address: '', address2: '', note: '',
 };
 
-export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false, layout = 'grid', portrait = false, hideCartPill = false, cartPool, hideGrid = false, flat = false, checkoutPage = false, checkoutHref }: { checkoutPage?: boolean; checkoutHref?: string; cartPool?: SiteProduct[]; hideGrid?: boolean; flat?: boolean; products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean; layout?: 'grid' | 'rows'; portrait?: boolean; hideCartPill?: boolean }) {
+export default function SiteProducts({ products, shop, heading = 'Products', hideTrack = false, themed = false, layout = 'grid', portrait = false, hideCartPill = false, cartPool, hideGrid = false, flat = false, checkoutPage = false, checkoutHref, cartHref }: { checkoutPage?: boolean; checkoutHref?: string; cartHref?: string; cartPool?: SiteProduct[]; hideGrid?: boolean; flat?: boolean; products: SiteProduct[]; shop?: Shop; heading?: string; hideTrack?: boolean; themed?: boolean; layout?: 'grid' | 'rows'; portrait?: boolean; hideCartPill?: boolean }) {
   const opt = shop?.checkout.options ?? defaultOptions;
   const acc = shop?.accounts ?? defaultAccounts;
   const taxCfg = shop?.tax ?? defaultTax;
   const sh = shop?.shipping ?? defaultShipping;
 
   const router = useRouter();
+  const [toast, setToast] = useState(''); // "Added to cart" note, used when the theme sends the cart button to the cart page
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3500); return () => clearTimeout(t); }, [toast]);
   const [cart, setCart] = useState<Record<string, number>>({});
   const pool = cartPool && cartPool.length > 0 ? cartPool : products;
   const poolRef = useRef(pool);
@@ -244,7 +246,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
 
   // the theme's header talks to the cart through window events
   useEffect(() => {
-    const openCart = () => { if (checkoutPage) return; setStep('cart'); setOpen(true); };
+    const openCart = () => { if (checkoutPage) return; if (cartHref) { router.push(cartHref); return; } setStep('cart'); setOpen(true); };
     const onSearch = (e: Event) => setSearch(String((e as CustomEvent).detail ?? ''));
     // display-only cards (carousels, collection pages) add to the cart with this event
     const onAdd = (e: Event) => {
@@ -255,7 +257,10 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
       setCart((c) => ({ ...c, [p.id]: Math.max(1, Math.min((c[p.id] ?? 0) + Math.max(1, d?.qty ?? 1), cap)) }));
       setDiscount(null);
       setCodeMsg('');
-      if (d?.open !== false && !checkoutPage) { setStep('cart'); setOpen(true); }
+      if (d?.open !== false && !checkoutPage) {
+        if (cartHref) setToast(`${p.name} added to your cart`);
+        else { setStep('cart'); setOpen(true); }
+      }
     };
     // the cart page changes quantities through this event
     const onSetQty = (e: Event) => {
@@ -678,6 +683,7 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
       {canOrder && count > 0 && !open && !hideCartPill && (
         <button
           onClick={() => {
+            if (cartHref) { router.push(cartHref); return; }
             setStep('cart');
             setOpen(true);
           }}
@@ -685,6 +691,13 @@ export default function SiteProducts({ products, shop, heading = 'Products', hid
         >
           <ShoppingBag className="h-5 w-5" /> Cart ({count}) · {naira(total)}
         </button>
+      )}
+
+      {toast && cartHref && (
+        <div role="status" className="fixed bottom-5 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-full bg-slate-900 px-4 py-2.5 text-sm text-white shadow-xl">
+          <span>{toast}</span>
+          <Link href={cartHref} className="font-semibold underline" onClick={() => setToast('')}>View cart</Link>
+        </div>
       )}
 
       {open && (

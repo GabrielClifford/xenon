@@ -87,7 +87,7 @@ export function SectionHead({ heading, button, href }: { heading: string; button
 export function CollectionRow({ products, slug, heading, button, href, portrait }: { products: SiteProduct[]; slug: string; heading: string; button: string; href: string; portrait: boolean }) {
   if (products.length === 0) return null;
   return (
-    <section className="xs-wrap py-10">
+    <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
       <SectionHead heading={heading} button={button} href={href} />
       <Rail label={heading || 'Products'}>{products.map((p) => <StoreCard key={p.id} p={p} slug={slug} portrait={portrait} width={CARD_W} />)}</Rail>
     </section>
@@ -100,7 +100,7 @@ export function CollectionTabs({ tabs, slug, heading, button, portrait }: { tabs
   const cur = tabs[Math.min(i, tabs.length - 1)];
   if (!cur) return null;
   return (
-    <section className="xs-wrap py-10">
+    <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
       {heading && <h2 className="xs-h2 mb-5">{heading}</h2>}
       <div className="mb-6 flex flex-wrap gap-x-7 gap-y-2 border-b pb-3" style={{ borderColor: 'var(--xs-border)' }} role="tablist">
         {tabs.map((t, k) => (
@@ -118,7 +118,7 @@ export function CollectionTiles({ tiles, heading, columns }: { tiles: Tile[]; he
   if (tiles.length === 0) return null;
   const cols = columns >= 4 ? 'lg:grid-cols-4' : columns === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2';
   return (
-    <section className="xs-wrap py-10">
+    <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
       {heading && <h2 className="xs-h2 mb-6">{heading}</h2>}
       <div className={`grid grid-cols-2 gap-3 ${cols}`}>
         {tiles.map((t, i) => (
@@ -142,7 +142,7 @@ export function PeopleRail({ items, heading, subtitle }: { items: Person[]; head
   if (items.length === 0) return null;
   const go = (d: number) => { const el = ref.current; if (el) el.scrollBy({ left: d * el.clientWidth * 0.85, behavior: 'smooth' }); };
   return (
-    <section className="py-12" style={{ background: 'color-mix(in srgb, var(--xs-border) 45%, transparent)' }}>
+    <section className="py-[var(--xs-sec-y,3rem)]" style={{ background: 'color-mix(in srgb, var(--xs-border) 45%, transparent)' }}>
       <div className="xs-wrap">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div><h2 className="xs-h2">{heading}</h2>{subtitle && <p className="xs-muted mt-2 text-sm">{subtitle}</p>}</div>
@@ -200,7 +200,7 @@ export function Ticker({ items, seconds, bg, color }: { items: TickerItem[]; sec
 export function Gallery({ items, heading, handleText, link }: { items: { image: string; href: string }[]; heading: string; handleText: string; link: string }) {
   if (items.length === 0) return null;
   return (
-    <section className="py-10">
+    <section className="py-[var(--xs-sec-y,3rem)]">
       <div className="xs-wrap">
         <div className="mb-5 flex items-center justify-between gap-3">
           <h2 className="xs-h2">{heading || (handleText ? `Follow ${handleText}` : '')}</h2>
@@ -304,7 +304,7 @@ export function MultiColumn({ heading, cols, perRow, shape, align, button }: { h
   const grid = perRow === 4 ? 'grid-cols-2 lg:grid-cols-4' : perRow === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2';
   const ratio = shape === 'square' ? 'aspect-square' : shape === 'landscape' ? 'aspect-[4/3]' : shape === 'round' ? 'aspect-square rounded-full' : 'aspect-[3/4]';
   return (
-    <section className="xs-wrap py-12">
+    <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
       {heading && <h2 className="xs-h2 mb-8 text-center">{heading}</h2>}
       <div className={`grid gap-x-6 gap-y-10 ${grid}`}>
         {cols.map((c, i) => {
@@ -332,7 +332,7 @@ export function FeaturedProduct({ p, slug, heading, button, showDesc, imageRight
   const href = productHref(slug, p);
   const desc = (p.description ?? '').trim();
   return (
-    <section className="xs-wrap py-12">
+    <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
       {heading && <h2 className="xs-h2 mb-6 text-center">{heading}</h2>}
       <div className={`grid items-center gap-8 md:grid-cols-2 ${imageRight ? 'md:[&>*:first-child]:order-2' : ''}`}>
         <Link href={href} className="block aspect-[4/5] overflow-hidden" style={{ background: 'var(--xs-border)' }} aria-label={p.name}>
@@ -363,7 +363,7 @@ export function VideoBlock({ heading, video, title, ratio, poster, narrow }: { h
   const [on, setOn] = useState(false);
   const pad = ratio === '1:1' ? '100%' : ratio === '4:3' ? '75%' : ratio === '9:16' ? '177.78%' : '56.25%';
   return (
-    <section className="xs-wrap py-12">
+    <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
       {heading && <h2 className="xs-h2 mb-6 text-center">{heading}</h2>}
       <div className={`relative mx-auto w-full overflow-hidden ${narrow ? 'max-w-2xl' : ''}`} style={{ paddingBottom: ratio === '9:16' ? undefined : pad, aspectRatio: ratio === '9:16' ? '9 / 16' : undefined, maxWidth: ratio === '9:16' ? 360 : undefined, background: '#000' }}>
         {on ? (
