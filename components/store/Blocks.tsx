@@ -298,6 +298,33 @@ export function Slideshow({ slides, height, autoplay, seconds, arrows, dots, ali
   );
 }
 
+export type Col = { image: string; heading: string; text: string; button: string; href: string; external: boolean };
+// a row of columns, each with a picture, heading, text and link. On phones they stack two across (or one, for 2 columns).
+export function MultiColumn({ heading, cols, perRow, shape, align, button }: { heading: string; cols: Col[]; perRow: 2 | 3 | 4; shape: string; align: 'left' | 'center'; button: string }) {
+  const grid = perRow === 4 ? 'grid-cols-2 lg:grid-cols-4' : perRow === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2';
+  const ratio = shape === 'square' ? 'aspect-square' : shape === 'landscape' ? 'aspect-[4/3]' : shape === 'round' ? 'aspect-square rounded-full' : 'aspect-[3/4]';
+  return (
+    <section className="xs-wrap py-12">
+      {heading && <h2 className="xs-h2 mb-8 text-center">{heading}</h2>}
+      <div className={`grid gap-x-6 gap-y-10 ${grid}`}>
+        {cols.map((c, i) => {
+          const img = c.image && /* eslint-disable-next-line @next/next/no-img-element */ <img src={c.image} alt="" loading="lazy" className="h-full w-full object-cover" />;
+          const pic = img ? <div className={`overflow-hidden ${ratio}`} style={{ background: 'var(--xs-border)' }}>{img}</div> : null;
+          return (
+            <div key={i} className={align === 'left' ? 'text-left' : 'text-center'}>
+              {pic && (c.href && !c.button ? <L href={c.href} external={c.external} className="block">{pic}</L> : <div className={shape === 'round' ? 'mx-auto max-w-[220px]' : ''}>{pic}</div>)}
+              {c.heading && <h3 className="xs-h4 mt-4">{c.heading}</h3>}
+              {c.text && <p className="xs-muted mt-2 whitespace-pre-line leading-relaxed">{c.text}</p>}
+              {c.button && c.href && <div className="mt-4"><L href={c.href} external={c.external} className="xs-btn-secondary inline-block !px-5 !py-2 !text-xs uppercase tracking-widest">{c.button}</L></div>}
+              {!c.button && button && c.href && <div className="mt-3"><L href={c.href} external={c.external} className="text-sm underline">{button}</L></div>}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 // one product shown big: photo, price, a short description and Add to cart
 export function FeaturedProduct({ p, slug, heading, button, showDesc, imageRight }: { p: SiteProduct; slug: string; heading: string; button: string; showDesc: boolean; imageRight: boolean }) {
   const soldOut = p.stock !== null && p.stock <= 0;

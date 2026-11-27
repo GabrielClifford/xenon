@@ -7,7 +7,7 @@ import { Instagram, Facebook, Youtube } from '@/components/store/SocialIcons';
 import SiteProducts, { type Shop, type SiteProduct } from '@/components/SiteProducts';
 import FloatChat from '@/components/store/FloatChat';
 import Countdown from '@/components/store/Countdown';
-import { CollectionRow, CollectionTabs, CollectionTiles, FeaturedProduct, Gallery, NewsletterForm, PeopleRail, Slideshow, Ticker, VideoBlock, type Person, type Slide, type Tab, type Tile } from '@/components/store/Blocks';
+import { CollectionRow, CollectionTabs, CollectionTiles, FeaturedProduct, Gallery, NewsletterForm, MultiColumn, PeopleRail, Slideshow, Ticker, VideoBlock, type Col, type Person, type Slide, type Tab, type Tile } from '@/components/store/Blocks';
 import type { PageId } from '@/lib/store/theme';
 import { allCollection, collectionHref, productHref, type StoreCollection } from '@/lib/store/collections';
 import { fontsHref, safeColor, safeHref, strokeWidth, themeCss, type Section, type ThemeData } from '@/lib/store/theme';
@@ -170,6 +170,15 @@ export default function Storefront({
       }
       case 'products':
         return <SiteProducts products={products} shop={shop} heading={s(x.heading) || 'Products'} cartPool={products} hideTrack={x.showTrack === false} themed layout={x.layout === 'rows' ? 'rows' : 'grid'} portrait={x.portrait === true} hideCartPill={cartInHeader} />;
+      case 'multicolumn': {
+        const cols: Col[] = arr<Record<string, string>>(x.cols).map((c) => {
+          const l = link(c.link);
+          return { image: safeHref(c.image, info.slug), heading: s(c.heading), text: s(c.text), button: s(c.button), href: c.link ? l.href : '', external: !!l.external };
+        }).filter((c) => c.image || c.heading || c.text);
+        if (cols.length === 0) return null;
+        const per = x.perRow === '2' ? 2 : x.perRow === '4' ? 4 : 3;
+        return <MultiColumn heading={s(x.heading)} cols={cols} perRow={per} shape={['portrait', 'square', 'landscape', 'round'].includes(s(x.shape)) ? s(x.shape) : 'portrait'} align={x.align === 'left' ? 'left' : 'center'} button={s(x.button)} />;
+      }
       case 'featured': {
         const p = products.find((z) => z.id === s(x.product));
         if (!p) return null;

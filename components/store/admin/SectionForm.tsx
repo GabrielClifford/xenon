@@ -52,6 +52,14 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
       <SelectF label="Layout" value={(sv(x.layout) || 'grid') as 'grid'} onChange={(v) => set('layout', v)} options={[['grid', 'Grid'], ['rows', 'Swipeable rows by category']]} />
       {B('portrait', 'Tall product photos (3:4)')}{B('showTrack', 'Show "Track my order" link')}
       <p className="text-xs text-slate-500">Products, search, cart and checkout come from your Products page. Colors and card style come from Theme settings.</p></>;
+    case 'multicolumn': return <>
+      {T('heading', 'Heading (optional)')}
+      <ListF label="Columns" noun="column" titleKey="heading" items={items(x.cols)} onChange={(v) => set('cols', v)} blank={{ image: '', heading: '', text: '', button: '', link: '' }} owner={owner} fields={[{ key: 'image', label: 'Image', image: true }, { key: 'heading', label: 'Heading' }, { key: 'text', label: 'Text', area: true }, { key: 'button', label: 'Link label (optional)' }, { key: 'link', label: 'Link' }]} max={12} />
+      <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint} With no link label, the picture itself becomes the link.</p>
+      <Seg label="Columns per row" value={(sv(x.perRow) || '3') as '3'} onChange={(v) => set('perRow', v)} options={[['2', '2'], ['3', '3'], ['4', '4']]} />
+      <SelectF label="Picture shape" value={(sv(x.shape) || 'portrait') as 'portrait'} onChange={(v) => set('shape', v)} options={[['portrait', 'Tall'], ['square', 'Square'], ['landscape', 'Wide'], ['round', 'Round']]} />
+      <Seg label="Alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['left', 'Left'], ['center', 'Center']]} />
+      {T('button', 'Shared link text (optional)', 'A small underlined link under each column that has a link but no label, like "Learn more".')}</>;
     case 'featured': return <>
       <SelectF label="Product" value={sv(x.product)} onChange={(v) => set('product', v)} options={[['', 'Choose a product...'], ...productOpts.map((p) => [p.id, p.title] as [string, string])]} />
       {productOpts.length === 0 && <p className="-mt-2 mb-3 text-[11px] text-amber-700">You have no products yet. Add one under Products, then pick it here.</p>}
