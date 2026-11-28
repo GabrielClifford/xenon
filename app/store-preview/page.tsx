@@ -37,7 +37,7 @@ export default function StorePreview() {
       // test mode: the cart and checkout can be tried, but orders cannot be placed from the editor
       try { const built = buildShop(b).shop; setShop({ ...built, checkout: { ...built.checkout, accepting: false } }); } catch { setShop(undefined); }
       setInfo({ name: b.name, slug: b.slug, phone: b.phone ?? undefined, about: b.about ?? '' });
-      const cols = 'id, name, description, price, category, photo_url, stock, taxable, handle, compare_at_price, vendor, product_type, tags, created_at';
+      const cols = 'id, name, description, price, category, photo_url, image_url, images, stock, taxable, handle, compare_at_price, vendor, product_type, tags, created_at';
       const base = 'id, name, description, price, category, photo_url, stock, taxable';
       const q = (c: string) => supabase.from('products').select(c).eq('business_id', b.id).eq('available', true).order('created_at').limit(60);
       const [full, { data: pg }, { data: colRows }, { data: mem }] = await Promise.all([

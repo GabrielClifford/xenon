@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Rail, StoreCard, badgeOf } from '@/components/store/Blocks';
+import ProductGallery from '@/components/store/ProductGallery';
+import { galleryOf } from '@/lib/store/gallery';
 import type { SiteProduct } from '@/components/SiteProducts';
 
 const naira = (n: number) => '₦' + Number(n).toLocaleString('en-NG');
@@ -22,10 +24,7 @@ export default function ProductDetail({ p, slug, collections, related, canOrder 
         <span className="mx-2">/</span><span>{p.name}</span>
       </nav>
       <div className="grid gap-8 md:grid-cols-2 lg:gap-14">
-        <div className="xs-media relative aspect-[3/4] overflow-hidden md:sticky md:top-6 md:self-start">
-          {p.photo_url && /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt={p.name} className="h-full w-full object-cover object-top" />}
-          {soldOut ? <span className="xs-badge">Sold out</span> : was > 0 ? <span className="xs-badge xs-sale">Sale</span> : badge ? <span className="xs-badge">{badge}</span> : null}
-        </div>
+        <ProductGallery key={p.id} pics={galleryOf(p)} name={p.name} badge={soldOut ? <span className="xs-badge">Sold out</span> : was > 0 ? <span className="xs-badge xs-sale">Sale</span> : badge ? <span className="xs-badge">{badge}</span> : null} />
         <div>
           {p.vendor && <p className="xs-muted text-xs font-semibold uppercase tracking-[0.25em]">{p.vendor}</p>}
           <h1 className="xs-h2 mt-2">{p.name}</h1>

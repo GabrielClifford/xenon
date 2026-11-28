@@ -5,7 +5,7 @@ import { buildShop } from '@/lib/store/shop';
 import type { SiteProduct } from '@/components/SiteProducts';
 import { allCollection, buildCollections, type StoreCollection } from '@/lib/store/collections';
 
-export const PRODUCT_COLS = 'id, name, description, price, category, photo_url, stock, taxable, handle, compare_at_price, vendor, product_type, tags, created_at';
+export const PRODUCT_COLS = 'id, name, description, price, category, photo_url, image_url, images, stock, taxable, handle, compare_at_price, vendor, product_type, tags, created_at';
 const BASE_COLS = 'id, name, description, price, category, photo_url, stock, taxable';
 
 // products with the extra columns (sale price, type, tags); falls back to the basics if the table is older

@@ -27,6 +27,8 @@ export type SiteProduct = {
   price: number;
   category: string | null;
   photo_url: string | null;
+  image_url?: string | null;
+  images?: string[] | null;
   stock: number | null;
   taxable: boolean;
   handle?: string | null;
