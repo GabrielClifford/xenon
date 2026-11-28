@@ -19,11 +19,18 @@ const BLOCK_KINDS: Record<string, ListKind<Item>> = {
   spacer: { label: 'Space', titleKey: 'height', blank: { type: 'spacer', height: '40' }, fields: [{ key: 'height', label: 'Height in pixels (0 to 200)' }] },
 };
 
-export type ColOpt = { id: string; title: string };
+export type ColOpt = { id: string; title: string; handle?: string };
 
 function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: { sec: Section; set: (key: string, value: unknown) => void; owner: Owner; collections?: ColOpt[]; productOpts?: ColOpt[] }) {
   const x = sec.s;
   const T = (key: string, label: string, hint?: string) => <TextF label={label} value={sv(x[key])} onChange={(v) => set(key, v)} hint={hint} />;
+  // a link box with a list of the store's own pages to pick from, so nobody has to type an address
+  const LK = (key: string, label: string, hint?: string) => (
+    <>
+      <TextF label={label} value={sv(x[key])} onChange={(v) => set(key, v)} hint={hint} />
+      <SelectF label="Or pick a page" value="" onChange={(v) => { if (v) set(key, v); }} options={[['', 'Choose a page...'], ['{store}/collections/all', 'Shop all (all products)'], ...collections.filter((c) => c.handle).map((c) => [`{store}/collections/${c.handle}`, `Collection: ${c.title}`] as [string, string]), ['{store}/cart', 'Cart page'], ['{store}', 'Home page'], ['#products', 'Products section on this page']]} />
+    </>
+  );
   const A = (key: string, label: string, rows = 4, hint?: string) => <AreaF label={label} rows={rows} value={sv(x[key])} onChange={(v) => set(key, v)} hint={hint} />;
   const C = (key: string, label: string) => <ColorF label={label} value={sv(x[key])} allowEmpty onChange={(v) => set(key, v)} />;
   const I = (key: string, label: string) => <ImageF label={label} value={sv(x[key])} onChange={(v) => set(key, v)} owner={owner} />;
@@ -33,14 +40,14 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
   const linkHint = 'Use #products to scroll to products, https://... for another website, or /b/your-store/pages/about for a page.';
 
   switch (sec.type) {
-    case 'announcement': return <>{T('text', 'Message', 'Leave empty to hide the bar.')}{T('ends', 'Countdown ends on (optional)', 'Shows a live countdown next to the message, like 2026-11-27 23:59')}{T('link', 'Link (optional)')}{C('bg', 'Background color')}{C('color', 'Text color')}</>;
+    case 'announcement': return <>{T('text', 'Message', 'Leave empty to hide the bar.')}{T('ends', 'Countdown ends on (optional)', 'Shows a live countdown next to the message, like 2026-11-27 23:59')}{LK('link', 'Link (optional)')}{C('bg', 'Background color')}{C('color', 'Text color')}</>;
     case 'header': return <>
       {T('logoText', 'Logo text', 'Leave empty to use your store name.')}{I('logoImage', 'Logo image (optional)')}
       <ListF label="Menu links" noun="link" items={items(x.links)} onChange={(v) => set('links', v)} blank={{ label: '', href: '' }} fields={[{ key: 'label', label: 'Label' }, { key: 'href', label: 'Link' }]} max={8} />
       <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint}</p>
       {B('showMenu', 'Show menu button (opens a side menu with your links and pages)')}{B('showSearch', 'Show search')}{B('showCart', 'Show cart button')}{B('showAccount', 'Show Sign in / My account')}{B('sticky', 'Keep header at the top when scrolling')}{B('center', 'Center the logo')}{B('wide', 'Full-width header')}</>;
     case 'hero': return <>
-      {I('image', 'Banner image')}{T('eyebrow', 'Small text above heading (optional)')}{T('heading', 'Heading')}{T('sub', 'Subheading')}{T('button', 'Button label')}{T('link', 'Button link', linkHint + ' To open a collection use {store}/collections/all')}
+      {I('image', 'Banner image')}{T('eyebrow', 'Small text above heading (optional)')}{T('heading', 'Heading')}{T('sub', 'Subheading')}{T('button', 'Button label')}{LK('link', 'Button link', linkHint)}
       {T('ends', 'Sale countdown ends on (optional)', 'Shows a countdown on the banner, like 2026-11-27 23:59')}{T('endsLabel', 'Text above the countdown')}
       <SelectF label="Height" value={(sv(x.height) || 'medium') as 'small'} onChange={(v) => set('height', v)} options={[['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']]} />
       <SelectF label="Text position" value={(sv(x.valign) || 'center') as 'center'} onChange={(v) => set('valign', v)} options={[['center', 'Middle'], ['bottom', 'Bottom']]} />
@@ -56,6 +63,7 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
       {T('heading', 'Heading (optional)')}
       <ListF label="Columns" noun="column" titleKey="heading" items={items(x.cols)} onChange={(v) => set('cols', v)} blank={{ image: '', heading: '', text: '', button: '', link: '' }} owner={owner} fields={[{ key: 'image', label: 'Image', image: true }, { key: 'heading', label: 'Heading' }, { key: 'text', label: 'Text', area: true }, { key: 'button', label: 'Link label (optional)' }, { key: 'link', label: 'Link' }]} max={12} />
       <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint} With no link label, the picture itself becomes the link.</p>
+      <SelectF label="On phones" value={(sv(x.phone) || 'row') as 'row'} onChange={(v) => set('phone', v)} options={[['row', 'Side by side, like on a computer'], ['swipe', 'Swipe sideways'], ['stack', 'One under another']]} />
       <Seg label="Columns per row" value={(sv(x.perRow) || '3') as '3'} onChange={(v) => set('perRow', v)} options={[['2', '2'], ['3', '3'], ['4', '4']]} />
       <SelectF label="Picture shape" value={(sv(x.shape) || 'portrait') as 'portrait'} onChange={(v) => set('shape', v)} options={[['portrait', 'Tall'], ['square', 'Square'], ['landscape', 'Wide'], ['round', 'Round']]} />
       <Seg label="Alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['left', 'Left'], ['center', 'Center']]} />
@@ -87,9 +95,9 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
       <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint} Blocks show in this order, from top to bottom (or across, with columns).</p>
     </>;
     case 'richtext': return <>{T('heading', 'Heading')}{A('text', 'Text', 6, 'You can use **bold**, *italic*, [links](https://...) and - lists.')}
-      <SelectF label="Alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['center', 'Center'], ['left', 'Left']]} />{T('button', 'Button label')}{T('link', 'Button link')}</>;
+      <SelectF label="Alignment" value={(sv(x.align) || 'center') as 'center'} onChange={(v) => set('align', v)} options={[['center', 'Center'], ['left', 'Left']]} />{T('button', 'Button label')}{LK('link', 'Button link')}</>;
     case 'imagetext': return <>{I('image', 'Image')}{T('heading', 'Heading')}{A('text', 'Text', 6)}
-      <SelectF label="Image position" value={(sv(x.imageSide) || 'left') as 'left'} onChange={(v) => set('imageSide', v)} options={[['left', 'Left'], ['right', 'Right']]} />{T('button', 'Button label')}{T('link', 'Button link')}</>;
+      <SelectF label="Image position" value={(sv(x.imageSide) || 'left') as 'left'} onChange={(v) => set('imageSide', v)} options={[['left', 'Left'], ['right', 'Right']]} />{T('button', 'Button label')}{LK('link', 'Button link')}</>;
     case 'trust': return <ListF label="Badges" noun="badge" items={items(x.items)} onChange={(v) => set('items', v)} blank={{ icon: 'star', title: '', text: '' }}
       fields={[{ key: 'icon', label: 'Icon', options: [...TRUST_ICONS] }, { key: 'title', label: 'Title' }, { key: 'text', label: 'Text' }]} max={6} />;
     case 'testimonials': return <>{T('heading', 'Heading')}{T('subtitle', 'Small text under heading')}
@@ -101,7 +109,7 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
     case 'marquee': return <>
       <ListF label="Phrases" noun="phrase" items={items(x.items)} onChange={(v) => set('items', v)} blank={{ text: '' }} fields={[{ key: 'text', label: 'Text' }]} max={10} />
       <RangeF label="Speed" min={0} max={60} value={Number(x.speed ?? 30)} onChange={(v) => set('speed', v)} />{C('bg', 'Background color')}{C('color', 'Text color')}</>;
-    case 'countdown': return <>{T('heading', 'Heading')}{T('ends', 'Sale ends on', 'Date and time, like 2026-11-27 23:59')}{T('endedText', 'Message after it ends')}{T('button', 'Button label')}{T('link', 'Button link', linkHint)}{C('bg', 'Background color')}{C('color', 'Text color')}</>;
+    case 'countdown': return <>{T('heading', 'Heading')}{T('ends', 'Sale ends on', 'Date and time, like 2026-11-27 23:59')}{T('endedText', 'Message after it ends')}{T('button', 'Button label')}{LK('link', 'Button link', linkHint)}{C('bg', 'Background color')}{C('color', 'Text color')}</>;
     case 'floatchat': return <>
       <p className="mb-3 text-xs text-slate-500">Buttons that float at the bottom of every page, so customers can message you while they browse.</p>
       {B('showWhatsapp', 'Show WhatsApp button')}{T('whatsapp', 'WhatsApp number', 'Leave empty to use your business phone.')}{T('message', 'Message customers start with')}
@@ -130,7 +138,7 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
     case 'people': return <>{T('heading', 'Heading')}{T('subtitle', 'Small text under heading')}
       <ListF label="People" noun="person" owner={owner} items={items(x.items)} onChange={(v) => set('items', v)} blank={{ image: '', name: '', tag: '', role: '', verified: 'yes', link: '' }} fields={[{ key: 'image', label: 'Photo', image: true }, { key: 'name', label: 'Name' }, { key: 'tag', label: 'Label on the photo (like Football)' }, { key: 'role', label: 'Small text under name' }, { key: 'verified', label: 'Verified tick', options: [['yes', 'Show'], ['no', 'Hide']] }, { key: 'link', label: 'Link (optional)' }]} max={12} />
       <p className="text-[11px] text-slate-500">Only show people who really use or wear your products.</p></>;
-    case 'gallery': return <>{T('heading', 'Heading', 'Like Follow @yourbrand. Leave empty to build it from the handle below.')}{T('handle', 'Instagram handle', 'Example: @yourbrand')}{T('link', 'Link to your page')}
+    case 'gallery': return <>{T('heading', 'Heading', 'Like Follow @yourbrand. Leave empty to build it from the handle below.')}{T('handle', 'Instagram handle', 'Example: @yourbrand')}{LK('link', 'Link to your page')}
       <ListF label="Photos" noun="photo" owner={owner} items={items(x.items)} onChange={(v) => set('items', v)} blank={{ image: '', link: '' }} fields={[{ key: 'image', label: 'Photo', image: true }, { key: 'link', label: 'Link (optional)' }]} max={12} /></>;
     case 'newsletter': return <>{T('heading', 'Heading')}{A('text', 'Text', 2)}{T('button', 'Button label')}{T('success', 'Message after signing up')}{C('bg', 'Background color')}{C('color', 'Text color')}
       <p className="text-xs text-slate-500">Sign-ups are saved in Online Store &gt; Preferences &gt; Newsletter sign-ups.</p></>;

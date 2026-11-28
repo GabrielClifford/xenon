@@ -1,5 +1,6 @@
 'use client';
 
+import { slugify } from '@/lib/store/collections';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowLeft, ArrowUp, Copy, Eye, EyeOff, GripVertical, History, Lock, Monitor, MousePointerClick, Redo2, Smartphone, Trash2, Undo2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -32,7 +33,7 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
   const [tpl, setTpl] = useState<PageId>('home');
   const [drag, setDrag] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
-  const [cols, setCols] = useState<{ id: string; title: string }[]>([]);
+  const [cols, setCols] = useState<{ id: string; title: string; handle?: string }[]>([]);
   const [prods, setProds] = useState<{ id: string; title: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
@@ -46,8 +47,8 @@ export default function ThemeEditor({ themeId, businessId, onBack }: { themeId: 
         supabase.auth.getUser(),
       ]);
       setUserId(u.user?.id ?? '');
-      const { data: cr } = await supabase.from('collections').select('id, title').eq('business_id', businessId).order('title');
-      setCols(((cr ?? []) as { id: string; title: string }[]).filter((c) => c.title));
+      const { data: cr } = await supabase.from('collections').select('*').eq('business_id', businessId).order('title');
+      setCols(((cr ?? []) as { id: string; title: string; handle?: string | null }[]).filter((c) => c.title).map((c) => ({ id: c.id, title: c.title, handle: slugify(c.handle && c.handle.trim() ? c.handle : c.title) })));
       const { data: pr } = await supabase.from('products').select('id, name').eq('business_id', businessId).order('name').limit(500);
       setProds(((pr ?? []) as { id: string; name: string }[]).filter((p) => p.name).map((p) => ({ id: p.id, title: p.name })));
       if (!row) return setMsg('Theme not found.');

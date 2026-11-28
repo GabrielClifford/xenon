@@ -300,18 +300,24 @@ export function Slideshow({ slides, height, autoplay, seconds, arrows, dots, ali
 
 export type Col = { image: string; heading: string; text: string; button: string; href: string; external: boolean };
 // a row of columns, each with a picture, heading, text and link. On phones they stack two across (or one, for 2 columns).
-export function MultiColumn({ heading, cols, perRow, shape, align, button }: { heading: string; cols: Col[]; perRow: 2 | 3 | 4; shape: string; align: 'left' | 'center'; button: string }) {
-  const grid = perRow === 4 ? 'grid-cols-2 lg:grid-cols-4' : perRow === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2';
+export function MultiColumn({ heading, cols, perRow, shape, align, button, phone = 'row' }: { heading: string; cols: Col[]; perRow: 2 | 3 | 4; shape: string; align: 'left' | 'center'; button: string; phone?: 'row' | 'swipe' | 'stack' }) {
+  // on phones: "row" keeps the columns side by side like on a computer, "swipe" scrolls sideways, "stack" puts them one under another
+  const wide = perRow === 4 ? 'sm:grid-cols-4' : perRow === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2';
+  const grid = phone === 'swipe'
+    ? `flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 sm:grid sm:overflow-visible ${wide}`
+    : phone === 'row'
+      ? `grid gap-x-3 sm:gap-x-6 ${perRow === 4 ? 'grid-cols-4' : perRow === 3 ? 'grid-cols-3' : 'grid-cols-2'} ${wide} max-sm:[&_h3]:text-[13px] max-sm:[&_p]:text-xs`
+      : `grid gap-x-6 ${perRow === 4 ? 'grid-cols-2 lg:grid-cols-4' : perRow === 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`;
   const ratio = shape === 'square' ? 'aspect-square' : shape === 'landscape' ? 'aspect-[4/3]' : shape === 'round' ? 'aspect-square rounded-full' : 'aspect-[3/4]';
   return (
     <section className="xs-wrap py-[var(--xs-sec-y,3rem)]">
       {heading && <h2 className="xs-h2 mb-8 text-center">{heading}</h2>}
-      <div className={`grid gap-x-6 gap-y-10 ${grid}`}>
+      <div className={`gap-y-10 ${grid}`}>
         {cols.map((c, i) => {
           const img = c.image && /* eslint-disable-next-line @next/next/no-img-element */ <img src={c.image} alt="" loading="lazy" className="h-full w-full object-cover" />;
           const pic = img ? <div className={`overflow-hidden ${ratio}`} style={{ background: 'var(--xs-border)' }}>{img}</div> : null;
           return (
-            <div key={i} className={align === 'left' ? 'text-left' : 'text-center'}>
+            <div key={i} className={`${align === 'left' ? 'text-left' : 'text-center'} ${phone === 'swipe' ? 'w-[72%] shrink-0 snap-start sm:w-auto' : ''}`}>
               {pic && (c.href && !c.button ? <L href={c.href} external={c.external} className="block">{pic}</L> : <div className={shape === 'round' ? 'mx-auto max-w-[220px]' : ''}>{pic}</div>)}
               {c.heading && <h3 className="xs-h4 mt-4">{c.heading}</h3>}
               {c.text && <p className="xs-muted mt-2 whitespace-pre-line leading-relaxed">{c.text}</p>}

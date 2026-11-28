@@ -62,7 +62,12 @@ export default function Storefront({
     l.href = fontsHref(theme.settings);
   }, [theme.settings]);
 
-  const link = (href: unknown) => { const l = linkFor(s(href), ctx); return l; };
+  // "#products" only works where the page has a Products section; anywhere else it opens Shop all instead of doing nothing
+  const link = (href: unknown) => {
+    const raw = s(href).trim();
+    const here = theme.sections.some((z) => z.visible && z.type === 'products' && z.page === tpl);
+    return linkFor(raw === '#products' && !here ? '{store}/collections/all' : raw, ctx);
+  };
   const A = ({ href, className, children: c }: { href: unknown; className?: string; children: React.ReactNode }) => {
     const l = link(href);
     return l.href.startsWith('/') ? <Link href={l.href} className={className}>{c}</Link> : <a href={l.href} className={className} {...(l.external ? { target: '_blank', rel: 'noopener noreferrer nofollow' } : {})}>{c}</a>;
@@ -180,7 +185,7 @@ export default function Storefront({
         }).filter((c) => c.image || c.heading || c.text);
         if (cols.length === 0) return null;
         const per = x.perRow === '2' ? 2 : x.perRow === '4' ? 4 : 3;
-        return <MultiColumn heading={s(x.heading)} cols={cols} perRow={per} shape={['portrait', 'square', 'landscape', 'round'].includes(s(x.shape)) ? s(x.shape) : 'portrait'} align={x.align === 'left' ? 'left' : 'center'} button={s(x.button)} />;
+        return <MultiColumn heading={s(x.heading)} cols={cols} perRow={per} shape={['portrait', 'square', 'landscape', 'round'].includes(s(x.shape)) ? s(x.shape) : 'portrait'} align={x.align === 'left' ? 'left' : 'center'} button={s(x.button)} phone={x.phone === 'stack' ? 'stack' : x.phone === 'swipe' ? 'swipe' : 'row'} />;
       }
       case 'featured': {
         const p = products.find((z) => z.id === s(x.product));
@@ -553,7 +558,7 @@ export default function Storefront({
               {shopOpen && <div className="py-2 pl-3 normal-case tracking-normal">{colList.map((c) => <Link key={c.id} href={hrefOf(c)} onClick={() => setMenuOpen(false)} className="xs-muted block py-3">{c.title}</Link>)}</div>}
             </>
           )}
-          {headerLinks.map((l, i) => { const k = linkFor(s(l.href), ctx); return <a key={i} href={k.href} onClick={() => setMenuOpen(false)} className="block border-b py-4" style={{ borderColor: 'var(--xs-border)' }}>{s(l.label)}</a>; })}
+          {headerLinks.map((l, i) => { const k = link(l.href); return <a key={i} href={k.href} onClick={() => setMenuOpen(false)} className="block border-b py-4" style={{ borderColor: 'var(--xs-border)' }}>{s(l.label)}</a>; })}
           {pages.length > 0 && (
             <>
               <button onClick={() => setSupportOpen((v) => !v)} aria-expanded={supportOpen} className="flex w-full items-center justify-between border-b py-4 uppercase tracking-[0.15em]" style={{ borderColor: 'var(--xs-border)' }}>Customer support<ChevronDown className={`h-4 w-4 transition ${supportOpen ? 'rotate-180' : ''}`} /></button>
