@@ -185,7 +185,7 @@ export default function Storefront({
         }).filter((c) => c.image || c.heading || c.text);
         if (cols.length === 0) return null;
         const per = x.perRow === '2' ? 2 : x.perRow === '4' ? 4 : 3;
-        return <MultiColumn heading={s(x.heading)} cols={cols} perRow={per} shape={['portrait', 'square', 'landscape', 'round'].includes(s(x.shape)) ? s(x.shape) : 'portrait'} align={x.align === 'left' ? 'left' : 'center'} button={s(x.button)} phone={x.phone === 'stack' ? 'stack' : x.phone === 'swipe' ? 'swipe' : 'row'} />;
+        return <MultiColumn heading={s(x.heading)} cols={cols} perRow={per} shape={['portrait', 'square', 'landscape', 'round'].includes(s(x.shape)) ? s(x.shape) : 'portrait'} align={x.align === 'left' ? 'left' : 'center'} button={s(x.button)} phone={x.phone === 'stack' ? 'stack' : x.phone === 'swipe' ? 'swipe' : 'row'} phoneCols={x.phoneCols === '1' ? 1 : x.phoneCols === '3' ? 3 : x.phoneCols === '4' ? 4 : 2} textOn={x.textOn === 'image' ? 'image' : 'below'} tight={x.tight === true} />;
       }
       case 'featured': {
         const p = products.find((z) => z.id === s(x.product));

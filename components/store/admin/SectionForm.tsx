@@ -63,6 +63,10 @@ function SectionFields({ sec, set, owner, collections = [], productOpts = [] }: 
       {T('heading', 'Heading (optional)')}
       <ListF label="Columns" noun="column" titleKey="heading" items={items(x.cols)} onChange={(v) => set('cols', v)} blank={{ image: '', heading: '', text: '', button: '', link: '' }} owner={owner} fields={[{ key: 'image', label: 'Image', image: true }, { key: 'heading', label: 'Heading' }, { key: 'text', label: 'Text', area: true }, { key: 'button', label: 'Link label (optional)' }, { key: 'link', label: 'Link' }]} max={12} />
       <p className="-mt-1 mb-3 text-[11px] text-slate-500">{linkHint} With no link label, the picture itself becomes the link.</p>
+      <Seg label="Columns per row on phones" value={(sv(x.phoneCols) || '2') as '2'} onChange={(v) => set('phoneCols', v)} options={[['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']]} />
+      <p className="-mt-1 mb-3 text-[11px] text-slate-500">Fewer columns make the pictures bigger. 2 gives big tiles like a category grid. Used when "On phones" below is Side by side.</p>
+      <SelectF label="Heading position" value={(sv(x.textOn) || 'below') as 'below'} onChange={(v) => set('textOn', v)} options={[['below', 'Below the picture'], ['image', 'On top of the picture']]} />
+      {B('tight', 'Small gaps between pictures')}
       <SelectF label="On phones" value={(sv(x.phone) || 'row') as 'row'} onChange={(v) => set('phone', v)} options={[['row', 'Side by side, like on a computer'], ['swipe', 'Swipe sideways'], ['stack', 'One under another']]} />
       <Seg label="Columns per row" value={(sv(x.perRow) || '3') as '3'} onChange={(v) => set('perRow', v)} options={[['2', '2'], ['3', '3'], ['4', '4']]} />
       <SelectF label="Picture shape" value={(sv(x.shape) || 'portrait') as 'portrait'} onChange={(v) => set('shape', v)} options={[['portrait', 'Tall'], ['square', 'Square'], ['landscape', 'Wide'], ['round', 'Round']]} />
